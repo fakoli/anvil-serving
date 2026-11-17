@@ -1,479 +1,108 @@
 # Benchmarks
 
-**2026-11-09 TensorFold reasoning investigation:** the
-[Max/Low Go controls](../findings/2026-11-09-tensorfold-reasoning-budget.md)
-retain the same 16K total response budget and separate effort instructions
-from a numeric thinking limit. The two reviewed Low repetitions passed their
-first contained tests; proposed forwarding support is not deployed or
-measured here. No broad Go or performance claim follows.
+Anvil Serving benchmarks measure local models by useful context, quality,
+and serving performance on named hardware. Every result is a dated finding
+with its exact configuration, raw artifacts, failures, and caveats. A result
+describes what was measured on that date; it is not live deployment status
+and never promotes a model by itself.
 
-**2026-11-09 source and rollout follow-up:** merged request-local
-[thinking-budget support](../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09)
-is deployed in the local CLI/router. A separate three-job check on one Go task
-retains ten responses: Max/8,192 passed 1/2 jobs and Low/unset passed 1/1 at a
-16,384 response cap. The second Max job failed both coding attempts at that
-cap; 8,192 is not established as a reliable fix or default. Its sharded-KV
-runtime differs from the original disk-only matrix, with no contemporary
-unbounded-Max control or causal quality/speed claim. Remote-controller
-numeric admission remains unsupported (B10 partial); no global model-policy
-change or promotion follows.
-[Summary](../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/summary.json)
-· [Evidence index](../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/README.md).
-
-**2026-11-08 TensorFold Go validation:** the
-[focused quality check](../findings/2026-11-08-tensorfold-go-validation.md)
-records a passing first attempt at 32K and length-finished failures at 16K on
-one selected Go task. It establishes no broad coding score, performance
-comparison, causal cap benefit or promotion.
-[GLM dossier](models/glm53-flash.md#tensorfold-go-diagnostic-2026-11-08).
-
-**2026-11-03 RTX5090 research update:** the
-[candidate campaign](../findings/2026-11-03-rtx5090-campaign.md) records bounded
-coding and synthetic capability results without changing any deployment decision.
-The [Ignis note](../findings/2026-11-03-ignis-improvements.md) separates model,
-runtime and evaluator improvements. [Dossier](models/rtx5090-campaign-candidates.md).
-
-**Current review, 2026-11-01:** Swift TP1 has qualification accepted on one
-RTX PRO 6000 Blackwell Max-Q. This is a qualification result; the measured C2/C1 tradeoff, strict-format
-failure, and SWE limit are retained in the [dated finding](../findings/2026-11-01-swift-tp1-gpu0.md).
-
-**Separate private-target scouts, 2026-11-01: original configuration retained.**
-The [cache-layout and DFlash scouts](../findings/2026-11-01-runtime-scouts.md)
-each completed 144 timed requests on the dual RTX PRO 6000 pair. Neither
-candidate improved median response latency by 10% against both controls.
-Cache slots increased 38.60% with the layout change and decreased 40.63% with
-DFlash2 K3. Both candidates were removed and the original configuration was
-restored. That scout target identity is private; the named October reference
-below is historical evidence, not a statement of today's selected checkpoint.
-[Private-target dossier](models/private-runtime-scouts.md).
-
-**Historical primary recommendation, 2026-10-17:** the operator selected
-`nvidia/GLM-5.3-Flash-FP4-Local` as the best current fit for this deployment.
-The pinned TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is promoted;
-EXL3 r11 is retained as rollback. The matched two-recipe comparison measured
-faster C1 prefill and decode, with mixed concurrent latency and narrower GPU
-headroom. The [promotion record](../findings/2026-10-17-glm53-nvidia-fp4-promotion.md)
-explains the selection, client acceptance, KV accounting, and remaining fleet
-workflow blocker. The [full comparison](../findings/2026-10-17-glm53-serving-performance.md)
-retains every measured cell and failure; this preference does not establish
-an exhaustive quality ranking.
-
-**2026-10-15 replacement evaluation:** the completed [campaign finding](../findings/2026-10-15-replacement-evaluation.md) records no eligible challenger. DeepSeek V4.1 Flash remained bounded to diagnostic gates, and exact GLM was restored and retained. The finding is the detailed gate record; this does not add a new GLM qualification, route change, or performance ranking.
-
-**Historical bounded recommendation, 2026-10-13:** The retained recommendation was the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](../findings/2026-10-13-full-qualification.md).
-
-**2026-10-13 full qualification:** [campaign closure](../findings/2026-10-13-full-qualification.md) retains separate GLM, Qwen, DeepSeek, MiMo, and Ignis evidence. The GLM baseline completed 2/5; terminal Ignis was incomplete at 2/5 resolved with three empty cases. No challenger cleared the complete 4/5 plus Django/Pylint requirement, so no challenger was promoted.
-
-**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
-
-
-**Historical 2026-09-23 publication-verified decision:** [GLM DCP1 r11](../findings/2026-09-23-glm-dcp1-qualification.md) is selected and deployed after retained direct/routed and native-client acceptance. Independent reviews, dashboard receipt, successful Pages publication, and HTTP/browser readback are retained. Exact r10 is the rollback.
-
-**2026-10-05 qualification decision:** [Qwen replacement and GLM CSF/QAD evidence](../findings/2026-10-05-xeon-model-qualification.md) rejects Qwen at 3/5 and GLM after fresh-reload A1 resolved 2/5 attempts (2/4 graded), below the 4/5 floor. GLM's earlier 4/5 scout, functional 25/25, Oracle 18/18, vision, and bounded context acceptance remain retained but do not establish a reliable quality floor, full-window capacity, or speed. B1/B2/A2 did not run. Exact r11 DCP1 restoration completed with direct 25/25, routed 7/7, and a fresh Pi read-tool turn; independent review follows closure.
-
-
-Compare local models by useful context, quality, and serving performance.
-Start with the latest decision, choose your hardware, then follow the exact
-configuration and retained evidence. **Evidence reviewed: 2026-11-01 Swift TP1 qualification and separate private-target runtime scouts; publication readback remains partial.**
-
-## Engine testing
-
-The [October 25 sampling-fix trial](../findings/2026-10-25-sampling-fix.md) stopped at a synthetic ordinary-mask parity failure before model weights or inference. It supplies partial functional kernel evidence, no candidate promotion or proven model-boundary fix.
-
-The [engine-testing reports](engine-testing.md) collect the closed Flare
-diagnostics and the 0.7.2 Ignis qualification. They are bounded local evidence:
-the incumbent remains selected, no Flare result is promoted, and Ignis coding
-qualification is incomplete. Use the reports for their exact evidence and
-failure boundaries, not as live deployment status.
-
-## Historical bounded APC reference — September 19
-
-<div class="bench-recipe" markdown="1">
-
-**Human-approved GLM-5.3-Flash r10 APC · Dual RTX PRO 6000**
-
-The bounded r10 APC configuration retains the 4-bpw GLM checkpoint, v84 runtime,
-FP8 MLA KV, no speculation, 327,680 configured tokens, C4, and the eight-image
-contract. On frozen 32-request finalists with about 25K actual prompt tokens,
-it improved the shared-prefix path while staying within the unique-prefix gate.
-
-| Matched outcome | r9 | r10 APC |
-|---|---:|---:|
-| Shared-prefix visible TTFT | 23.70 s | 7.62 s (−67.84%) |
-| Shared-prefix requests/s | 0.146 | 0.462 (3.17×) |
-| Unique-prefix requests/s | 0.144 | 0.141 (−2.39%) |
-
-The 75.58% isolated cache-reuse fraction supports the intended repeated-prefix
-mechanism. This does not prove four simultaneous maximum-context requests,
-video readiness, a soak result, or broad intelligence/SWE parity. Roll back to
-the exact r9 recipe if correctness, containment, routed readiness, or the
-frozen unique-prefix gate fails.
-
-[Read the promotion follow-up](../findings/2026-09-19-glm53-apc-promotion.md) ·
-[Inspect the historical campaign](../findings/2026-09-19-glm53-apc.md) ·
-[Open the matched chart](../findings/2026-09-19-glm53-apc-evidence/graphs/apc-matrix.svg)
-
-</div>
-
-## September 14 quality and performance baseline
-
-<div class="bench-recipe" markdown="1">
-
-**Historical r7 text and tool qualification · Dual RTX PRO 6000**
-
-### GLM-5.3-Flash · EXL3 4 bpw · speculation off
-
-The [September 13–14 qualification](../findings/2026-09-13-intelligence-context-scout.md)
-selected this configuration after bounded quality, context, and client tests.
-
-| What was tested | Result |
-|---|---|
-| Context / output capacity | 327,680 / 65,536 tokens |
-| Long-context retrieval | 9/9 twice, including after cold reload; 255,647–255,672 input tokens plus output reserve |
-| Quality / agentic / repository tasks | 90/100 fixed MMLU-Pro sample · 30/30 agentic · 4/5 SWE tasks |
-| Controlled requests / decode | 120/120 · 38.91 tok/s median per request at C4 |
-
-**Limits of this baseline:** tested text only; no exhaustive intelligence ranking, prolonged soak,
-reboot, or simultaneous full-window proof. These are dated local results,
-not a live status display or an automatic model-selection policy.
-
-[Read the qualification](../findings/2026-09-13-intelligence-context-scout.md) ·
-[Open the model dossier](models/glm53-flash.md) ·
-[Inspect the evidence](../findings/2026-09-13-intelligence-context-scout-evidence/README.md)
-
-</div>
-
-**2026-09-24 secondary promotion:** [ThinkingCap Qwen3.8 27B AWQ](models/thinkingcap-qwen38-27b.md) is `current` after the [human-authorized promotion](../findings/2026-09-24-thinkingcap-secondary-promotion.md) of its qualified RTX 5090 128K/C1 profile, with vision and complete local weights. The [direct qualification](../findings/2026-09-24-thinkingcap-context-5090.md) retains 27/27 functional, 9/9 thinking, 18/18 small-image, 30/30 limited quality, 100/100 strict short-output capacity, 60/60 text-context and 2/2 synthetic agentic passes. The selected recipe measured 3,003.045 ms median TTFT and 51.885 tok/s median decode on the controlled short-output workload; the faster qualified 32K alternative measured 455.442 ms and 158.355 tok/s. These compare whole recipes. The final routed contract is 131,072 total / 10,240 output / C1 / two images. Pi tool/result acceptance and managed catalog convergence passed; Open WebUI browser chat, detailed remote throughput monitoring and the intermittent image relay cause remain open. Mixed near-limit vision, C2, exact-limit/one-over, broad SWE and soak are unqualified.
-
-## Choose by hardware and workload
+## Where to start
 
 <div class="bench-paths" markdown="1">
 
 <div class="bench-path" markdown="1">
 
-**1. Pick your hardware**
+**See the numbers**
 
-Start with the measured [RTX PRO 6000](hardware/rtx-pro-6000.md),
-[RTX 5090](hardware/rtx-5090.md), or [Apple M4 Max](hardware/apple-m4-max.md)
-view. GPU count, interconnect, operating
-system, and runtime are part of the result.
-
-</div>
-
-<div class="bench-path" markdown="1">
-
-**2. Name the workload**
-
-For interactive use, prioritize TTFT and E2E. For sustained serving, use
-aggregate output, TPOT/ITL, and tail latency. For long context, require actual
-prompt depth rather than configured context.
+[Benchmark results](results.md) puts every finding in one record format,
+with interactive throughput-versus-interactivity and time-to-first-token
+charts and a downloadable index.
 
 </div>
 
 <div class="bench-path" markdown="1">
 
-**3. Check the tradeoff**
+**Run a measured configuration**
 
-Use [measured recipe results](recipe-results.md) for explicit strengths,
-limitations, and rejection reasons. Use the [model and quantization selection
-guide](selection.md) for a bounded workload choice, then [the complete model
-inventory](models/index.md) when quality, tools, media, or client acceptance
-matters more than one speed number.
+[Serve recipes](../recipes/index.md) lists every published recipe by
+hardware, with a download and the findings that measured it. The
+[measured recipe finder](recipe-results.md) lists strengths, limits, and
+rejection reasons.
 
 </div>
 
 <div class="bench-path" markdown="1">
 
-**4. Reproduce and verify**
+**Compare models**
 
-Open the exact recipe, then follow its dated finding and native JSON artifact.
-A copied container configuration is not a reproduced result until the same
-workload and independent gates pass.
+The [model comparison table](comparison.md) groups TTFT, throughput,
+context, and reasoning mode by card and workload. The
+[selection guide](selection.md) narrows a choice for one workload, and the
+[model dossiers](models/index.md) cover quality, tools, and media.
+
+</div>
+
+<div class="bench-path" markdown="1">
+
+**Speech and voice**
+
+[Voice model results](voice-models.md) cover speech recognition, speech
+generation, and spoken answers, with every failed gate retained.
 
 </div>
 
 </div>
 
-## Start with comparable numbers
+## Choose by hardware
 
-For speech recognition, speech generation and spoken answers, start with
-**[voice model results](voice-models.md)**. The latest Apple comparison retains
-all failed gates and no-promotion decisions alongside the measured results.
-
-The **[model comparison table](comparison.md)** puts the wider measured
-configuration — TTFT, throughput, context, reasoning mode, and recipe link —
-in one place, grouped by card and workload. The
-**[measured recipe finder](recipe-results.md)** is the shorter path when you
-want a current configuration, its tradeoffs, and raw evidence.
-
-For the newest single-card Qwen measurements, the dedicated
-**[Qwen3.8 27B RTX 5090 quant comparison](qwen38-27b-rtx5090-quant-comparison.md)**
-shows every fresh no-speculation/speculation pair, full-context proof, and
-failure without compressing the operator's TTFT-first ranking into one score.
-The newer **[dual-PRO Qwen3.8 27B comprehensive campaign](../findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md)**
-compares SGLang target-only/DFlash2 tuning, TP1/TP2/two-replica DP2,
-Inferact/RadixArk targets, and kelnei/vLLM MTP2/no-spec. It retains mean,
-p50, p95, and p99 TTFT, effective prefill, decode, TPOT/ITL, and E2E plus
-aggregate throughput and correctness failures. Open the
-[campaign graph (SVG)](../findings/2026-09-04-qwen38-27b-pro6000-possibility-evidence/benchmark-matrix.svg)
-or its [plotted data and source hashes](../findings/2026-09-04-qwen38-27b-pro6000-possibility-evidence/benchmark-graph-data.json).
-
-For the compact publication contract, use the
-**[finding format](finding-format.md)**. It defines screenshot-ready result
-cards, the common campaign artifact-set template, X and Reddit variants,
-accessible alt text, and a claim ledger back to the full finding and raw
-artifacts.
-
-## Browse by hardware
-
-| Hardware | Published evidence scope | Start here |
+| Hardware | Published evidence | Start here |
 |---|---|---|
-| 2× NVIDIA RTX PRO 6000 Blackwell Max-Q, 192 GB aggregate, sm_120 | Measured dual-card reference configuration; split workloads or exclusive TP=2 | [RTX PRO 6000](hardware/rtx-pro-6000.md) |
-| NVIDIA GeForce RTX 5090, 32 GB, sm_120 | Measured single-card qualification configuration, plus retained historical results | [RTX 5090](hardware/rtx-5090.md) |
-| Apple M4 Max laptop, 48 GB unified memory | Historical same-host voice candidate evidence; no LLM promotion or reference-topology change | [Apple M4 Max](hardware/apple-m4-max.md) |
+| 2× NVIDIA RTX PRO 6000 Blackwell Max-Q, 192 GB aggregate | Dual-card reference configuration: split workloads or exclusive TP=2 | [RTX PRO 6000](hardware/rtx-pro-6000.md) |
+| NVIDIA GeForce RTX 5090, 32 GB | Single-card qualification configuration and historical results | [RTX 5090](hardware/rtx-5090.md) |
+| Apple M4 Max, 48 GB unified memory | Same-host voice candidate evidence; no LLM promotion | [Apple M4 Max](hardware/apple-m4-max.md) |
 
-The published dual-PRO reference configuration uses two equal PRO 6000 cards.
-Aggregate VRAM is not unified memory, and the cards communicate over PCIe
-without NVLink. Exclusive TP=2 runs must prove that both devices were selected
-and all other inference was offline. The published reference topology keeps
-Companion Node model-free. Historical mixed-card tests still say which card was
-measured and which was merely protected or co-resident.
+GPU count, interconnect, operating system, and runtime are part of every
+result. The dual-PRO cards communicate over PCIe without NVLink, and their
+aggregate VRAM is not unified memory. Exclusive TP=2 results must show that
+both devices were selected and all other inference was offline.
 
-## Browse by model
+## Match the metric to the workload
 
-The **[complete hardware-first inventory](models/index.md)** lists every dossier
-and explicit grouped variant, including the September 12 efficient Qwen models
-and the Apple MLX Qwen lanes. Each dossier is a stable, model-centered summary
-with its dated findings and raw evidence.
+- **Interactive use:** time to first token (TTFT) and end-to-end latency.
+- **Sustained serving:** aggregate output tokens per second, TPOT/ITL, and
+  tail latency at the tested concurrency.
+- **Long context:** actual prompt depth reached, not the configured window.
+- **Quality, tools, and media:** the declared quality workload and client
+  acceptance in the model dossier, not one speed number.
 
-## Recent evidence
+A copied configuration is not a reproduced result until the same workload
+and independent gates pass. The [methodology](methodology.md) defines the
+comparison rules and instruments.
 
-- **2026-10-06 — Apple English voice:** [quality-first component qualification](../findings/2026-10-06-m4-max-voice-quality-qualification.md) retains all STT/TTS/LLM failures and no promotion. Human-only STT chart, complete and resource-aborted TTS arms, separate off/low / medium LLM profiles and bounded restoration are auditable; failed strict 8K cells are not performance ranked. [Hardware](hardware/apple-m4-max.md#2026-10-06-english-voice-qualification) · [all runs](runs.md#2026-10-06-english-voice-campaign).
+## Latest decisions
 
-- **2026-09-15 — media:** The [media finding](../findings/2026-09-15-media-bringup.md)
-  records bounded workflow evidence; use its dossier and finding rather than
-  treating it as a text-model selection result.
-- **2026-09-12 — efficient Qwen variants:** Signal, Swift, Qwopus, and Minitron
-  all passed functional checks on the RTX 5090, but none cleared the exact
-  incumbent's output and deployment gates. See the [grouped dossier](models/qwen38-efficient-variants.md).
+The newest dated entries. The [decision log](decisions.md) keeps the full
+text of every earlier decision, newest first.
 
-## Run context, agentic, and repository evaluations
-
-The [context, agentic, and SWE job guide](context-agentic-swe.md) describes the
-registered-worker workflow, bounded profiles through 640K, independent scoring,
-pinned mini-SWE-agent and official SWE-bench grading, cancellation, and the
-measured-versus-prior evidence boundary. The guide defines methodology and
-commands; it does not claim a live model result by itself.
-
-## Published decisions and recent controls
-
-The collapsed history below preserves earlier decisions through September 11.
-Labels such as `current` and `rollback` describe their status at that date;
-the September 13–14 selection above supersedes the primary-model guidance.
-Use the [run catalog](runs.md) to compare dated configurations.
-
-<details class="bench-history">
-<summary>Earlier decisions and controls — historical configurations</summary>
-<div markdown="1">
-
-1. **GLM-5.3-Flash ormandj W4A16/NVFP4 SGLang** — `current`
-   text/tools/image/OCR published profile at 393,216 tokens/C1 in exclusive
-   TP=2 across both RTX PRO 6000 cards, with adaptive EAGLE, explicit thinking
-   control, a 4,096-token output cap, and real Pi/OpenClaw/Hermes acceptance.
-   The standing reserve was explicitly waived for the model-only pair while
-   the post-workload runtime safety gates remained in force.
-2. **GLM-5.3-Flash EXL3 K3 plus corrected DFlash2 K5** — immediate exact
-   rollback at 524,288 tokens/router-c16, measured C2 at a nominal 250K target,
-   8,192 maximum output, and up to 16 images. Video is unsupported and the
-   DFlash2 draft is noncommercial without separate permission. The SGLang
-   245,760/C1 profile remains a conservative verified fallback.
-3. **RadixArk Qwen3.8 Flash Next NVFP4** — immediate retained
-   text/image/OCR/video rollback at 262,144 tokens, exclusive TP=2, router c1,
-   four-image/one-video admission, and the qualified hash-gated SM120 QSA-fast
-   MTP3 profile.
-4. **Inferact Qwen3.8 27B NVFP4 plus DFlash2 K12/chunk1K on the PRO pair** —
-   bounded aggregate-throughput winner: two independent TP1 replicas measured
-   1,401.8–1,423.4 tok/s at C16, versus one TP1 at 764.3 and TP2 at 587.9. All
-   headline canaries passed 100/100, but TP2 failed strict JSON twice and is
-   rejected. RadixArk is the lower-TTFT tradeoff; kelnei/vLLM MTP2 beat its
-   exact no-spec control but not SGLang. Broad quality and a balancing/client
-   path remain open; `no-promotion`, exact GLM service and route restored.
-5. **Gittensor Qwen3.8 27B RTX5090 NVFP4 target-only SGLang** — preferred
-   measured direct RTX 5090 TTFT challenger: 50.9 ms warm median TTFT, 79.5
-   tok/s decode, and a 244,002-token actual prompt. The advertised DSpark pair
-   failed on incompatible shapes and FP8 KV scales need further validation;
-   `no-promotion`, exact GGUF incumbent restored. Unsloth Dynamic V3.0 MTP3
-   is the strongest clean bounded-64K speculative arm at 137.7 tok/s with
-   tools 20/20.
-6. **Qwen3.8 27B NInfer NVFP4 MTP3** — retained direct decode challenger at
-   252,928 tokens/C1; 0.430-second median TTFT and 165.9 tok/s decode. Its
-   admission, reserve, runtime-image, routed/client, and broader gates remain
-   open.
-7. **DeepSeek V4 Flash 0731 Infernal Invocation r18/r15** — former text
-   Primary profiles with retained TP=2 long-context, performance, quality, and
-   real-client evidence.
-8. **Qwen3.8 27B official FP8 SGLang single service and FP8/BF16 vLLM split** —
-   former text/image/OCR/video deployments with retained managed recipes.
-9. **Qwen3.5 122B A10B NVFP4**, **Agents-A1 plus Omni**, **DeepSeek r16 650K**,
-   **Laguna S 2.1**, and **GPT-OSS Puzzle 88B** — retained qualified or
-   promotion-era recipes, not the immediate selected deployment.
-10. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
-   controls.
-11. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
-   measurements. The RTX PRO 6000 was protected, not benchmarked.
-12. **RadixArk Qwen3.8 27B NVFP4** — historical RTX 5090 multimodal challenger;
-   direct 128K text/tools/image/OCR/video evidence, no route or promotion.
-13. **FLUX.2 Klein 4B FP8** — published as available for the RTX 5090 ComfyUI image
-   workflow through Hermes/MCP at fixed 512/768/1024-pixel profiles; six of
-   eight bounded visual samples passed strict review, with two retained draft
-   fidelity/count failures. **Wan2.2 TI2V 5B** remains unavailable after
-   its decodable sample failed prompt adherence and spatial quality.
-
-On 2026-09-02, the exact ormandj GLM-5.3-Flash W4A16/NVFP4 checkpoint and
-rc14 SGLang image qualified and was human-promoted at 393,216 tokens/C1 on
-both PRO 6000 cards. The selected adaptive-MTP lane passed tools 20/20, coding
-15/15, media 12/12, endurance 60/60, and 4K/120K/262K/380K capacity through
-304,491 actual prompt tokens. After a recorded model-only reserve waiver, the
-managed direct/routed gates and real Pi/OpenClaw/Hermes acceptance passed;
-2,543 MiB/card remained after client work. The exact 524K incumbent is retained
-as rollback. See the
-[qualification](../findings/2026-09-02-glm53-sglang-sm120-qualification.md)
-and [promotion](../findings/2026-09-02-glm53-sglang-sm120-393k-promotion.md).
-
-A 2026-09-03 cross-run review clarifies that the old `maxseq16` setting is a
-scheduler ceiling, not proof of sixteen full-context requests. The current
-SGLang profile remains qualified at C1 with a 393,216-token shared pool. The
-corrected 524K rollback reports 2,493,817 KV tokens and separately proved C2
-at 206,630 prompt tokens/request; the historical BrandonMusic C16 artifacts
-used 4K prompts. The review records bounded C2/C4 planning math for a future
-current-profile experiment without promoting it to measured evidence. See the
-[concurrency and KV-capacity interpretation](../findings/2026-09-03-glm53-concurrency-capacity-interpretation.md).
-
-On 2026-08-31, the exact GLM-5.3-Flash K3 target plus DFlash2 K5 draft moved to
-a digest-pinned xgrammar-corrected 524K profile after a matched no-speculation
-A/B and full rollback/forward drill. It measured 83.08 tok/s at 4K and a pooled
-69.99 at 240K, versus 42.61 and 43.63 without speculation. The engine reported
-2,493,817 KV tokens, C2 nominal 250K completed 2/2, and direct structured,
-quality, image/OCR, exact router, and real OpenClaw/Hermes/Pi gates passed.
-Video remains disabled and the DFlash2 license limits the recipe to
-evaluation/noncommercial use without separate permission. The former 1M
-profile is the first rollback. See the
-[GLM xgrammar qualification](../findings/2026-08-31-glm53-xgrammar-524k-qualification.md).
-
-The 2026-08-29 Cardillo/Purtell TR3/EXL3 262K/524K qualification remains the
-historical starting point and GLM-specific rollback evidence. Adaptive MTP
-remains rejected and the unserved 0xSero 3.0-bpw release remains watch-only.
-
-On 2026-08-28, exact digest- and revision-pinned ComfyUI v0.33.4 workflows
-qualified a 512×512 FLUX.2 Klein PNG and a 17-frame, 512×288 Wan2.2 H.264 MP4
-on one RTX 5090. Peak GPU memory was 12,919 MiB and 18,263 MiB respectively
-from a 943 MiB worker baseline. The worker was removed afterward; no workflow,
-route, or deployment was promoted. See the
-[media qualification](../findings/2026-08-28-comfyui-media-qualification.md).
-A later exact-build live pass exercised cold approval, real Hermes MCP image
-and video jobs, A2A replay, authenticated artifact delivery, cold-backend
-failure, and managed teardown. The image samples passed bounded visual review;
-the video sample failed spatial/prompt adherence, so neither workflow was
-promoted. See the
-[live validation](../findings/2026-08-28-media-gateway-live-validation.md).
-
-A subsequent production gate enabled only the exact FLUX.2 image workflow.
-Real Hermes completed `draft` 512×512, `standard` 768×768, and `high`
-1024×1024 warm requests plus five cold approval/resume requests. Six of eight
-images passed strict independent review; two retained draft failures expose
-origami/material and exact-count limits. The gateway exposes latency phases,
-requires exact same-job resume, rejects arbitrary dimension overrides, and
-leaves the worker absent after managed teardown. The final `b46f6ce` regression
-copied a server-issued exact resume bundle unchanged, reattached to the same
-job, and returned native image bytes matching the authenticated resource. The
-image workflow is
-`available=true` and
-`promoted=false`. Wan2.2 remains `quality_failed`, unavailable, and has no
-fallback. See the
-[production-enablement finding](../findings/2026-08-28-hermes-image-quality-production.md).
-
-On 2026-08-26, after the explicit human gate, the exact RadixArk Qwen3.8 Flash
-Next NVFP4 revision became the text Primary at TP=2/262K/c1 and was then fixed
-forward to the hash-gated PR #36556 SM120 QSA fast path with matched MTP3
-`3/1/4`. It subsequently expanded in place to image/OCR/video after direct
-media 30/30, live routed repeats 57/60 strict, edge cases 8/8, a six-size
-context curve, and fresh OpenClaw/Hermes/Pi vision acceptance. It measured
-155.9 tok/s at 4K, 114.7 at the new 128K target sweep, and 112.9 at the 254K
-target; the separate full-reserve gate retained 102.0 tok/s. See the
-[Qwen3.8 Flash Next dossier](models/qwen38-flash-next.md) and
-[vision promotion record](../findings/2026-08-26-qwen38-flash-next-vision-promotion.md).
-
-On 2026-08-16, after the explicit human gate, the exact digest-pinned r15
-TP=2/393K profile became the text Primary at that date. A matched control measured K5 at
-150.0 versus 76.4 tok/s median decode at 4K/c1 and 119.245 versus 76.767 at
-32K/c1. Direct retrieval passed at 351,118 actual tokens and authenticated
-routed retrieval at 340,119; tools, streaming, Responses, c8, c2 long-context,
-and repeated agentic checks passed. The fixed-port r33 393K profile is the
-transactional rollback. See the [DeepSeek dossier](models/deepseek-v4-flash.md)
-and [r15 promotion record](../findings/2026-08-16-deepseek-v4-flash-0731-infernal-r15-393k-promotion.md).
-
-The upstream r15 recipe was authored by Martin Vit (`voipmonitor`) and was
-qualified upstream at 131,072 tokens on native Linux with two RTX PRO 6000
-Blackwell GPUs on direct PCIe root ports. The local 393,216-token WSL2 result
-is a separate qualification, not a transferred upstream claim.
-
-On 2026-08-15, after a separate human gate, the exact official-FP8 SGLang
-TP=1/393K Qwen profile became current. Its guarded acceptance passed 108K
-retrieval, tools 20/20, direct and routed media 18/18, the supported Responses
-subset, and fresh Hermes/OpenClaw Primary turns without fallback. It is now a
-former deployment with retained evidence. See the
-[Qwen3.8 dossier](models/qwen38-27b.md) and
-[single-service promotion record](../findings/2026-08-15-qwen38-27b-sglang-fp8-single-promotion.md).
-
-On 2026-08-16, the then-current Qwen model passed 30/30 direct deterministic
-media attempts, including video 14/14. A managed router-only expansion added
-`vision.video` and fail-closed admission for one video; the live admitted
-subset passed 28/28 along with streaming, tool-use, malformed-input, overflow,
-and Primary regression probes. See the
-[video-router finding](../findings/2026-08-16-qwen38-27b-video-router.md).
-
-On 2026-08-17, the separate single-RTX-5090 RadixArk NVFP4 profile advanced
-from its 64K baseline to a 131,072-token served window. It returned a retrieval
-marker at 119,675 actual prompt tokens, passed tools 20/20, direct
-image/OCR/video, the complete media corpus 30/30, and boundary cases 4/4 at
-eight images and two videos. It is the preferred 5090 computer-use perception
-challenger, but remains direct-only and `no-promotion`; GUI action-loop, routed
-admission, concurrency, and FP8-KV scale follow-up remain open. See the
-[128K qualification](../findings/2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k.md).
-
-The 2026-08-14 matched vLLM split remains retained historical evidence. Its routed FP8
-tools 20/20, BF16 media 30/30, and one 32-image request remain historical
-capability evidence, not a current admission declaration.
-
-On 2026-08-15, official-FP8 MTP=4 and MTP=5 both passed functional,
-near-393K, and repeated deterministic-quality gates. A cross-card swap showed
-that the apparent first-run speed gap followed the GPU lane: MTP=5 exceeded
-MTP=4 decode by only 0.4-1.3% on the same card and did not improve E2E. MTP=3
-remained selected within the Qwen profile. See the
-[MTP-depth qualification](../findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md).
-
-Also on 2026-08-15, a digest-pinned SGLang no-speculation A/B qualified
-official FP8 and audited Inferact NVFP4 as TP=1/393K text controls on both card
-placements. NVFP4 reduced matched 4K TTFT 22.6% and raised decode 20.6%, while
-both candidates passed 388,979 actual prompt tokens and bounded deterministic
-quality. See the
-[SGLang/NVFP4 qualification](../findings/2026-08-15-qwen38-27b-sglang-nvfp4-qualification.md).
-
-A matched MTP=3 follow-up then raised official-FP8 SGLang decode from 48.0 to
-111.3 tok/s and Inferact NVFP4 from 57.9 to 98.1. Both retained the complete
-functional and repeated deterministic-quality gate and passed a 389K
-retrieval probe. The prior multimodal crash was isolated to SGLang's automatic
-CUDA-IPC feature transport in this exact runtime; forcing CPU transport let
-both checkpoints pass bounded image understanding and OCR with MTP enabled.
-The later matched consolidation corpus added two-image ordering and supported
-the human promotion of official FP8; Inferact NVFP4 remains `no-promotion`.
-The then-promoted official-FP8 service subsequently qualified one video. The
-32-image ceiling, concurrency above one, and host-memory pressure remain open.
-See the
-[MTP/multimodal qualification](../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md).
-
-</div>
-</details>
+- **2026-11-09 — TensorFold reasoning budget:**
+  [Max/Low Go controls](../findings/2026-11-09-tensorfold-reasoning-budget.md)
+  and a [source and rollout follow-up](../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09).
+  No default, model-policy change, or promotion follows.
+- **2026-11-08 — TensorFold Go validation:**
+  [one selected Go task](../findings/2026-11-08-tensorfold-go-validation.md)
+  passed at 32K and failed at 16K. No broad coding score or promotion.
+- **2026-11-03 — RTX 5090 candidates:**
+  [bounded coding and synthetic results](../findings/2026-11-03-rtx5090-campaign.md)
+  with no deployment change.
+- **2026-11-01 — Swift TP1 and runtime scouts:**
+  [Swift TP1 qualification accepted](../findings/2026-11-01-swift-tp1-gpu0.md)
+  on one RTX PRO 6000. The [cache-layout and DFlash scouts](../findings/2026-11-01-runtime-scouts.md)
+  did not clear the 10% median-latency gate; the original configuration was
+  restored.
+- **2026-10-17 — GLM-5.3-Flash NVIDIA FP4:**
+  [operator-selected promotion](../findings/2026-10-17-glm53-nvidia-fp4-promotion.md)
+  with the [full serving comparison](../findings/2026-10-17-glm53-serving-performance.md).
+  Historical recommendation; not a statement of today's selected checkpoint.
 
 ## How to read the evidence
 
@@ -489,23 +118,30 @@ Evidence labels describe what was observed:
 | `historical-invalid` | Retained run is incomplete, incomparable, or missing identity needed for reuse. |
 
 Decision labels are separate: `current`, `rollback`, `challenger`,
-`no-promotion`, and `rejected`. In this public documentation, they describe the
-latest published evidence decision for a reference configuration, not live
-deployment state. A quality result can still be `no-promotion`; a failed load
-can be `rejected` while remaining useful compatibility evidence.
+`no-promotion`, and `rejected`. They describe the latest published evidence
+decision for a reference configuration, not live deployment state. A quality
+result can still be `no-promotion`; a failed load can be `rejected` while
+remaining useful compatibility evidence.
 
-Full comparison rules, instrument definitions, and artifact requirements:
-[Methodology and evidence rules](methodology.md).
+## Run and publish benchmarks
+
+- [Context, agentic, and SWE jobs](context-agentic-swe.md) — registered-worker
+  workflow, bounded profiles through 640K, and independent scoring.
+- [Repeatable campaigns](repeatable-campaigns.md) — frozen plans and
+  resumable multi-cell matrices.
+- [Finding format](finding-format.md) — the finding layout, the benchmark
+  record, result cards, and the claim ledger.
+- [Engine testing](engine-testing.md) — closed engine diagnostics and their
+  failure boundaries.
 
 ## Complete history
 
-- [Run catalog](runs.md) — every retained, decision-relevant run, indexed by
-  hardware and date.
+- [Decision log](decisions.md) — every earlier dated decision and control.
+- [Run catalog](runs.md) — every retained, decision-relevant run by hardware
+  and date.
 - [Findings index](../findings/README.md) — the dated reports with full
   commands, raw artifacts, and failure cases.
-- [Finding publication format](finding-format.md) — compact result and copy
-  formats without weakening evidence boundaries.
-- [External benchmarks](../EXTERNAL-BENCHMARKS.md) — advisory priors imported
-  from official and community sources, kept separate from local results.
+- [External benchmarks](../EXTERNAL-BENCHMARKS.md) — advisory priors from
+  official and community sources, kept separate from local results.
 - [Chronological campaign archive](../BENCHMARKS.md) — the stable-URL summary
-  of historical rounds, including Fast-tier and voice campaigns.
+  of historical rounds.

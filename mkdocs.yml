@@ -155,6 +155,7 @@ nav:
           - RTX 5090: benchmarks/hardware/rtx-5090.md
           - Apple M4 Max: benchmarks/hardware/apple-m4-max.md
       - History:
+          - Decision log: benchmarks/decisions.md
           - Findings index: findings/README.md
           - Run catalog: benchmarks/runs.md
           - Chronological results: BENCHMARKS.md

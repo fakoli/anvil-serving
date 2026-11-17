@@ -247,7 +247,11 @@ For every meaningful result:
 Update `docs/BENCHMARKS.md` only when the current recommendation, reference
 deployment, or reader-facing comparison changes. Update
 `docs/benchmarks/methodology.md` only when the workload or evidence contract
-changes. Update the portal when a current/rollback/challenger decision changes.
+changes. When a current/rollback/challenger decision changes, add the full
+dated entry at the top of `docs/benchmarks/decisions.md` and one short line to
+the "Latest decisions" list in `docs/benchmarks/index.md`, keeping that list
+to the five newest entries. Do not add dated paragraphs elsewhere on the
+start page; it stays a stable landing page.
 
 If a file mentions the RTX PRO 6000 without measuring it, classify it in
 `docs/benchmarks/rtx-pro-6000-audit.md` as `protected/co-resident`,
