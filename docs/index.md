@@ -6,136 +6,64 @@ hide:
   - toc
 ---
 
-<div class="anvil-home">
+<div class="av-home" markdown="1">
 
-<section class="anvil-hero" aria-labelledby="anvil-hero-title">
-  <div class="anvil-hero__copy">
-    <h1 id="anvil-hero-title">Anvil Serving</h1>
-    <p class="anvil-hero__tagline">Operate, qualify, and expose local AI capabilities through explicit, reviewable contracts.</p>
-    <p class="anvil-hero__summary">One package, one CLI, and one release line for seven journeys: Model Serving, the Capability Gateway, Evaluation &amp; Evidence, Anvil Voice, Anvil Media, Anvil Connect, and Control Plane &amp; Fleet. Every journey has a stated boundary and a sequence of supported commands, and nothing swaps your model behind your back.</p>
-    <div class="anvil-actions">
-      <a href="GETTING-STARTED/" class="md-button md-button--primary">Get started</a>
-      <a href="QUICKSTART-GATEWAY/" class="md-button">Gateway quickstart</a>
-      <a href="benchmarks/results/" class="md-button md-button--evidence">Benchmark results</a>
-    </div>
-  </div>
-  <div class="anvil-hero__visual">
-    <picture>
-      <source srcset="assets/hero-anvil.webp" type="image/webp">
-      <img src="assets/hero-anvil.png" alt="" width="768" height="664" loading="lazy" decoding="async" fetchpriority="low" aria-hidden="true">
-    </picture>
-  </div>
+<section class="av-hero">
+<div>
+<p class="av-kicker">Local AI, operated on purpose</p>
+<h1>Operate, qualify, and expose <em>local AI</em>.</h1>
+<p class="av-hero__lead">One CLI to serve models on your own GPUs, give every client one authenticated endpoint, and prove what works with retained evidence. Nothing swaps your model behind your back.</p>
+<div class="av-actions">
+<a href="GETTING-STARTED/" class="md-button md-button--primary">Get started</a>
+<a href="recipes/" class="md-button">Browse recipes</a>
+<a href="benchmarks/results/" class="md-button">Benchmark results</a>
+</div>
+</div>
+<div class="av-terminal" aria-label="Quickstart commands">
+<div class="av-terminal__bar"><i></i><i></i><i></i><span>gateway in front of a server you already run</span></div>
+<pre><code><span class="p">$ </span>pip install anvil-serving
+<span class="p">$ </span>anvil-serving init --gateway-only --upstream http://127.0.0.1:11434/v1 --model llama3.2
+<span class="p">$ </span>anvil-serving router run
+<span class="c"># one authenticated endpoint: Anthropic Messages, OpenAI Chat, Responses</span></code></pre>
+</div>
 </section>
 
-<section class="anvil-section" aria-labelledby="product-families">
-  <div class="anvil-section__heading">
-    <h2 id="product-families">Seven journeys, one product</h2>
-    <p>Start with the outcome you need. Each journey page lists its steps as supported commands, states what it will and will not do, and links to the detailed guides.</p>
-  </div>
-  <div class="anvil-family-list">
-    <a href="journeys/model-serving/">
-      <strong>Model Serving</strong>
-      <span>Run a pinned recipe on your GPUs: preview it, start it, watch it.</span>
-      <em>Serve a model</em>
-    </a>
-    <a href="journeys/capability-gateway/">
-      <strong>Capability Gateway</strong>
-      <span>Give every client one authenticated endpoint with exact capability aliases.</span>
-      <em>Expose capabilities</em>
-    </a>
-    <a href="journeys/evaluation-evidence/">
-      <strong>Evaluation &amp; Evidence</strong>
-      <span>Prove an endpoint works, measure it, and keep the evidence.</span>
-      <em>Qualify a model</em>
-    </a>
-    <a href="journeys/anvil-voice/">
-      <strong>Anvil Voice</strong>
-      <span>Operate speech-to-text, text-to-speech, and realtime voice.</span>
-      <em>Run voice</em>
-    </a>
-    <a href="journeys/anvil-media/">
-      <strong>Anvil Media</strong>
-      <span>Generate images and video through named, durable workflows.</span>
-      <em>Run media workflows</em>
-    </a>
-    <a href="journeys/anvil-connect/">
-      <strong>Anvil Connect</strong>
-      <span>Reach local web apps through one self-hosted, signed-in edge.</span>
-      <em>Publish local apps</em>
-    </a>
-    <a href="journeys/control-plane-fleet/">
-      <strong>Control Plane &amp; Fleet</strong>
-      <span>Declare host ownership, dispatch typed operations, see the whole fleet.</span>
-      <em>Operate the fleet</em>
-    </a>
-  </div>
+<section class="av-section">
+<h2>One contract, four facts</h2>
+<p>Configuration, runtime state, qualification, and exposure stay separate. Every transition is an explicit command you can preview.</p>
+<div class="av-flow">
+<div><strong>Declare</strong><span>Models, aliases, and ownership live in configuration you can review.</span></div>
+<div><strong>Operate</strong><span>Start, stop, and watch serves inside those boundaries.</span></div>
+<div><strong>Qualify</strong><span>Preflight and benchmark. Evidence never promotes a model by itself.</span></div>
+<div><strong>Expose</strong><span>Route exact aliases through one authenticated gateway. No fallback.</span></div>
+</div>
 </section>
 
-<section class="anvil-section" aria-labelledby="private-network">
-  <div class="anvil-section__heading">
-    <h2 id="private-network">Local services, one private network</h2>
-    <p>Keep model, voice, media, router, and controller processes on each owning device's loopback interface. Tailscale supplies private device reachability and identity policy; Tailscale Serve publishes only the reviewed front doors.</p>
-  </div>
-  <div class="anvil-resource-list">
-    <a href="HOST-SERVICES/"><strong>Manage host services</strong><span>Discover, adopt, inspect, start, and stop services through Anvil. Use Docker on Windows and Linux, or native MLX and Docker on macOS.</span></a>
-    <a href="TAILSCALE-NETWORKING/"><strong>Set up private networking</strong><span>Understand device roles, identity, grants, MagicDNS, mobile access, and the Serve-to-loopback pattern.</span></a>
-    <a href="DEVICE-TOPOLOGIES/"><strong>Place roles across devices</strong><span>Separate primary inference, harness, voice, media, and operator ownership without exposing machine identity.</span></a>
-  </div>
+<section class="av-section">
+<h2>Seven journeys</h2>
+<p>Pick the outcome you need. Each journey is an ordered list of supported commands with a stated boundary.</p>
+<!-- product-journey:cards -->
 </section>
 
-<section class="anvil-section anvil-section--evidence" aria-labelledby="current-evidence">
-  <div class="anvil-section__heading">
-    <h2 id="current-evidence">Benchmarks and recipes</h2>
-    <p>Every result is a dated finding with its raw artifacts. Results describe what was measured on named hardware; they are not a claim about what any deployment runs today.</p>
-  </div>
-  <div class="anvil-resource-list">
-    <a class="anvil-path--evidence" href="benchmarks/results/"><strong>Benchmark results</strong><span>Every finding as one record — model, engine, quantization, hardware, context, concurrency, decision — with throughput and latency charts.</span></a>
-    <a href="recipes/"><strong>Serve recipes</strong><span>Every published recipe with a page, a download, and the findings that measured it.</span></a>
-    <a href="benchmarks/comparison/"><strong>Compare models</strong><span>Measured configurations side by side.</span></a>
-    <a href="benchmarks/voice-models/"><strong>Voice model results</strong><span>Speech-to-text, text-to-speech, and answer-model comparisons.</span></a>
-    <a href="benchmarks/models/"><strong>Model dossiers</strong><span>Status, recipe, and decision boundary by model.</span></a>
-    <a href="findings/"><strong>Dated findings</strong><span>Sanitized evidence snapshots, retained as published.</span></a>
-  </div>
+<section class="av-section">
+<h2>Latest benchmark results</h2>
+<p>Every finding publishes in the same record format: what was measured, on which hardware, and what was decided. Results are dated measurements, not live deployment status.</p>
+<!-- benchmark-records:latest:6 -->
+<div class="av-actions">
+<a href="benchmarks/results/" class="md-button">Explore all results</a>
+<a href="benchmarks/" class="md-button">How to read them</a>
+</div>
 </section>
 
-<section class="anvil-section anvil-section--contract" aria-labelledby="operating-contract">
-  <div class="anvil-section__heading">
-    <h2 id="operating-contract">The operating contract</h2>
-    <p>Configuration, runtime state, qualification, and exposure are separate facts. Anvil Serving keeps those transitions explicit.</p>
-  </div>
-  <ol class="anvil-contract">
-    <li>
-      <strong>Declare</strong>
-      <span>Define models, aliases, policies, and authority boundaries as configuration.</span>
-    </li>
-    <li>
-      <strong>Operate</strong>
-      <span>Run serving, gateway, voice, media, and fleet workflows inside those boundaries.</span>
-    </li>
-    <li>
-      <strong>Qualify</strong>
-      <span>Measure with preflight and benchmarks. Evidence never auto-promotes.</span>
-    </li>
-    <li>
-      <strong>Expose</strong>
-      <span>Publish only approved capabilities through explicit, authenticated contracts.</span>
-    </li>
-  </ol>
-</section>
-
-<section class="anvil-section" aria-labelledby="reference">
-  <div class="anvil-section__heading">
-    <h2 id="reference">Reference</h2>
-    <p>Use these pages when you need exact contracts, commands, or failure guidance.</p>
-  </div>
-  <div class="anvil-resource-list anvil-resource-list--reference">
-    <a href="ARCHITECTURE/"><strong>Architecture</strong><span>Components, authority planes, and deployment shapes.</span></a>
-    <a href="PRODUCT-FAMILIES/"><strong>Product map</strong><span>Family boundaries and ordered user journeys.</span></a>
-    <a href="CONFIGURATION/"><strong>Configuration</strong><span>Router, serve, voice, media, and fleet contracts.</span></a>
-    <a href="CLI/"><strong>Command index</strong><span>Every command family, policy, and option.</span></a>
-    <a href="TROUBLESHOOTING/"><strong>Troubleshooting</strong><span>Diagnose aliases, serves, authentication, and preflight.</span></a>
-    <a href="TERMINOLOGY/"><strong>Terminology</strong><span>Shared vocabulary for routes, serves, topology, and evidence.</span></a>
-  </div>
+<section class="av-section">
+<h2>Take it with you</h2>
+<p>Everything here is meant to leave the site and run on your hardware.</p>
+<div class="av-grid">
+<a class="av-card" href="recipes/"><span class="av-card__kicker">Download</span><span class="av-card__title">Serve recipes</span><span class="av-card__body">Every published recipe as a file you can load, or all of them as one zip.</span><span class="av-card__go">Browse recipes →</span></a>
+<a class="av-card" href="cheat-sheet/"><span class="av-card__kicker">One page</span><span class="av-card__title">Operator cheat sheet</span><span class="av-card__body">The commands for all seven journeys, in order, ready to print.</span><span class="av-card__go">Open the cheat sheet →</span></a>
+<a class="av-card" href="benchmarks/results/"><span class="av-card__kicker">Data</span><span class="av-card__title">Benchmark index</span><span class="av-card__body">Every record, capacity point, and quality result as one JSON file.</span><span class="av-card__go">Open results →</span></a>
+<a class="av-card" href="CLI/"><span class="av-card__kicker">Reference</span><span class="av-card__title">Command index</span><span class="av-card__body">Every command family, option, and execution policy.</span><span class="av-card__go">Open the CLI reference →</span></a>
+</div>
 </section>
 
 </div>

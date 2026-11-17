@@ -95,6 +95,6 @@ def test_campaign_publication_matches_native_evidence():
         "docs/findings/README.md", "docs/benchmarks/runs.md",
         "docs/benchmarks/models/rtx5090-campaign-candidates.md",
         "docs/benchmarks/hardware/rtx-5090.md",
-        "docs/BENCHMARKS.md", "docs/benchmarks/index.md",
+        "docs/BENCHMARKS.md", "docs/benchmarks/decisions.md",
     ):
         assert "2026-11-03-rtx5090-campaign.md" in (ROOT / relative).read_text(encoding="utf-8")

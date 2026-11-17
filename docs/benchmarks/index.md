@@ -8,49 +8,11 @@ and never promotes a model by itself.
 
 ## Where to start
 
-<div class="bench-paths" markdown="1">
-
-<div class="bench-path" markdown="1">
-
-**See the numbers**
-
-[Benchmark results](results.md) puts every finding in one record format,
-with interactive throughput-versus-interactivity and time-to-first-token
-charts and a downloadable index.
-
-</div>
-
-<div class="bench-path" markdown="1">
-
-**Run a measured configuration**
-
-[Serve recipes](../recipes/index.md) lists every published recipe by
-hardware, with a download and the findings that measured it. The
-[measured recipe finder](recipe-results.md) lists strengths, limits, and
-rejection reasons.
-
-</div>
-
-<div class="bench-path" markdown="1">
-
-**Compare models**
-
-The [model comparison table](comparison.md) groups TTFT, throughput,
-context, and reasoning mode by card and workload. The
-[selection guide](selection.md) narrows a choice for one workload, and the
-[model dossiers](models/index.md) cover quality, tools, and media.
-
-</div>
-
-<div class="bench-path" markdown="1">
-
-**Speech and voice**
-
-[Voice model results](voice-models.md) cover speech recognition, speech
-generation, and spoken answers, with every failed gate retained.
-
-</div>
-
+<div class="av-grid">
+<a class="av-card" href="results/"><span class="av-card__kicker">Explore</span><span class="av-card__title">See the numbers</span><span class="av-card__body">Every finding in one record format, with interactive throughput and time-to-first-token charts.</span><span class="av-card__go">Benchmark results →</span></a>
+<a class="av-card" href="../recipes/"><span class="av-card__kicker">Run</span><span class="av-card__title">Take a measured recipe</span><span class="av-card__body">Every published recipe by hardware, with a download and the findings that measured it.</span><span class="av-card__go">Serve recipes →</span></a>
+<a class="av-card" href="comparison/"><span class="av-card__kicker">Decide</span><span class="av-card__title">Compare models</span><span class="av-card__body">TTFT, throughput, context, and reasoning mode grouped by card and workload.</span><span class="av-card__go">Comparison table →</span></a>
+<a class="av-card" href="voice-models/"><span class="av-card__kicker">Speech</span><span class="av-card__title">Voice model results</span><span class="av-card__body">Speech recognition, speech generation, and spoken answers, with every failed gate retained.</span><span class="av-card__go">Voice results →</span></a>
 </div>
 
 ## Choose by hardware
@@ -79,30 +41,17 @@ A copied configuration is not a reproduced result until the same workload
 and independent gates pass. The [methodology](methodology.md) defines the
 comparison rules and instruments.
 
-## Latest decisions
+## Latest results
 
-The newest dated entries. The [decision log](decisions.md) keeps the full
-text of every earlier decision, newest first.
+The newest findings, generated from their retained evidence at every site
+build. Each card opens the dated finding, which starts with the same record
+header: evidence type, decision, model, engine, quantization, hardware,
+context, and concurrency. Fields the evidence does not record say so.
 
-- **2026-11-09 — TensorFold reasoning budget:**
-  [Max/Low Go controls](../findings/2026-11-09-tensorfold-reasoning-budget.md)
-  and a [source and rollout follow-up](../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09).
-  No default, model-policy change, or promotion follows.
-- **2026-11-08 — TensorFold Go validation:**
-  [one selected Go task](../findings/2026-11-08-tensorfold-go-validation.md)
-  passed at 32K and failed at 16K. No broad coding score or promotion.
-- **2026-11-03 — RTX 5090 candidates:**
-  [bounded coding and synthetic results](../findings/2026-11-03-rtx5090-campaign.md)
-  with no deployment change.
-- **2026-11-01 — Swift TP1 and runtime scouts:**
-  [Swift TP1 qualification accepted](../findings/2026-11-01-swift-tp1-gpu0.md)
-  on one RTX PRO 6000. The [cache-layout and DFlash scouts](../findings/2026-11-01-runtime-scouts.md)
-  did not clear the 10% median-latency gate; the original configuration was
-  restored.
-- **2026-10-17 — GLM-5.3-Flash NVIDIA FP4:**
-  [operator-selected promotion](../findings/2026-10-17-glm53-nvidia-fp4-promotion.md)
-  with the [full serving comparison](../findings/2026-10-17-glm53-serving-performance.md).
-  Historical recommendation; not a statement of today's selected checkpoint.
+<!-- benchmark-records:latest:6 -->
+
+[Explore all results](results.md){ .md-button .md-button--primary }
+[Decision log](decisions.md){ .md-button }
 
 ## How to read the evidence
 
@@ -136,7 +85,7 @@ remaining useful compatibility evidence.
 
 ## Complete history
 
-- [Decision log](decisions.md) — every earlier dated decision and control.
+- [Decision log](decisions.md) — every dated decision and control, in full.
 - [Run catalog](runs.md) — every retained, decision-relevant run by hardware
   and date.
 - [Findings index](../findings/README.md) — the dated reports with full

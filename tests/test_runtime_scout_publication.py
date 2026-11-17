@@ -61,6 +61,6 @@ def test_runtime_scout_publication_matches_native_evidence():
     for relative in (
         "docs/findings/README.md", "docs/benchmarks/runs.md",
         "docs/benchmarks/models/private-runtime-scouts.md",
-        "docs/benchmarks/hardware/rtx-pro-6000.md", "docs/benchmarks/index.md",
+        "docs/benchmarks/hardware/rtx-pro-6000.md", "docs/benchmarks/decisions.md",
     ):
         assert "2026-11-01-runtime-scouts.md" in (ROOT / relative).read_text()

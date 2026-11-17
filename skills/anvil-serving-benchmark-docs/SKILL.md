@@ -248,10 +248,12 @@ Update `docs/BENCHMARKS.md` only when the current recommendation, reference
 deployment, or reader-facing comparison changes. Update
 `docs/benchmarks/methodology.md` only when the workload or evidence contract
 changes. When a current/rollback/challenger decision changes, add the full
-dated entry at the top of `docs/benchmarks/decisions.md` and one short line to
-the "Latest decisions" list in `docs/benchmarks/index.md`, keeping that list
-to the five newest entries. Do not add dated paragraphs elsewhere on the
-start page; it stays a stable landing page.
+dated entry at the top of `docs/benchmarks/decisions.md`. Do not edit
+`docs/benchmarks/index.md` or `docs/index.md` for a new finding: their
+latest-results cards, the results table, and the record header on the finding
+page are generated from the finding and its artifact set at site build. Fill
+the decision summary's `identity` and `decision` fields so those views show
+real values instead of "not recorded".
 
 If a file mentions the RTX PRO 6000 without measuring it, classify it in
 `docs/benchmarks/rtx-pro-6000-audit.md` as `protected/co-resident`,

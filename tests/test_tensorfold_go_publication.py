@@ -44,7 +44,7 @@ def test_tensorfold_go_publication_matches_retained_results():
     assert observations["interpretation"]["unique_tasks"] == summary["workload"]["unique_tasks"] == 1
     assert not summary["decision"]["promotion_authorized"]
     assert "1 / 2" in finding and "0 / 2 passed" in finding and "1 / 1 passed" in finding
-    for page in ("docs/findings/README.md", "docs/benchmarks/index.md", "docs/benchmarks/runs.md",
+    for page in ("docs/findings/README.md", "docs/benchmarks/decisions.md", "docs/benchmarks/runs.md",
                  "docs/benchmarks/models/glm53-flash.md", "docs/benchmarks/hardware/rtx-pro-6000.md"):
         assert "2026-11-08-tensorfold-go-validation.md" in (ROOT / page).read_text()
     manifest = json.loads((BUNDLE / "artifact-manifest.json").read_text())
