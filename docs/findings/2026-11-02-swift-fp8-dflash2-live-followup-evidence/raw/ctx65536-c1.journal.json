@@ -1,0 +1,449 @@
+{
+  "schema": "anvil-serving.public-capacity-journal-derivative/v1",
+  "native_schema": "anvil-serving.capacity-journal/v1",
+  "native_original_sha256": "9fec1b0295fee6db31a1860ae74a4f5be0a8b151a4a8b1a162ce1b13c2ef0f7c",
+  "status": "complete",
+  "request_fields_preserved": [
+    "request_index",
+    "planned_context_tokens",
+    "failure_class",
+    "response_received",
+    "performance_eligible",
+    "finish_reasons",
+    "request_canary"
+  ],
+  "outcomes": [
+    {
+      "request_index": 0,
+      "planned_context_tokens": 65536,
+      "failure_class": "request_canary_failed",
+      "error_type": "ValueError",
+      "error_message": "request canary validation failed",
+      "error_message_truncated": false,
+      "response_received": true,
+      "performance_eligible": false,
+      "elapsed_ms": 14293.38658589404,
+      "response_timing": {
+        "request_index": 0,
+        "planned_context_tokens": 65536,
+        "prompt_tokens": 62286,
+        "output_tokens": 167,
+        "output_token_source": "usage",
+        "time_to_first_output_ms": 13343.895804020576,
+        "ttft_ms": 14016.14880899433,
+        "generation_ms": 943.5969400219619,
+        "visible_generation_ms": 271.34393504820764,
+        "e2e_ms": 14287.492744042538,
+        "effective_prefill_tok_s": 4667.752275256297,
+        "decode_tok_s": 175.92257134294692,
+        "mean_inter_token_latency_ms": 5.684318915794951,
+        "mean_time_per_output_token_ms": 5.684318915794951,
+        "tpot_ms": 5.684318915794951,
+        "reasoning_chunks": 24,
+        "content_chunks": 10,
+        "request_canary": {
+          "marker": "ANVIL_REQ_66537_00000",
+          "marker_at_start": false,
+          "observed_marker_count": 1,
+          "foreign_marker_count": 0,
+          "capture_complete": true,
+          "passed": false
+        },
+        "controlled_output": null,
+        "visible_content_truncated": false,
+        "visible_content_captured_chars": 177,
+        "visible_content_capture_limit": 8192,
+        "stream_terminal_observed": true,
+        "finish_reasons": [
+          "stop"
+        ]
+      },
+      "response_metadata": {
+        "output_token_source": "usage",
+        "content_chunks": 10,
+        "reasoning_chunks": 24,
+        "finish_reasons": [
+          "stop"
+        ],
+        "stream_terminal_observed": true,
+        "visible_content_truncated": false,
+        "visible_content_captured_chars": 177,
+        "visible_content_capture_limit": 8192,
+        "usage": {
+          "prompt_tokens": 62286,
+          "completion_tokens": 167,
+          "total_tokens": 62453
+        }
+      },
+      "request_canary": {
+        "marker": "ANVIL_REQ_66537_00000",
+        "marker_at_start": false,
+        "observed_marker_count": 1,
+        "foreign_marker_count": 0,
+        "capture_complete": true,
+        "passed": false
+      }
+    },
+    {
+      "request_index": 1,
+      "planned_context_tokens": 65536,
+      "failure_class": "request_canary_failed",
+      "error_type": "ValueError",
+      "error_message": "request canary validation failed",
+      "error_message_truncated": false,
+      "response_received": true,
+      "performance_eligible": false,
+      "elapsed_ms": 14743.925515911542,
+      "response_timing": {
+        "request_index": 1,
+        "planned_context_tokens": 65536,
+        "prompt_tokens": 62286,
+        "output_tokens": 182,
+        "output_token_source": "usage",
+        "time_to_first_output_ms": 13607.110503013246,
+        "ttft_ms": 14348.462851019576,
+        "generation_ms": 1135.5914219748229,
+        "visible_generation_ms": 394.23907396849245,
+        "e2e_ms": 14742.701924988069,
+        "effective_prefill_tok_s": 4577.459702866894,
+        "decode_tok_s": 159.38831211426051,
+        "mean_inter_token_latency_ms": 6.273985756766978,
+        "mean_time_per_output_token_ms": 6.273985756766978,
+        "tpot_ms": 6.273985756766978,
+        "reasoning_chunks": 26,
+        "content_chunks": 14,
+        "request_canary": {
+          "marker": "ANVIL_REQ_66537_00001",
+          "marker_at_start": false,
+          "observed_marker_count": 1,
+          "foreign_marker_count": 0,
+          "capture_complete": true,
+          "passed": false
+        },
+        "controlled_output": null,
+        "visible_content_truncated": false,
+        "visible_content_captured_chars": 212,
+        "visible_content_capture_limit": 8192,
+        "stream_terminal_observed": true,
+        "finish_reasons": [
+          "stop"
+        ]
+      },
+      "response_metadata": {
+        "output_token_source": "usage",
+        "content_chunks": 14,
+        "reasoning_chunks": 26,
+        "finish_reasons": [
+          "stop"
+        ],
+        "stream_terminal_observed": true,
+        "visible_content_truncated": false,
+        "visible_content_captured_chars": 212,
+        "visible_content_capture_limit": 8192,
+        "usage": {
+          "prompt_tokens": 62286,
+          "completion_tokens": 182,
+          "total_tokens": 62468
+        }
+      },
+      "request_canary": {
+        "marker": "ANVIL_REQ_66537_00001",
+        "marker_at_start": false,
+        "observed_marker_count": 1,
+        "foreign_marker_count": 0,
+        "capture_complete": true,
+        "passed": false
+      }
+    },
+    {
+      "request_index": 2,
+      "planned_context_tokens": 65536,
+      "failure_class": "request_canary_failed",
+      "error_type": "ValueError",
+      "error_message": "request canary validation failed",
+      "error_message_truncated": false,
+      "response_received": true,
+      "performance_eligible": false,
+      "elapsed_ms": 14897.592197987251,
+      "response_timing": {
+        "request_index": 2,
+        "planned_context_tokens": 65536,
+        "prompt_tokens": 62287,
+        "output_tokens": 212,
+        "output_token_source": "usage",
+        "time_to_first_output_ms": 13448.29623599071,
+        "ttft_ms": 14344.843160011806,
+        "generation_ms": 1448.3226250158623,
+        "visible_generation_ms": 551.7757009947672,
+        "e2e_ms": 14896.618861006573,
+        "effective_prefill_tok_s": 4631.5904191124055,
+        "decode_tok_s": 145.68577218607567,
+        "mean_inter_token_latency_ms": 6.864088270217357,
+        "mean_time_per_output_token_ms": 6.864088270217357,
+        "tpot_ms": 6.864088270217357,
+        "reasoning_chunks": 31,
+        "content_chunks": 19,
+        "request_canary": {
+          "marker": "ANVIL_REQ_66537_00002",
+          "marker_at_start": false,
+          "observed_marker_count": 1,
+          "foreign_marker_count": 0,
+          "capture_complete": true,
+          "passed": false
+        },
+        "controlled_output": null,
+        "visible_content_truncated": false,
+        "visible_content_captured_chars": 262,
+        "visible_content_capture_limit": 8192,
+        "stream_terminal_observed": true,
+        "finish_reasons": [
+          "stop"
+        ]
+      },
+      "response_metadata": {
+        "output_token_source": "usage",
+        "content_chunks": 19,
+        "reasoning_chunks": 31,
+        "finish_reasons": [
+          "stop"
+        ],
+        "stream_terminal_observed": true,
+        "visible_content_truncated": false,
+        "visible_content_captured_chars": 262,
+        "visible_content_capture_limit": 8192,
+        "usage": {
+          "prompt_tokens": 62287,
+          "completion_tokens": 212,
+          "total_tokens": 62499
+        }
+      },
+      "request_canary": {
+        "marker": "ANVIL_REQ_66537_00002",
+        "marker_at_start": false,
+        "observed_marker_count": 1,
+        "foreign_marker_count": 0,
+        "capture_complete": true,
+        "passed": false
+      }
+    },
+    {
+      "request_index": 3,
+      "planned_context_tokens": 65536,
+      "failure_class": "request_canary_failed",
+      "error_type": "ValueError",
+      "error_message": "request canary validation failed",
+      "error_message_truncated": false,
+      "response_received": true,
+      "performance_eligible": false,
+      "elapsed_ms": 15033.539860974997,
+      "response_timing": {
+        "request_index": 3,
+        "planned_context_tokens": 65536,
+        "prompt_tokens": 62290,
+        "output_tokens": 214,
+        "output_token_source": "usage",
+        "time_to_first_output_ms": 13489.912574994378,
+        "ttft_ms": 14387.121152947657,
+        "generation_ms": 1542.537756031379,
+        "visible_generation_ms": 645.3291780781001,
+        "e2e_ms": 15032.450331025757,
+        "effective_prefill_tok_s": 4617.524365240444,
+        "decode_tok_s": 138.08414035064115,
+        "mean_inter_token_latency_ms": 7.241961295921968,
+        "mean_time_per_output_token_ms": 7.241961295921968,
+        "tpot_ms": 7.241961295921968,
+        "reasoning_chunks": 31,
+        "content_chunks": 22,
+        "request_canary": {
+          "marker": "ANVIL_REQ_66537_00003",
+          "marker_at_start": false,
+          "observed_marker_count": 1,
+          "foreign_marker_count": 0,
+          "capture_complete": true,
+          "passed": false
+        },
+        "controlled_output": null,
+        "visible_content_truncated": false,
+        "visible_content_captured_chars": 314,
+        "visible_content_capture_limit": 8192,
+        "stream_terminal_observed": true,
+        "finish_reasons": [
+          "stop"
+        ]
+      },
+      "response_metadata": {
+        "output_token_source": "usage",
+        "content_chunks": 22,
+        "reasoning_chunks": 31,
+        "finish_reasons": [
+          "stop"
+        ],
+        "stream_terminal_observed": true,
+        "visible_content_truncated": false,
+        "visible_content_captured_chars": 314,
+        "visible_content_capture_limit": 8192,
+        "usage": {
+          "prompt_tokens": 62290,
+          "completion_tokens": 214,
+          "total_tokens": 62504
+        }
+      },
+      "request_canary": {
+        "marker": "ANVIL_REQ_66537_00003",
+        "marker_at_start": false,
+        "observed_marker_count": 1,
+        "foreign_marker_count": 0,
+        "capture_complete": true,
+        "passed": false
+      }
+    },
+    {
+      "request_index": 4,
+      "planned_context_tokens": 65536,
+      "failure_class": "request_canary_failed",
+      "error_type": "ValueError",
+      "error_message": "request canary validation failed",
+      "error_message_truncated": false,
+      "response_received": true,
+      "performance_eligible": false,
+      "elapsed_ms": 15124.849212937988,
+      "response_timing": {
+        "request_index": 4,
+        "planned_context_tokens": 65536,
+        "prompt_tokens": 62292,
+        "output_tokens": 220,
+        "output_token_source": "usage",
+        "time_to_first_output_ms": 13601.562486961484,
+        "ttft_ms": 14530.386285972781,
+        "generation_ms": 1518.269125954248,
+        "visible_generation_ms": 589.4453269429505,
+        "e2e_ms": 15119.831612915732,
+        "effective_prefill_tok_s": 4579.767953844522,
+        "decode_tok_s": 144.2432018515533,
+        "mean_inter_token_latency_ms": 6.932735734950904,
+        "mean_time_per_output_token_ms": 6.932735734950904,
+        "tpot_ms": 6.932735734950904,
+        "reasoning_chunks": 32,
+        "content_chunks": 19,
+        "request_canary": {
+          "marker": "ANVIL_REQ_66537_00004",
+          "marker_at_start": false,
+          "observed_marker_count": 1,
+          "foreign_marker_count": 0,
+          "capture_complete": true,
+          "passed": false
+        },
+        "controlled_output": null,
+        "visible_content_truncated": false,
+        "visible_content_captured_chars": 286,
+        "visible_content_capture_limit": 8192,
+        "stream_terminal_observed": true,
+        "finish_reasons": [
+          "stop"
+        ]
+      },
+      "response_metadata": {
+        "output_token_source": "usage",
+        "content_chunks": 19,
+        "reasoning_chunks": 32,
+        "finish_reasons": [
+          "stop"
+        ],
+        "stream_terminal_observed": true,
+        "visible_content_truncated": false,
+        "visible_content_captured_chars": 286,
+        "visible_content_capture_limit": 8192,
+        "usage": {
+          "prompt_tokens": 62292,
+          "completion_tokens": 220,
+          "total_tokens": 62512
+        }
+      },
+      "request_canary": {
+        "marker": "ANVIL_REQ_66537_00004",
+        "marker_at_start": false,
+        "observed_marker_count": 1,
+        "foreign_marker_count": 0,
+        "capture_complete": true,
+        "passed": false
+      }
+    },
+    {
+      "request_index": 5,
+      "planned_context_tokens": 65536,
+      "failure_class": "request_canary_failed",
+      "error_type": "ValueError",
+      "error_message": "request canary validation failed",
+      "error_message_truncated": false,
+      "response_received": true,
+      "performance_eligible": false,
+      "elapsed_ms": 14907.413654960692,
+      "response_timing": {
+        "request_index": 5,
+        "planned_context_tokens": 65536,
+        "prompt_tokens": 62296,
+        "output_tokens": 191,
+        "output_token_source": "usage",
+        "time_to_first_output_ms": 13766.207156004384,
+        "ttft_ms": 14587.82697794959,
+        "generation_ms": 1136.5827539702877,
+        "visible_generation_ms": 314.9629320250824,
+        "e2e_ms": 14902.789909974672,
+        "effective_prefill_tok_s": 4525.2842191052205,
+        "decode_tok_s": 167.1677661272757,
+        "mean_inter_token_latency_ms": 5.982014494580461,
+        "mean_time_per_output_token_ms": 5.982014494580461,
+        "tpot_ms": 5.982014494580461,
+        "reasoning_chunks": 28,
+        "content_chunks": 11,
+        "request_canary": {
+          "marker": "ANVIL_REQ_66537_00005",
+          "marker_at_start": false,
+          "observed_marker_count": 1,
+          "foreign_marker_count": 0,
+          "capture_complete": true,
+          "passed": false
+        },
+        "controlled_output": null,
+        "visible_content_truncated": false,
+        "visible_content_captured_chars": 192,
+        "visible_content_capture_limit": 8192,
+        "stream_terminal_observed": true,
+        "finish_reasons": [
+          "stop"
+        ]
+      },
+      "response_metadata": {
+        "output_token_source": "usage",
+        "content_chunks": 11,
+        "reasoning_chunks": 28,
+        "finish_reasons": [
+          "stop"
+        ],
+        "stream_terminal_observed": true,
+        "visible_content_truncated": false,
+        "visible_content_captured_chars": 192,
+        "visible_content_capture_limit": 8192,
+        "usage": {
+          "prompt_tokens": 62296,
+          "completion_tokens": 191,
+          "total_tokens": 62487
+        }
+      },
+      "request_canary": {
+        "marker": "ANVIL_REQ_66537_00005",
+        "marker_at_start": false,
+        "observed_marker_count": 1,
+        "foreign_marker_count": 0,
+        "capture_complete": true,
+        "passed": false
+      }
+    }
+  ],
+  "completion": {
+    "completed": 0,
+    "failed": 6,
+    "responses_received": 6,
+    "performance_eligible": false
+  }
+}

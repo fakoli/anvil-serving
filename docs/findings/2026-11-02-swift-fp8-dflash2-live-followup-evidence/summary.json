@@ -1,0 +1,22 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-11-02-swift-live-followup",
+  "complete": true,
+  "complete_meaning": "The halted campaign has a final disposition; the planned capacity matrix is explicitly incomplete.",
+  "identity": {"profile": "single routed FP8 plus DFlash2 profile", "deployment_assignment": "private"},
+  "workload": {"kind": "chat-family preflight, one retrieval probe, and one observational summary cell", "reasoning_effort": "medium"},
+  "measurement": {"path": "routed", "warm_cold_state": "not classified", "sample_count": 0, "statistics": []},
+  "gates": [
+    {"name": "chat family", "status": "passed", "detail": "9 of 10 observations passed; Responses was credential-scope blocked"},
+    {"name": "64K C1 capacity", "status": "failed", "detail": "0 of 6 performance-eligible; opening-canary contract failed on every response"},
+    {"name": "224K nominal needle", "status": "rejected", "detail": "HTTP 413 at router admission before upstream"},
+    {"name": "smaller needle", "status": "passed", "detail": "108178 actual prompt tokens; 30.337 seconds; exact needle returned"}
+  ],
+  "headline_results": ["No capacity or speculative-decoding speed result."],
+  "failures": ["Responses HTTP 403", "six opening-canary failures", "224K nominal needle HTTP 413"],
+  "limitations": ["No matched no-speculation control", "no isolated traffic population", "no engine-counter attribution", "not whole-fleet acceptance"],
+  "decision": {"evidence_labels": ["functional", "negative-evidence", "context-scout", "continuity"], "decision_labels": ["closed-with-failures", "no-promotion"], "promotion_authorized": false, "next_gate": "separately authorized controlled qualification"},
+  "evidence": ["raw/preflight.json", "raw/ctx65536-c1.json", "raw/needle-probes.json", "raw/continuity.json"],
+  "metrics_coverage": {"profile": "single-profile-observational/v1", "status": "incomplete", "frozen_plan": "raw/plan.json", "required_cells": ["ctx65536-c1", "ctx65536-c2", "ctx131072-c1", "ctx131072-c2"], "cells": {"ctx65536-c1": "failed 0/6", "ctx65536-c2": "skipped", "ctx131072-c1": "skipped", "ctx131072-c2": "skipped"}, "missing_required_metrics": ["all capacity metrics"]},
+  "comparison_evidence": null
+}

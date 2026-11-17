@@ -1,0 +1,80 @@
+{
+  "baseline": {
+    "agent_interval": {
+      "duration_s": 2548.193231,
+      "ended_at": "2026-11-02T01:38:25.899692Z",
+      "started_at": "2026-11-02T00:55:57.706439Z"
+    },
+    "results": [
+      [
+        "astropy__astropy-12907",
+        true
+      ],
+      [
+        "django__django-10097",
+        false
+      ],
+      [
+        "matplotlib__matplotlib-13989",
+        true
+      ],
+      [
+        "scikit-learn__scikit-learn-10297",
+        true
+      ],
+      [
+        "sympy__sympy-11618",
+        true
+      ]
+    ],
+    "summary": {
+      "attempted": 5,
+      "graded": 5,
+      "resolve_rate": 0.8,
+      "resolved": 4
+    }
+  },
+  "candidate": {
+    "agent_interval": {
+      "duration_s": 161.097358,
+      "ended_at": "2026-11-02T05:13:35.623251Z",
+      "started_at": "2026-11-02T05:10:54.525876Z"
+    },
+    "results": [
+      [
+        "astropy__astropy-12907",
+        true
+      ],
+      [
+        "django__django-10097",
+        false
+      ],
+      [
+        "matplotlib__matplotlib-13989",
+        true
+      ],
+      [
+        "scikit-learn__scikit-learn-10297",
+        true
+      ],
+      [
+        "sympy__sympy-11618",
+        true
+      ]
+    ],
+    "summary": {
+      "attempted": 5,
+      "graded": 5,
+      "resolve_rate": 0.8,
+      "resolved": 4
+    }
+  },
+  "limitations": [
+    "Five familiar instances are a small pilot, not a general coding score or statistical noninferiority proof.",
+    "Agent interval includes model, tool and sandbox work. Different generated trajectories and serving runtime/quant/speculation prevent attributing elapsed-time difference solely to DFlash2."
+  ],
+  "native_validation": "swe-native-validation.json",
+  "same_dataset_snapshot": true,
+  "same_images": true,
+  "same_request_controls": true
+}

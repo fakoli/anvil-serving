@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- `router maintenance-console` runs a prepared, protected router cutover from a
+  POSIX terminal. It shows a fresh native preview for the stop and for the
+  reopening and takes a separate typed YES for each; piped input cannot
+  acknowledge, and the native expiry, receipt, and ownership guards still apply.
 - `eval benchmark records` lists every dated finding as one
   `anvil-serving.benchmark-record/v1` record (model, engine, quantization,
   hardware, context, concurrency, decision, and explicit evidence gaps). The

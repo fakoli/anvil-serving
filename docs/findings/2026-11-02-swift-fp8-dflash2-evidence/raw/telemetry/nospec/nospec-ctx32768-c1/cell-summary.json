@@ -1,0 +1,104 @@
+{
+  "argv": [
+    "/private/redacted",
+    "-m",
+    "anvil_serving.cli",
+    "eval",
+    "benchmark",
+    "capacity",
+    "--base-url",
+    "http://127.0.0.1:8001",
+    "--model",
+    "candidate-nospec",
+    "--engine",
+    "sglang-0.5.22",
+    "--gpu",
+    "rtx-pro-6000-maxq-tp1",
+    "--requests",
+    "3",
+    "--concurrency",
+    "1",
+    "--ctx-tokens",
+    "32768",
+    "--seed",
+    "11052769",
+    "--max-model-len",
+    "262144",
+    "--margin",
+    "16384",
+    "--max-tokens",
+    "4096",
+    "--prompt-cache-mode",
+    "unique",
+    "--response-words",
+    "0",
+    "--controlled-output-policy",
+    "observe",
+    "--reasoning-effort",
+    "medium",
+    "--temperature",
+    "1",
+    "--top-p",
+    "0.95",
+    "--timeout",
+    "600",
+    "--output",
+    "/private/redacted",
+    "--confirm"
+  ],
+  "cell": "nospec-ctx32768-c1",
+  "collector_errors": [],
+  "collector_sha256": "46d1d5149cbeea7120f2b47cd5d900da2422582d657f4c97d906b717b988adc6",
+  "counter_reconciliation": {
+    "deltas": {
+      "generation_tokens_total": 379.0,
+      "num_requests_total": 3.0,
+      "prompt_tokens_total": 91190.0,
+      "sglang:http_requests_total": 3.0,
+      "sglang:http_responses_total": 3.0
+    },
+    "status": "exact"
+  },
+  "coverage_passed": true,
+  "end": {
+    "monotonic_ns": 525021747380762,
+    "unix_ns": 1793597138982279403
+  },
+  "frozen_plan_sha256": "13036c3340fc99fd18cd36f9d771fee029de5109fd2242536dd9c7f5896b9251",
+  "identity_receipt_sha256": "a1d7cdc40ce645f77a809a1fe231444158615491251c3532066c52e6b77838ba",
+  "oom_event_deltas": {
+    "oom": 0,
+    "oom_group_kill": 0,
+    "oom_kill": 0
+  },
+  "process_finished": {
+    "monotonic_ns": 525018325824731,
+    "unix_ns": 1793597135560723322
+  },
+  "process_started": {
+    "monotonic_ns": 524994000895974,
+    "unix_ns": 1793597111235795012
+  },
+  "returncode": 0,
+  "runner_sha256": "a91d4d9e8e789b15db8e3dbee950c0a7d712ae561c264df87ba7c1476e024e43",
+  "sample_counts": {
+    "engine": 49,
+    "slow": 13
+  },
+  "sampling_window": {
+    "engine": {
+      "in_window_samples": 48,
+      "max_gap_seconds": 0.614269652,
+      "target_interval_seconds": 0.5
+    },
+    "slow": {
+      "in_window_samples": 13,
+      "max_gap_seconds": 2.033655824,
+      "target_interval_seconds": 2
+    }
+  },
+  "start": {
+    "monotonic_ns": 524994000372051,
+    "unix_ns": 1793597111235270731
+  }
+}

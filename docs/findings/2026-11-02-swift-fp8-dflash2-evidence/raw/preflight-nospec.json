@@ -1,0 +1,184 @@
+{
+  "base_url": "http://127.0.0.1:8001",
+  "budget": {
+    "max_completion_tokens": 16384,
+    "reasoning_headroom_tokens": 15360,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "tools"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "candidate-nospec",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "\n\n```python\nsum(xs)\n```\n\nThis uses Python's built-in `sum()` function, which iterates over the iterable and returns the total. It's the most Pythonic and readable approach.",
+      "content_chars": 172,
+      "content_excerpt": "\n\n```python\nsum(xs)\n```\n\nThis uses Python's built-in `sum()` function, which iterates over the iterable and returns the total. It's the most Pythonic and readable approach.",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 449,
+      "reasoning_excerpt": "The user wants a Python one-liner that returns the sum of a list `xs`. This is straightforward. The simplest and most Pythonic way is to use the built-in `sum()` function.\n\nOptions:\n- `sum(xs)` \u2014 the ",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 3.384,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 165,
+        "prompt_tokens": 26,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 122,
+        "total_tokens": 191
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\": \"python\", \"ok\": true}",
+      "content_chars": 33,
+      "content_excerpt": "{\"language\": \"python\", \"ok\": true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 126,
+      "reasoning_excerpt": "The user wants me to return only a JSON object with the exact content {\"language\":\"python\",\"ok\":true} and no prose around it.\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.882,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 42,
+        "prompt_tokens": 28,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 31,
+        "total_tokens": 70
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 84,
+      "reasoning_excerpt": "The user is asking about the weather in Oakland. I should use the get_weather tool.\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_controls": {
+        "seed": 1201,
+        "tool_choice": "required"
+      },
+      "request_index": 0,
+      "seconds": 2.572,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 47,
+        "prompt_tokens": 5490,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 20,
+        "total_tokens": 5537
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 85,
+      "reasoning_excerpt": "The user is asking about the weather in Oakland. I need to use the get_weather tool.\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_controls": {
+        "seed": 1201,
+        "tool_choice": "required"
+      },
+      "request_index": 2,
+      "seconds": 2.592,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 48,
+        "prompt_tokens": 5490,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 21,
+        "total_tokens": 5538
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 126,
+      "reasoning_excerpt": "The user is asking about the weather in Oakland. I need to use the get_weather tool with the city parameter set to \"Oakland\".\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_controls": {
+        "seed": 1201,
+        "tool_choice": "required"
+      },
+      "request_index": 1,
+      "seconds": 2.778,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 57,
+        "prompt_tokens": 5490,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 30,
+        "total_tokens": 5547
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "3.4s got=\"```python\\nsum(xs)\\n```\\n\\nThis uses Python's built-in\" finish='stop' visible=172 reasoning_chars=449 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=33 reasoning_chars=126 reasoning_tokens=None",
+      "name": "structured JSON",
+      "passed": true
+    },
+    {
+      "detail": "3/3 clean (sample: 2.6s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=84 reasoning_tokens=None)",
+      "name": "shared-prefix tool batch x3",
+      "passed": true
+    }
+  ],
+  "sampling": {
+    "seed": 1201,
+    "seed_scope": "tool_protocol_requests",
+    "temperature": 0.0
+  },
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "medium"
+  },
+  "tool_choice": {
+    "mode": "required",
+    "oracle_revision": "tool-call/v2-exact-weather",
+    "raw_sse_capture": "unsupported",
+    "transport_capture": "disabled"
+  },
+  "video_expect": [],
+  "video_input": null
+}

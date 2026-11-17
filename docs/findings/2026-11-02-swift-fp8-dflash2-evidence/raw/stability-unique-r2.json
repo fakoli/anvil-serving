@@ -1,0 +1,443 @@
+{
+  "configuration_identity": "managed_container_observed_labels_matched",
+  "coverage_passed": true,
+  "finished_at": "2026-11-02T05:00:32.318274+00:00",
+  "identity_observations": [
+    {
+      "bound_port": 18001,
+      "container_id": "[REDACTED_OPERATOR_IDENTITY]",
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "observed_at": "2026-11-02T04:58:15.994021+00:00",
+      "phase": "start",
+      "recipe_digest": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_digest": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda",
+      "revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "running": true,
+      "served_identity": "candidate-dflash2"
+    },
+    {
+      "bound_port": 18001,
+      "container_id": "[REDACTED_OPERATOR_IDENTITY]",
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "observed_at": "2026-11-02T04:58:16.049640+00:00",
+      "phase": "round_0_before",
+      "recipe_digest": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_digest": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda",
+      "revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "running": true,
+      "served_identity": "candidate-dflash2"
+    },
+    {
+      "bound_port": 18001,
+      "container_id": "[REDACTED_OPERATOR_IDENTITY]",
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "observed_at": "2026-11-02T04:59:01.439106+00:00",
+      "phase": "round_0_after",
+      "recipe_digest": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_digest": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda",
+      "revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "running": true,
+      "served_identity": "candidate-dflash2"
+    },
+    {
+      "bound_port": 18001,
+      "container_id": "[REDACTED_OPERATOR_IDENTITY]",
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "observed_at": "2026-11-02T04:59:01.494611+00:00",
+      "phase": "round_1_before",
+      "recipe_digest": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_digest": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda",
+      "revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "running": true,
+      "served_identity": "candidate-dflash2"
+    },
+    {
+      "bound_port": 18001,
+      "container_id": "[REDACTED_OPERATOR_IDENTITY]",
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "observed_at": "2026-11-02T04:59:46.903045+00:00",
+      "phase": "round_1_after",
+      "recipe_digest": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_digest": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda",
+      "revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "running": true,
+      "served_identity": "candidate-dflash2"
+    },
+    {
+      "bound_port": 18001,
+      "container_id": "[REDACTED_OPERATOR_IDENTITY]",
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "observed_at": "2026-11-02T04:59:46.960796+00:00",
+      "phase": "round_2_before",
+      "recipe_digest": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_digest": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda",
+      "revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "running": true,
+      "served_identity": "candidate-dflash2"
+    },
+    {
+      "bound_port": 18001,
+      "container_id": "[REDACTED_OPERATOR_IDENTITY]",
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "observed_at": "2026-11-02T05:00:32.311423+00:00",
+      "phase": "round_2_after",
+      "recipe_digest": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_digest": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda",
+      "revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "running": true,
+      "served_identity": "candidate-dflash2"
+    }
+  ],
+  "overlap_contract": "contender-stream-active/v1",
+  "performance_eligible": false,
+  "promoted": false,
+  "retrieval_passed": true,
+  "rounds": [
+    {
+      "active_overlap_output_at": 523386.060411328,
+      "anchor": {
+        "end": 523424.140658542,
+        "expected_values": [
+          "VALUE_530dc19d7c37",
+          "VALUE_6adbcecb0b4b",
+          "VALUE_19fe82dbf90d"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T04:59:01.375560+00:00",
+        "first_output": 523384.776643383,
+        "last_output": 523424.140441239,
+        "partial_visible": "\n\n## Key Values\n\n- **KEY_0** = `VALUE_530dc19d7c37`\n- **KEY_1** = `VALUE_6adbcecb0b4b`\n- **KEY_2** = `VALUE_19fe82dbf90d`\n\n---\n\n# Engineering Guide: Ordinary Software Components and Their Tests\n\n## Section 1: Component Architecture Overview\n\nEvery ordinary software component follows a layered architecture: interface (public API), implementation (core logic), and test harness (verification). The interface defines contracts\u2014function signatures, return types, and documented pre/post-conditions. The implementation encapsulates state and behavior. The test harness exercises both.\n\n**Example:** A `StringTokenizer` component exposes `tokenize(input: str, delimiter: str) -> list[str]`. Its implementation maintains an internal buffer and position pointer. Its tests cover single tokens, multiple tokens, empty input, and multi-character delimiters.\n\n**Edge Case:** A component with no internal state (pure function) must still define its interface explicitly to prevent accidental mutation of shared references in languages like Python.\n\n**Test:** Assert that the interface contract is enforced\u2014calling `tokenize` with `None` raises `TypeError`, not silently returning an empty list.\n\n---\n\n## Section 2: Naming Conventions and Discoverability\n\nComponent names should communicate purpose, domain, and scope. Use `PascalCase` for classes, `snake_case` for functions, and prefix test files with `test_`.\n\n**Example:** `PaymentProcessor`, `process_payment`, `test_payment_processor.py`. Avoid generic names like `Handler` or `Utils`.\n\n**Edge Case:** Acronyms (API, HTTP, URL) should be treated as single words: `HttpClient`, not `HTTPClient`. This breaks linters that enforce strict case patterns.\n\n**Test:** Write a static-analysis test that scans all source files and asserts no class name exceeds 30 characters and no function name is a single letter.\n\n---\n\n## Section 3: Dependency Injection for Testability\n\nComponents should receive collaborators through constructor parameters rather than instantiating them internally. This allows tests to substitute mocks, stubs, or fakes.\n\n**Example:**\n```python\nclass OrderService:\n    def __init__(self, repository: OrderRepository, notifier: EmailNotifier):\n        self._repo = repository\n        self._notifier = notifier\n```\n\n**Edge Case:** When a component requires a dependency that is a singleton (e.g., a database connection pool), inject a factory callable rather than the instance to allow per-test isolation.\n\n**Test:** Verify that `OrderService` with a `MockEmailNotifier` records exactly one `send()` call per successful order, and zero calls on failure.\n\n---\n\n## Section 4: Unit Test Granularity\n\nEach unit test should verify exactly one behavioral contract. A test named `test_tokenize_multiple_delimiters` should not also assert that the function is thread-safe or that it handles Unicode.\n\n**Example:**\n```python\ndef test_tokenize_splits_on_comma():\n    assert tokenizer(\"a,b,c\") == [\"a\", \"b\", \"c\"]\n\ndef test_tokenize_preserves_spaces():\n    assert tokenizer(\"a b, c\") == [\"a b\", \"c\"]\n```\n\n**Edge Case:** Parameterized tests (e.g., `@pytest.mark.parametrize`) can blur granularity if they mix positive and negative cases in one parameter set. Separate them into distinct test classes.\n\n**Test:** Enforce a \"one assertion per test\" rule via a custom pytest plugin that fails if a test function contains more than one top-level `assert`.\n\n---\n\n## Section 5: State Management and Immutability\n\nPrefer immutable data structures for component state where feasible. When mutation is necessary, confine it to a single method and document the invariant.\n\n**Example:**\n```python\nfrom dataclasses import dataclass, replace\n\n@dataclass(frozen=True)\nclass Point:\n    x: float\n    y: float\n\n    def translated(self, dx: float, dy: float) -> \"Point\":\n        return Point(self.x + dx, self.y + dy)\n```\n\n**Edge Case:** Deep immutability is expensive for large structures. Use copy-on-write: share the internal array until a mutation occurs, then clone.\n\n**Test:** Assert that calling `translated` on a `Point` does not modify the original, and that two `Point` objects with equal coordinates are equal (`==`) and hashable.\n\n---\n\n## Section 6: Error Handling Strategy\n\nDefine a component-specific exception hierarchy. Catch specific exceptions in the component; let generic exceptions propagate to the framework's global handler.\n\n**Example:**\n```python\nclass ComponentError(Exception): ...\nclass InputValidationError(ComponentError): ...\nclass DependencyUnavailableError(ComponentError): ...\n```\n\n**Edge Case:** Raising an exception inside a `finally` block suppresses the original exception in Python. Always chain: `raise NewError(...) from original_exc`.\n\n**Test:** Use `pytest.raises` with `match=` to assert both the exception type and the message content. Test that chained exceptions preserve the `__cause__` attribute.\n\n---\n\n## Section 7: Logging and Observability\n\nEvery component should log at DEBUG level for internal state transitions and at WARNING/ERROR for recoverable/unrecoverable failures. Never log secrets, PII, or full request bodies.\n\n**Example:**\n```python\nlogger = logging.getLogger(\"payment_processor\")\nlogger.debug(\"Processing order %s\", order_id)\nlogger.warning(\"Retry %d/3 for order %s\", attempt, order_id)\n```\n\n**Edge Case:** Structured logging (JSON) breaks human readability. Provide a formatter that renders JSON logs as key=value pairs in dev environments and as raw JSON in production.\n\n**Test:** Capture log output with `caplog` (pytest) and assert that a failed operation produces exactly one ERROR record with the expected fields and no PII strings.\n\n---\n\n## Section 8: Configuration Management\n\nExternalize configuration (ports, timeouts, feature flags) from source code. Use a `Config` dataclass loaded from environment variables, a YAML file, or a secrets manager.\n\n**Example:**\n```python\n@dataclass\nclass Config:\n    timeout_ms: int = 5000\n    max_retries: int = 3\n    feature_flag_new_parser: bool = False\n```\n\n**Edge Case:** Boolean flags parsed from environment strings: `\"0\"`, `\"false\"`, `\"no\"` should all map to `False`. Document the accepted set.\n\n**Test:** Parameterize a test over all accepted boolean string representations and assert the parsed value. Test that an unrecognized string raises `ConfigError` with a helpful message listing valid options.\n\n---\n\n## Section 9: Concurrency and Thread Safety\n\nDocument whether a component is thread-safe. If it maintains mutable state, protect it with locks or redesign to use thread-local storage.\n\n**Example:**\n```python\nclass Counter:\n    def __init__(self):\n        self._value = 0\n        self._lock = threading.Lock()\n\n    def increment(self):\n        with self._lock:\n            self._value += 1\n```\n\n**Edge Case:** Re-entrant locks (`RLock`) hide design issues. Prefer `Lock` and refactor if the same thread needs to re-enter.\n\n**Test:** Use `concurrent.futures.ThreadPoolExecutor` with 100 threads each calling `increment()` 1000 times. Assert final value is exactly 100,000. Run under the GIL and with `PYTHONMALLOC=debug`.\n\n---\n\n## Section 10: Interface Segregation and Adapter Patterns\n\nA component should depend on the narrowest interface it needs. If a collaborator provides a broad API, wrap it in an adapter that exposes only the required methods.\n\n**Example:**\n```python\nclass NotificationSender(Protocol):\n    def send(self, recipient: str, body: str) -> None: ...\n\nclass SmtpAdapter:\n    def __init__(self, smtp_client: SmtpClient):\n        self._client = smtp_client\n    def send(self, recipient: str, body: str) -> None:\n        self._client.send_mail(to=recipient, subject=\"Alert\", body=body)\n```\n\n**Edge Case:** If the adapter must add transformation logic (e.g., HTML\u2192plain-text), keep that logic in the adapter, not the component. The component should be agnostic to transport format.\n\n**Test:** Provide a `FakeNotificationSender` that records calls. Assert the component calls `send` with the correct recipient and body, and that it does not call any other method.\n\n---\n\n## Section 11: Versioning and Backward Compatibility\n\nAssign semantic versions (MAJOR.MINOR.PATCH) to each component. Breaking changes to the public interf",
+        "prompt_sha256": "a88664ca315eed8d7127581485b2be9f735ae27deab1050aa7f5af1b1cfc3dc8",
+        "prompt_tokens_tokenized": 32627,
+        "request_id": null,
+        "response_headers_at": 523384.776549762,
+        "result": {
+          "content_chunks": 1225,
+          "e2e": 45.1874948599725,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 41,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 5.823587935999967,
+          "ttft": 8.26857850397937,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 32627,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 184,
+            "total_tokens": 36723
+          },
+          "visible_content": "\n\n## Key Values\n\n- **KEY_0** = `VALUE_530dc19d7c37`\n- **KEY_1** = `VALUE_6adbcecb0b4b`\n- **KEY_2** = `VALUE_19fe82dbf90d`\n\n---\n\n# Engineering Guide: Ordinary Software Components and Their Tests\n\n## Section 1: Component Architecture Overview\n\nEvery ordinary software component follows a layered architecture: interface (public API), implementation (core logic), and test harness (verification). The interface defines contracts\u2014function signatures, return types, and documented pre/post-conditions. The implementation encapsulates state and behavior. The test harness exercises both.\n\n**Example:** A `StringTokenizer` component exposes `tokenize(input: str, delimiter: str) -> list[str]`. Its implementation maintains an internal buffer and position pointer. Its tests cover single tokens, multiple tokens, empty input, and multi-character delimiters.\n\n**Edge Case:** A component with no internal state (pure function) must still define its interface explicitly to prevent accidental mutation of shared references in languages like Python.\n\n**Test:** Assert that the interface contract is enforced\u2014calling `tokenize` with `None` raises `TypeError`, not silently returning an empty list.\n\n---\n\n## Section 2: Naming Conventions and Discoverability\n\nComponent names should communicate purpose, domain, and scope. Use `PascalCase` for classes, `snake_case` for functions, and prefix test files with `test_`.\n\n**Example:** `PaymentProcessor`, `process_payment`, `test_payment_processor.py`. Avoid generic names like `Handler` or `Utils`.\n\n**Edge Case:** Acronyms (API, HTTP, URL) should be treated as single words: `HttpClient`, not `HTTPClient`. This breaks linters that enforce strict case patterns.\n\n**Test:** Write a static-analysis test that scans all source files and asserts no class name exceeds 30 characters and no function name is a single letter.\n\n---\n\n## Section 3: Dependency Injection for Testability\n\nComponents should receive collaborators through constructor parameters rather than instantiating them internally. This allows tests to substitute mocks, stubs, or fakes.\n\n**Example:**\n```python\nclass OrderService:\n    def __init__(self, repository: OrderRepository, notifier: EmailNotifier):\n        self._repo = repository\n        self._notifier = notifier\n```\n\n**Edge Case:** When a component requires a dependency that is a singleton (e.g., a database connection pool), inject a factory callable rather than the instance to allow per-test isolation.\n\n**Test:** Verify that `OrderService` with a `MockEmailNotifier` records exactly one `send()` call per successful order, and zero calls on failure.\n\n---\n\n## Section 4: Unit Test Granularity\n\nEach unit test should verify exactly one behavioral contract. A test named `test_tokenize_multiple_delimiters` should not also assert that the function is thread-safe or that it handles Unicode.\n\n**Example:**\n```python\ndef test_tokenize_splits_on_comma():\n    assert tokenizer(\"a,b,c\") == [\"a\", \"b\", \"c\"]\n\ndef test_tokenize_preserves_spaces():\n    assert tokenizer(\"a b, c\") == [\"a b\", \"c\"]\n```\n\n**Edge Case:** Parameterized tests (e.g., `@pytest.mark.parametrize`) can blur granularity if they mix positive and negative cases in one parameter set. Separate them into distinct test classes.\n\n**Test:** Enforce a \"one assertion per test\" rule via a custom pytest plugin that fails if a test function contains more than one top-level `assert`.\n\n---\n\n## Section 5: State Management and Immutability\n\nPrefer immutable data structures for component state where feasible. When mutation is necessary, confine it to a single method and document the invariant.\n\n**Example:**\n```python\nfrom dataclasses import dataclass, replace\n\n@dataclass(frozen=True)\nclass Point:\n    x: float\n    y: float\n\n    def translated(self, dx: float, dy: float) -> \"Point\":\n        return Point(self.x + dx, self.y + dy)\n```\n\n**Edge Case:** Deep immutability is expensive for large structures. Use copy-on-write: share the internal array until a mutation occurs, then clone.\n\n**Test:** Assert that calling `translated` on a `Point` does not modify the original, and that two `Point` objects with equal coordinates are equal (`==`) and hashable.\n\n---\n\n## Section 6: Error Handling Strategy\n\nDefine a component-specific exception hierarchy. Catch specific exceptions in the component; let generic exceptions propagate to the framework's global handler.\n\n**Example:**\n```python\nclass ComponentError(Exception): ...\nclass InputValidationError(ComponentError): ...\nclass DependencyUnavailableError(ComponentError): ...\n```\n\n**Edge Case:** Raising an exception inside a `finally` block suppresses the original exception in Python. Always chain: `raise NewError(...) from original_exc`.\n\n**Test:** Use `pytest.raises` with `match=` to assert both the exception type and the message content. Test that chained exceptions preserve the `__cause__` attribute.\n\n---\n\n## Section 7: Logging and Observability\n\nEvery component should log at DEBUG level for internal state transitions and at WARNING/ERROR for recoverable/unrecoverable failures. Never log secrets, PII, or full request bodies.\n\n**Example:**\n```python\nlogger = logging.getLogger(\"payment_processor\")\nlogger.debug(\"Processing order %s\", order_id)\nlogger.warning(\"Retry %d/3 for order %s\", attempt, order_id)\n```\n\n**Edge Case:** Structured logging (JSON) breaks human readability. Provide a formatter that renders JSON logs as key=value pairs in dev environments and as raw JSON in production.\n\n**Test:** Capture log output with `caplog` (pytest) and assert that a failed operation produces exactly one ERROR record with the expected fields and no PII strings.\n\n---\n\n## Section 8: Configuration Management\n\nExternalize configuration (ports, timeouts, feature flags) from source code. Use a `Config` dataclass loaded from environment variables, a YAML file, or a secrets manager.\n\n**Example:**\n```python\n@dataclass\nclass Config:\n    timeout_ms: int = 5000\n    max_retries: int = 3\n    feature_flag_new_parser: bool = False\n```\n\n**Edge Case:** Boolean flags parsed from environment strings: `\"0\"`, `\"false\"`, `\"no\"` should all map to `False`. Document the accepted set.\n\n**Test:** Parameterize a test over all accepted boolean string representations and assert the parsed value. Test that an unrecognized string raises `ConfigError` with a helpful message listing valid options.\n\n---\n\n## Section 9: Concurrency and Thread Safety\n\nDocument whether a component is thread-safe. If it maintains mutable state, protect it with locks or redesign to use thread-local storage.\n\n**Example:**\n```python\nclass Counter:\n    def __init__(self):\n        self._value = 0\n        self._lock = threading.Lock()\n\n    def increment(self):\n        with self._lock:\n            self._value += 1\n```\n\n**Edge Case:** Re-entrant locks (`RLock`) hide design issues. Prefer `Lock` and refactor if the same thread needs to re-enter.\n\n**Test:** Use `concurrent.futures.ThreadPoolExecutor` with 100 threads each calling `increment()` 1000 times. Assert final value is exactly 100,000. Run under the GIL and with `PYTHONMALLOC=debug`.\n\n---\n\n## Section 10: Interface Segregation and Adapter Patterns\n\nA component should depend on the narrowest interface it needs. If a collaborator provides a broad API, wrap it in an adapter that exposes only the required methods.\n\n**Example:**\n```python\nclass NotificationSender(Protocol):\n    def send(self, recipient: str, body: str) -> None: ...\n\nclass SmtpAdapter:\n    def __init__(self, smtp_client: SmtpClient):\n        self._client = smtp_client\n    def send(self, recipient: str, body: str) -> None:\n        self._client.send_mail(to=recipient, subject=\"Alert\", body=body)\n```\n\n**Edge Case:** If the adapter must add transformation logic (e.g., HTML\u2192plain-text), keep that logic in the adapter, not the component. The component should be agnostic to transport format.\n\n**Test:** Provide a `FakeNotificationSender` that records calls. Assert the component calls `send` with the correct recipient and body, and that it does not call any other method.\n\n---\n\n## Section 11: Versioning and Backward Compatibility\n\nAssign semantic versions (MAJOR.MINOR.PATCH) to each component. Breaking changes to the public interf",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 523378.94087867,
+        "started_at": "2026-11-02T04:58:16.175755+00:00",
+        "status": "completed",
+        "stream_id": "6dbc8ba4cf1d49b2ac191957bcea9b57",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_active": true,
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 523387.07154575,
+        "expected_values": [
+          "VALUE_7eea8de6c624",
+          "VALUE_42ae714997d4",
+          "VALUE_933bc75ba534"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T04:58:24.306447+00:00",
+        "first_output": 523386.029483951,
+        "last_output": 523387.071440749,
+        "partial_visible": "\n\nKEY_0 = VALUE_7eea8de6c624\nKEY_1 = VALUE_42ae714997d4\nKEY_2 = VALUE_933bc75ba534",
+        "prompt_sha256": "f143b25ce0918140716d026b76edea9f489b8d5cd8556dcabb328ea9c315df56",
+        "prompt_tokens_tokenized": 8191,
+        "request_id": null,
+        "response_headers_at": 523386.029414626,
+        "result": {
+          "content_chunks": 8,
+          "e2e": 2.2882095619570464,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 158,
+          "output_token_source": "usage",
+          "reasoning_chunks": 27,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 1.2461713059456088,
+          "ttft": 2.0674729049787857,
+          "usage": {
+            "completion_tokens": 158,
+            "prompt_tokens": 8191,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 106,
+            "total_tokens": 8349
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_7eea8de6c624\nKEY_1 = VALUE_42ae714997d4\nKEY_2 = VALUE_933bc75ba534",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 82,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 523384.780524514,
+        "started_at": "2026-11-02T04:58:22.015408+00:00",
+        "status": "completed",
+        "stream_id": "b8bcabcab32a46acb7e4f3b6f313dab6",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 0,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    },
+    {
+      "active_overlap_output_at": 523431.794828377,
+      "anchor": {
+        "end": 523469.61306181,
+        "expected_values": [
+          "VALUE_7072b1ef351a",
+          "VALUE_7eb8dd81c4d7",
+          "VALUE_8bd414b5f946"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T04:59:46.847963+00:00",
+        "first_output": 523430.437474487,
+        "last_output": 523469.612811047,
+        "partial_visible": "\n\nKEY_0 = VALUE_7072b1ef351a\nKEY_1 = VALUE_7eb8dd81c4d7\nKEY_2 = VALUE_8bd414b5f946\n\n---\n\n# Engineering Guide: Software Component Implementation and Testing\n\n## 1. Component Architecture Overview\n\nSoftware components are self-contained units that encapsulate specific functionality. A well-designed component exposes a clear public API while hiding internal implementation details. The architecture should follow the principle of high cohesion and low coupling. Each component should have a single responsibility, communicate through well-defined interfaces, and be independently deployable.\n\n**Example:** A `PaymentProcessor` component accepts transaction objects, validates them, routes to the appropriate gateway, and returns a status. It does not directly access the database or UI.\n\n**Edge Cases:**\n- A component that depends on another component's internal state (violates encapsulation).\n- Circular dependencies between two components.\n- A component with no external interface (useless in isolation).\n\n**Tests:** Verify that the component can be instantiated without its dependencies. Verify that removing a dependency causes a compile-time or injection-time error.\n\n## 2. Interface Design and Contract Definition\n\nEvery component must define its contract explicitly: input types, output types, preconditions, postconditions, and invariants. Use interface files, documentation, or formal specifications (e.g., OpenAPI, Protobuf) to codify these contracts.\n\n**Example:**\n```python\nclass PaymentProcessor(Protocol):\n    def process(self, txn: Transaction) -> PaymentResult:\n        \"\"\"Precondition: txn.amount > 0, txn.currency is ISO-4217 valid.\n        Postcondition: result.status is one of {SUCCESS, FAILED, PENDING}.\"\"\"\n        ...\n```\n\n**Edge Cases:**\n- Ambiguous return types (e.g., returning `null` vs. an empty object).\n- Contracts that change silently between versions.\n- Interfaces that are too broad (god-interface anti-pattern).\n\n**Tests:** Contract testing frameworks (e.g., Pact) verify that both provider and consumer agree on the interface. Unit tests should assert preconditions are enforced and postconditions hold.\n\n## 3. Dependency Injection and Wiring\n\nComponents should receive their dependencies from the outside rather than constructing them internally. This enables testability, configuration flexibility, and decoupling.\n\n**Example:**\n```java\npublic class OrderService {\n    private final InventoryClient inventoryClient;\n    private final PaymentProcessor paymentProcessor;\n    private final OrderRepository repository;\n\n    public OrderService(InventoryClient inventoryClient,\n                        PaymentProcessor paymentProcessor,\n                        OrderRepository repository) {\n        this.inventoryClient = inventoryClient;\n        this.paymentProcessor = paymentProcessor;\n        this.repository = repository;\n    }\n}\n```\n\n**Edge Cases:**\n- Missing dependency at runtime (should fail fast at startup).\n- Singleton vs. prototype scope confusion.\n- Lazy vs. eager initialization causing timing issues.\n\n**Tests:** Test with mock/injected dependencies. Verify that the container fails immediately if a required bean is absent. Test scope semantics (same instance for singleton, new instance for prototype).\n\n## 4. State Management and Immutability\n\nComponents should minimize mutable state. Where state is necessary, it should be explicitly managed with clear transitions. Prefer immutable data structures for inputs and outputs.\n\n**Example:**\n```kotlin\ndata class Cart(val items: List<CartItem>, val total: BigDecimal) {\n    fun add(item: CartItem): Cart =\n        Cart(items + item, total + item.price)\n}\n```\n\n**Edge Cases:**\n- Shared mutable state across threads without synchronization.\n- State that accumulates over time (memory leak in long-lived components).\n- State that cannot be serialized for persistence or replication.\n\n**Tests:** Verify that two references to the same immutable object remain consistent. Test concurrent access patterns. Verify that state transitions are atomic.\n\n## 5. Error Handling and Exception Propagation\n\nComponents must define a clear error taxonomy: retryable vs. non-retryable, client errors vs. server errors. Exceptions should carry context (what, where, why) and should not be swallowed silently.\n\n**Example:**\n```go\ntype TransactionError struct {\n    Code      string\n    Message   string\n    Retryable bool\n    Cause     error\n}\n\nfunc (e *TransactionError) Error() string {\n    return fmt.Sprintf(\"[%s] %s (retryable=%v)\", e.Code, e.Message, e.Retryable)\n}\n```\n\n**Edge Cases:**\n- Exception wrapping that loses the original stack trace.\n- Catching `Exception` broadly and converting to a generic 500.\n- Errors in background threads that go unreported.\n\n**Tests:** Assert specific error types are returned for specific failure modes. Verify that error messages do not leak sensitive information. Test that retryable errors are actually retried and non-retryable ones are not.\n\n## 6. Configuration and Environment Management\n\nComponents should accept configuration through typed, validated objects rather than reading environment variables or files ad hoc. Support multiple environments (dev, staging, prod) with appropriate defaults and overrides.\n\n**Example:**\n```yaml\n# application-prod.yaml\npayment:\n  gateway:\n    url: https://api.stripe.com\n    timeout_ms: 5000\n    max_retries: 3\n  currency_whitelist:\n    - USD\n    - EUR\n    - GBP\n```\n\n**Edge Cases:**\n- Missing configuration key with no default (crash at startup vs. runtime).\n- Sensitive values (API keys) in plaintext config files.\n- Configuration drift between environments.\n\n**Tests:** Validate that all required config keys are present at startup. Test that invalid values are rejected early. Verify that secrets are never logged.\n\n## 7. Logging and Observability\n\nEvery component should emit structured logs at appropriate levels (DEBUG, INFO, WARN, ERROR). Logs must include correlation IDs, timestamps, and relevant context. Metrics (counters, gauges, histograms) and traces should be exported for monitoring.\n\n**Example:**\n```python\nlogger.info(\"payment.processed\",\n            extra={\"txn_id\": txn.id, \"amount\": txn.amount,\n                   \"currency\": txn.currency, \"duration_ms\": elapsed})\n```\n\n**Edge Cases:**\n- Log volume explosion under load (log flooding).\n- Missing correlation ID makes distributed tracing impossible.\n- Logging sensitive data (card numbers, tokens).\n\n**Tests:** Verify log structure (JSON schema validation). Assert that correlation IDs propagate across service boundaries. Check that no PII appears in log output.\n\n## 8. Concurrency and Thread Safety\n\nComponents that handle concurrent requests must be explicitly thread-safe. Use locks, immutable structures, thread-local storage, or actor models. Avoid shared mutable state.\n\n**Example:**\n```rust\nuse std::sync::Mutex;\n\nstruct ConnectionPool {\n    connections: Mutex<Vec<Connection>>,\n    max_size: usize,\n}\n\nimpl ConnectionPool {\n    fn acquire(&self) -> Result<GuardedConnection, PoolError> {\n        let mut pool = self.connections.lock().unwrap();\n        // ... acquire logic\n    }\n}\n```\n\n**Edge Cases:**\n- Deadlock from acquiring locks in inconsistent order.\n- Race conditions in check-then-act sequences.\n- Thread starvation in high-contention scenarios.\n\n**Tests:** Use stress tests with many threads. Employ race detectors (e.g., ThreadSanitizer, Go's `-race` flag). Test under artificial load to expose timing bugs.\n\n## 9. Input Validation and Sanitization\n\nAll external inputs (HTTP parameters, file uploads, messages from queues) must be validated before processing. Validation should be fail-fast, type-safe, and performed at the boundary of the component.\n\n**Example:**\n```python\nfrom pydantic import BaseModel, field_validator\n\nclass OrderRequest(BaseModel):\n    item_id: str\n    quantity: int\n    email: str\n\n    @field_validator('quantity')\n    @classmethod\n    def quantity_positive(cls, v: int) -> int:\n        if v < 1 or v > 10000:\n            raise ValueError('quantity must be between 1 and 10000')\n        return v\n\n    @field_validator('email')\n    @classmethod\n    def valid_email(cls, v: str) -> str:\n        if '@' not in v or",
+        "prompt_sha256": "534faedccc4e49e9bf04d2c89587378eb0c528fc279f326835ab99f461400c05",
+        "prompt_tokens_tokenized": 32624,
+        "request_id": null,
+        "response_headers_at": 523430.437247078,
+        "result": {
+          "content_chunks": 1203,
+          "e2e": 45.20901090599364,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 39,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 6.033526951970998,
+          "ttft": 8.478141670988407,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 32624,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 162,
+            "total_tokens": 36720
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_7072b1ef351a\nKEY_1 = VALUE_7eb8dd81c4d7\nKEY_2 = VALUE_8bd414b5f946\n\n---\n\n# Engineering Guide: Software Component Implementation and Testing\n\n## 1. Component Architecture Overview\n\nSoftware components are self-contained units that encapsulate specific functionality. A well-designed component exposes a clear public API while hiding internal implementation details. The architecture should follow the principle of high cohesion and low coupling. Each component should have a single responsibility, communicate through well-defined interfaces, and be independently deployable.\n\n**Example:** A `PaymentProcessor` component accepts transaction objects, validates them, routes to the appropriate gateway, and returns a status. It does not directly access the database or UI.\n\n**Edge Cases:**\n- A component that depends on another component's internal state (violates encapsulation).\n- Circular dependencies between two components.\n- A component with no external interface (useless in isolation).\n\n**Tests:** Verify that the component can be instantiated without its dependencies. Verify that removing a dependency causes a compile-time or injection-time error.\n\n## 2. Interface Design and Contract Definition\n\nEvery component must define its contract explicitly: input types, output types, preconditions, postconditions, and invariants. Use interface files, documentation, or formal specifications (e.g., OpenAPI, Protobuf) to codify these contracts.\n\n**Example:**\n```python\nclass PaymentProcessor(Protocol):\n    def process(self, txn: Transaction) -> PaymentResult:\n        \"\"\"Precondition: txn.amount > 0, txn.currency is ISO-4217 valid.\n        Postcondition: result.status is one of {SUCCESS, FAILED, PENDING}.\"\"\"\n        ...\n```\n\n**Edge Cases:**\n- Ambiguous return types (e.g., returning `null` vs. an empty object).\n- Contracts that change silently between versions.\n- Interfaces that are too broad (god-interface anti-pattern).\n\n**Tests:** Contract testing frameworks (e.g., Pact) verify that both provider and consumer agree on the interface. Unit tests should assert preconditions are enforced and postconditions hold.\n\n## 3. Dependency Injection and Wiring\n\nComponents should receive their dependencies from the outside rather than constructing them internally. This enables testability, configuration flexibility, and decoupling.\n\n**Example:**\n```java\npublic class OrderService {\n    private final InventoryClient inventoryClient;\n    private final PaymentProcessor paymentProcessor;\n    private final OrderRepository repository;\n\n    public OrderService(InventoryClient inventoryClient,\n                        PaymentProcessor paymentProcessor,\n                        OrderRepository repository) {\n        this.inventoryClient = inventoryClient;\n        this.paymentProcessor = paymentProcessor;\n        this.repository = repository;\n    }\n}\n```\n\n**Edge Cases:**\n- Missing dependency at runtime (should fail fast at startup).\n- Singleton vs. prototype scope confusion.\n- Lazy vs. eager initialization causing timing issues.\n\n**Tests:** Test with mock/injected dependencies. Verify that the container fails immediately if a required bean is absent. Test scope semantics (same instance for singleton, new instance for prototype).\n\n## 4. State Management and Immutability\n\nComponents should minimize mutable state. Where state is necessary, it should be explicitly managed with clear transitions. Prefer immutable data structures for inputs and outputs.\n\n**Example:**\n```kotlin\ndata class Cart(val items: List<CartItem>, val total: BigDecimal) {\n    fun add(item: CartItem): Cart =\n        Cart(items + item, total + item.price)\n}\n```\n\n**Edge Cases:**\n- Shared mutable state across threads without synchronization.\n- State that accumulates over time (memory leak in long-lived components).\n- State that cannot be serialized for persistence or replication.\n\n**Tests:** Verify that two references to the same immutable object remain consistent. Test concurrent access patterns. Verify that state transitions are atomic.\n\n## 5. Error Handling and Exception Propagation\n\nComponents must define a clear error taxonomy: retryable vs. non-retryable, client errors vs. server errors. Exceptions should carry context (what, where, why) and should not be swallowed silently.\n\n**Example:**\n```go\ntype TransactionError struct {\n    Code      string\n    Message   string\n    Retryable bool\n    Cause     error\n}\n\nfunc (e *TransactionError) Error() string {\n    return fmt.Sprintf(\"[%s] %s (retryable=%v)\", e.Code, e.Message, e.Retryable)\n}\n```\n\n**Edge Cases:**\n- Exception wrapping that loses the original stack trace.\n- Catching `Exception` broadly and converting to a generic 500.\n- Errors in background threads that go unreported.\n\n**Tests:** Assert specific error types are returned for specific failure modes. Verify that error messages do not leak sensitive information. Test that retryable errors are actually retried and non-retryable ones are not.\n\n## 6. Configuration and Environment Management\n\nComponents should accept configuration through typed, validated objects rather than reading environment variables or files ad hoc. Support multiple environments (dev, staging, prod) with appropriate defaults and overrides.\n\n**Example:**\n```yaml\n# application-prod.yaml\npayment:\n  gateway:\n    url: https://api.stripe.com\n    timeout_ms: 5000\n    max_retries: 3\n  currency_whitelist:\n    - USD\n    - EUR\n    - GBP\n```\n\n**Edge Cases:**\n- Missing configuration key with no default (crash at startup vs. runtime).\n- Sensitive values (API keys) in plaintext config files.\n- Configuration drift between environments.\n\n**Tests:** Validate that all required config keys are present at startup. Test that invalid values are rejected early. Verify that secrets are never logged.\n\n## 7. Logging and Observability\n\nEvery component should emit structured logs at appropriate levels (DEBUG, INFO, WARN, ERROR). Logs must include correlation IDs, timestamps, and relevant context. Metrics (counters, gauges, histograms) and traces should be exported for monitoring.\n\n**Example:**\n```python\nlogger.info(\"payment.processed\",\n            extra={\"txn_id\": txn.id, \"amount\": txn.amount,\n                   \"currency\": txn.currency, \"duration_ms\": elapsed})\n```\n\n**Edge Cases:**\n- Log volume explosion under load (log flooding).\n- Missing correlation ID makes distributed tracing impossible.\n- Logging sensitive data (card numbers, tokens).\n\n**Tests:** Verify log structure (JSON schema validation). Assert that correlation IDs propagate across service boundaries. Check that no PII appears in log output.\n\n## 8. Concurrency and Thread Safety\n\nComponents that handle concurrent requests must be explicitly thread-safe. Use locks, immutable structures, thread-local storage, or actor models. Avoid shared mutable state.\n\n**Example:**\n```rust\nuse std::sync::Mutex;\n\nstruct ConnectionPool {\n    connections: Mutex<Vec<Connection>>,\n    max_size: usize,\n}\n\nimpl ConnectionPool {\n    fn acquire(&self) -> Result<GuardedConnection, PoolError> {\n        let mut pool = self.connections.lock().unwrap();\n        // ... acquire logic\n    }\n}\n```\n\n**Edge Cases:**\n- Deadlock from acquiring locks in inconsistent order.\n- Race conditions in check-then-act sequences.\n- Thread starvation in high-contention scenarios.\n\n**Tests:** Use stress tests with many threads. Employ race detectors (e.g., ThreadSanitizer, Go's `-race` flag). Test under artificial load to expose timing bugs.\n\n## 9. Input Validation and Sanitization\n\nAll external inputs (HTTP parameters, file uploads, messages from queues) must be validated before processing. Validation should be fail-fast, type-safe, and performed at the boundary of the component.\n\n**Example:**\n```python\nfrom pydantic import BaseModel, field_validator\n\nclass OrderRequest(BaseModel):\n    item_id: str\n    quantity: int\n    email: str\n\n    @field_validator('quantity')\n    @classmethod\n    def quantity_positive(cls, v: int) -> int:\n        if v < 1 or v > 10000:\n            raise ValueError('quantity must be between 1 and 10000')\n        return v\n\n    @field_validator('email')\n    @classmethod\n    def valid_email(cls, v: str) -> str:\n        if '@' not in v or",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 523424.38891504,
+        "started_at": "2026-11-02T04:59:01.623787+00:00",
+        "status": "completed",
+        "stream_id": "8cdb6660ea2b48fd8d00ce1f9da5886c",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_active": true,
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 523432.789967887,
+        "expected_values": [
+          "VALUE_801cb1490fc7",
+          "VALUE_59a8c4bdf542",
+          "VALUE_98bd2487de59"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T04:59:10.024868+00:00",
+        "first_output": 523431.763468031,
+        "last_output": 523432.789858782,
+        "partial_visible": "\n\nKEY_0 = VALUE_801cb1490fc7\nKEY_1 = VALUE_59a8c4bdf542\nKEY_2 = VALUE_98bd2487de59",
+        "prompt_sha256": "a07febcdf7a2aa5c5d82e969ff9bd1c126ced6030a633743ae819e9bd6e12334",
+        "prompt_tokens_tokenized": 8192,
+        "request_id": null,
+        "response_headers_at": 523431.763404965,
+        "result": {
+          "content_chunks": 8,
+          "e2e": 2.3342807510052808,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 160,
+          "output_token_source": "usage",
+          "reasoning_chunks": 26,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 1.307801436050795,
+          "ttft": 2.1092828499968164,
+          "usage": {
+            "completion_tokens": 160,
+            "prompt_tokens": 8192,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 107,
+            "total_tokens": 8352
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_801cb1490fc7\nKEY_1 = VALUE_59a8c4bdf542\nKEY_2 = VALUE_98bd2487de59",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 82,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 523430.452772442,
+        "started_at": "2026-11-02T04:59:07.687659+00:00",
+        "status": "completed",
+        "stream_id": "f8b4c219aac04716a31f511aa61f1ab7",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 1,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    },
+    {
+      "active_overlap_output_at": 523477.373477442,
+      "anchor": {
+        "end": 523515.013514402,
+        "expected_values": [
+          "VALUE_52d7ffbfb63f",
+          "VALUE_2948466cc995",
+          "VALUE_1f1cb0787b15"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T05:00:32.248415+00:00",
+        "first_output": 523475.965902493,
+        "last_output": 523515.013287387,
+        "partial_visible": "\n\nKEY_0 = VALUE_52d7ffbfb63f\nKEY_1 = VALUE_2948466cc995\nKEY_2 = VALUE_1f1cb0787b15\n\n---\n\n# Engineering Guide: Implementation, Testing, and Validation of Ordinary Software Components\n\n## 1. Component Architecture Overview\n\nThis section establishes the foundational architecture for ordinary software components. A component is a self-contained unit of functionality with a well-defined public interface, internal implementation, and a contract specifying expected behavior. The architecture follows the principle of encapsulation: internal state is private, and all interaction occurs through a controlled API surface.\n\n**Implementation:** Define an abstract base class or interface (`IComponent`) that declares the component's public methods. Each concrete component inherits from this base and implements its specific logic. Use dependency injection for external resources (databases, APIs, configuration) to maintain testability.\n\n```python\nclass IComponent(ABC):\n    @abstractmethod\n    def execute(self, input_data: Any) -> Any: ...\n    @abstractmethod\n    def validate(self, input_data: Any) -> bool: ...\n    @abstractmethod\n    def reset(self) -> None: ...\n```\n\n**Example:** A `StringTransformer` component that normalizes text input:\n\n```python\nclass StringTransformer(IComponent):\n    def execute(self, input_data: str) -> str:\n        return input_data.strip().lower().replace(\"  \", \" \")\n    def validate(self, input_data: Any) -> bool:\n        return isinstance(input_data, str)\n    def reset(self) -> None:\n        pass\n```\n\n**Edge Cases:** Null inputs, empty strings, strings with only whitespace, Unicode characters in non-ASCII ranges, and inputs exceeding maximum length thresholds.\n\n**Tests:** Unit tests verifying each transformation step, property-based tests confirming idempotency, and boundary tests at the minimum and maximum input lengths.\n\n---\n\n## 2. Input Validation Layer\n\nValidation is the first gate every component must pass through before processing. This section details a multi-stage validation pipeline.\n\n**Implementation:** Create a `Validator` class that chains multiple validation rules. Each rule is a predicate returning `(bool, Optional[str])` where the string is an error message. The pipeline short-circuits on the first failure.\n\n```python\nclass ValidationPipeline:\n    def __init__(self, rules: List[Callable]):\n        self.rules = rules\n    def run(self, data: Any) -> Tuple[bool, Optional[str]]:\n        for rule in self.rules:\n            passed, msg = rule(data)\n            if not passed:\n                return False, msg\n        return True, None\n```\n\n**Example:** Validating a user registration payload:\n\n```python\nrules = [\n    lambda d: (isinstance(d, dict), \"Input must be a dictionary\"),\n    lambda d: (\"email\" in d, \"Missing 'email' field\"),\n    lambda d: (re.match(r\"^[^@]+@[^@]+\\.[^@]+$\", d.get(\"email\", \"\")), \"Invalid email\"),\n]\n```\n\n**Edge Cases:** Nested objects with missing intermediate keys, type coercion (e.g., `\"123\"` vs `123`), null vs empty string vs missing field, and circular references in deeply nested structures.\n\n**Tests:** Table-driven tests covering every rule in isolation, integration tests for the full pipeline, fuzz tests with randomly generated malformed inputs, and performance tests ensuring validation completes within a 5ms budget for large payloads.\n\n---\n\n## 3. State Management and Lifecycle\n\nComponents often maintain internal state across multiple invocations. This section covers state machine design and lifecycle management.\n\n**Implementation:** Use an explicit state machine with a `StateManager` that tracks transitions. Each state defines valid incoming and outgoing transitions. The component exposes `init()`, `activate()`, `deactivate()`, and `destroy()` lifecycle methods.\n\n```python\nclass StateManager:\n    def __init__(self, initial: str, transitions: Dict[str, Set[str]]):\n        self.state = initial\n        self.transitions = transitions\n    def transition(self, new_state: str) -> None:\n        if new_state not in self.transitions.get(self.state, set()):\n            raise InvalidTransitionError(self.state, new_state)\n        self.state = new_state\n```\n\n**Example:** A connection pool component with states `INIT \u2192 CONNECTING \u2192 READY \u2192 DEGRADED \u2192 CLOSED`.\n\n**Edge Cases:** Concurrent state transitions from multiple threads, transitions attempted after `destroy()`, re-entrancy during a transition callback, and state loss during partial failures (e.g., connection dropped mid-handshake).\n\n**Tests:** State transition matrix tests (every valid and invalid transition), concurrency tests with 100 parallel threads, crash-recovery tests simulating process kill during each state, and property tests asserting state invariants hold after any sequence of operations.\n\n---\n\n## 4. Error Handling and Exception Taxonomy\n\nA robust component defines a clear exception hierarchy and propagates errors with sufficient context for diagnosis.\n\n**Implementation:** Define a base `ComponentError` exception with fields for `error_code`, `message`, `context`, and `cause`. Subclasses include `ValidationError`, `ProcessingError`, `TimeoutError`, and `ResourceExhaustedError`. All exceptions are serializable for logging and remote reporting.\n\n```python\nclass ComponentError(Exception):\n    def __init__(self, code: str, message: str, context: dict = None, cause: Exception = None):\n        super().__init__(message)\n        self.code = code\n        self.context = context or {}\n        self.cause = cause\n```\n\n**Example:** A file-processing component that raises `ProcessingError(code=\"ENCODING_MISMATCH\")` when input encoding doesn't match the declared format.\n\n**Edge Cases:** Exception chaining (an exception raised during exception handling), exceptions containing non-serializable objects, very long cause chains, and exceptions raised from finalizers/destructors.\n\n**Tests:** Verify every code path raises the correct exception type, test that exception context is preserved through wrapping layers, serialize/deserialize exceptions to confirm round-trip fidelity, and test that no exception leaks internal stack traces to end users.\n\n---\n\n## 5. Configuration Management\n\nComponents require externalized configuration for environment-specific parameters. This section covers loading, validating, and hot-reloading configuration.\n\n**Implementation:** Use a layered configuration system: defaults \u2192 environment variables \u2192 config file \u2192 runtime overrides. Each layer overrides the previous. Configuration is validated at load time using schema definitions.\n\n```python\nclass ConfigLoader:\n    def load(self) -> Config:\n        cfg = self.load_defaults()\n        cfg = self.overlay_env(cfg)\n        cfg = self.overlay_file(cfg)\n        cfg = self.overlay_runtime(cfg)\n        self.validate_schema(cfg)\n        return cfg\n```\n\n**Example:** A network component loading `timeout_ms`, `max_retries`, and `connection_pool_size` from a YAML file with environment variable overrides.\n\n**Edge Cases:** Missing optional fields (must use defaults), type mismatches in config files, circular references in config, config files with BOM markers or non-UTF8 encoding, and concurrent config reloads.\n\n**Tests:** Test each layer's precedence, verify schema validation catches every invalid type, test hot-reload atomicity (component sees either old or new config, never a mix), and test behavior when config file is deleted at runtime.\n\n---\n\n## 6. Concurrency and Thread Safety\n\nMany components are accessed from multiple threads. This section details synchronization strategies.\n\n**Implementation:** Identify the component's concurrency model: single-threaded (caller must synchronize), thread-safe (internal locking), or immutable (no synchronization needed). For thread-safe components, use fine-grained locks or lock-free data structures. Document the memory ordering guarantees.\n\n```python\nclass ThreadSafeCounter:\n    def __init__(self):\n        self._value = 0\n        self._lock = threading.Lock()\n    def increment(self) -> int:\n        with self._lock:\n            self._value += 1\n            return self._value\n```\n\n**Example:** A rate-limiter component using a token bucket algorithm that must be",
+        "prompt_sha256": "7240c2cfa6704450511b775cffd51f220b8bd0d473cc1a7057369bc9cdcfd432",
+        "prompt_tokens_tokenized": 32626,
+        "request_id": null,
+        "response_headers_at": 523475.965825257,
+        "result": {
+          "content_chunks": 1189,
+          "e2e": 45.15088706597453,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 48,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 6.103368564974517,
+          "ttft": 8.87495955999475,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 32626,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 194,
+            "total_tokens": 36722
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_52d7ffbfb63f\nKEY_1 = VALUE_2948466cc995\nKEY_2 = VALUE_1f1cb0787b15\n\n---\n\n# Engineering Guide: Implementation, Testing, and Validation of Ordinary Software Components\n\n## 1. Component Architecture Overview\n\nThis section establishes the foundational architecture for ordinary software components. A component is a self-contained unit of functionality with a well-defined public interface, internal implementation, and a contract specifying expected behavior. The architecture follows the principle of encapsulation: internal state is private, and all interaction occurs through a controlled API surface.\n\n**Implementation:** Define an abstract base class or interface (`IComponent`) that declares the component's public methods. Each concrete component inherits from this base and implements its specific logic. Use dependency injection for external resources (databases, APIs, configuration) to maintain testability.\n\n```python\nclass IComponent(ABC):\n    @abstractmethod\n    def execute(self, input_data: Any) -> Any: ...\n    @abstractmethod\n    def validate(self, input_data: Any) -> bool: ...\n    @abstractmethod\n    def reset(self) -> None: ...\n```\n\n**Example:** A `StringTransformer` component that normalizes text input:\n\n```python\nclass StringTransformer(IComponent):\n    def execute(self, input_data: str) -> str:\n        return input_data.strip().lower().replace(\"  \", \" \")\n    def validate(self, input_data: Any) -> bool:\n        return isinstance(input_data, str)\n    def reset(self) -> None:\n        pass\n```\n\n**Edge Cases:** Null inputs, empty strings, strings with only whitespace, Unicode characters in non-ASCII ranges, and inputs exceeding maximum length thresholds.\n\n**Tests:** Unit tests verifying each transformation step, property-based tests confirming idempotency, and boundary tests at the minimum and maximum input lengths.\n\n---\n\n## 2. Input Validation Layer\n\nValidation is the first gate every component must pass through before processing. This section details a multi-stage validation pipeline.\n\n**Implementation:** Create a `Validator` class that chains multiple validation rules. Each rule is a predicate returning `(bool, Optional[str])` where the string is an error message. The pipeline short-circuits on the first failure.\n\n```python\nclass ValidationPipeline:\n    def __init__(self, rules: List[Callable]):\n        self.rules = rules\n    def run(self, data: Any) -> Tuple[bool, Optional[str]]:\n        for rule in self.rules:\n            passed, msg = rule(data)\n            if not passed:\n                return False, msg\n        return True, None\n```\n\n**Example:** Validating a user registration payload:\n\n```python\nrules = [\n    lambda d: (isinstance(d, dict), \"Input must be a dictionary\"),\n    lambda d: (\"email\" in d, \"Missing 'email' field\"),\n    lambda d: (re.match(r\"^[^@]+@[^@]+\\.[^@]+$\", d.get(\"email\", \"\")), \"Invalid email\"),\n]\n```\n\n**Edge Cases:** Nested objects with missing intermediate keys, type coercion (e.g., `\"123\"` vs `123`), null vs empty string vs missing field, and circular references in deeply nested structures.\n\n**Tests:** Table-driven tests covering every rule in isolation, integration tests for the full pipeline, fuzz tests with randomly generated malformed inputs, and performance tests ensuring validation completes within a 5ms budget for large payloads.\n\n---\n\n## 3. State Management and Lifecycle\n\nComponents often maintain internal state across multiple invocations. This section covers state machine design and lifecycle management.\n\n**Implementation:** Use an explicit state machine with a `StateManager` that tracks transitions. Each state defines valid incoming and outgoing transitions. The component exposes `init()`, `activate()`, `deactivate()`, and `destroy()` lifecycle methods.\n\n```python\nclass StateManager:\n    def __init__(self, initial: str, transitions: Dict[str, Set[str]]):\n        self.state = initial\n        self.transitions = transitions\n    def transition(self, new_state: str) -> None:\n        if new_state not in self.transitions.get(self.state, set()):\n            raise InvalidTransitionError(self.state, new_state)\n        self.state = new_state\n```\n\n**Example:** A connection pool component with states `INIT \u2192 CONNECTING \u2192 READY \u2192 DEGRADED \u2192 CLOSED`.\n\n**Edge Cases:** Concurrent state transitions from multiple threads, transitions attempted after `destroy()`, re-entrancy during a transition callback, and state loss during partial failures (e.g., connection dropped mid-handshake).\n\n**Tests:** State transition matrix tests (every valid and invalid transition), concurrency tests with 100 parallel threads, crash-recovery tests simulating process kill during each state, and property tests asserting state invariants hold after any sequence of operations.\n\n---\n\n## 4. Error Handling and Exception Taxonomy\n\nA robust component defines a clear exception hierarchy and propagates errors with sufficient context for diagnosis.\n\n**Implementation:** Define a base `ComponentError` exception with fields for `error_code`, `message`, `context`, and `cause`. Subclasses include `ValidationError`, `ProcessingError`, `TimeoutError`, and `ResourceExhaustedError`. All exceptions are serializable for logging and remote reporting.\n\n```python\nclass ComponentError(Exception):\n    def __init__(self, code: str, message: str, context: dict = None, cause: Exception = None):\n        super().__init__(message)\n        self.code = code\n        self.context = context or {}\n        self.cause = cause\n```\n\n**Example:** A file-processing component that raises `ProcessingError(code=\"ENCODING_MISMATCH\")` when input encoding doesn't match the declared format.\n\n**Edge Cases:** Exception chaining (an exception raised during exception handling), exceptions containing non-serializable objects, very long cause chains, and exceptions raised from finalizers/destructors.\n\n**Tests:** Verify every code path raises the correct exception type, test that exception context is preserved through wrapping layers, serialize/deserialize exceptions to confirm round-trip fidelity, and test that no exception leaks internal stack traces to end users.\n\n---\n\n## 5. Configuration Management\n\nComponents require externalized configuration for environment-specific parameters. This section covers loading, validating, and hot-reloading configuration.\n\n**Implementation:** Use a layered configuration system: defaults \u2192 environment variables \u2192 config file \u2192 runtime overrides. Each layer overrides the previous. Configuration is validated at load time using schema definitions.\n\n```python\nclass ConfigLoader:\n    def load(self) -> Config:\n        cfg = self.load_defaults()\n        cfg = self.overlay_env(cfg)\n        cfg = self.overlay_file(cfg)\n        cfg = self.overlay_runtime(cfg)\n        self.validate_schema(cfg)\n        return cfg\n```\n\n**Example:** A network component loading `timeout_ms`, `max_retries`, and `connection_pool_size` from a YAML file with environment variable overrides.\n\n**Edge Cases:** Missing optional fields (must use defaults), type mismatches in config files, circular references in config, config files with BOM markers or non-UTF8 encoding, and concurrent config reloads.\n\n**Tests:** Test each layer's precedence, verify schema validation catches every invalid type, test hot-reload atomicity (component sees either old or new config, never a mix), and test behavior when config file is deleted at runtime.\n\n---\n\n## 6. Concurrency and Thread Safety\n\nMany components are accessed from multiple threads. This section details synchronization strategies.\n\n**Implementation:** Identify the component's concurrency model: single-threaded (caller must synchronize), thread-safe (internal locking), or immutable (no synchronization needed). For thread-safe components, use fine-grained locks or lock-free data structures. Document the memory ordering guarantees.\n\n```python\nclass ThreadSafeCounter:\n    def __init__(self):\n        self._value = 0\n        self._lock = threading.Lock()\n    def increment(self) -> int:\n        with self._lock:\n            self._value += 1\n            return self._value\n```\n\n**Example:** A rate-limiter component using a token bucket algorithm that must be",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 523469.854770646,
+        "started_at": "2026-11-02T04:59:47.089659+00:00",
+        "status": "completed",
+        "stream_id": "da945ae66a85498b8b633aef407371d1",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_active": true,
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 523478.249194831,
+        "expected_values": [
+          "VALUE_8244d501193c",
+          "VALUE_150f8e762319",
+          "VALUE_cf30e9b789bc"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T04:59:55.484095+00:00",
+        "first_output": 523477.342449041,
+        "last_output": 523478.249082797,
+        "partial_visible": "\n\nKEY_0 = VALUE_8244d501193c\nKEY_1 = VALUE_150f8e762319\nKEY_2 = VALUE_cf30e9b789bc",
+        "prompt_sha256": "d5805e911875d0af2c19dc72e3d41a6dd4aa2436c2d54e0f61df67c707ded1cb",
+        "prompt_tokens_tokenized": 8194,
+        "request_id": null,
+        "response_headers_at": 523477.342376803,
+        "result": {
+          "content_chunks": 8,
+          "e2e": 2.2668703359668143,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 156,
+          "output_token_source": "usage",
+          "reasoning_chunks": 22,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 1.3601461869548075,
+          "ttft": 2.036631763970945,
+          "usage": {
+            "completion_tokens": 156,
+            "prompt_tokens": 8194,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 101,
+            "total_tokens": 8350
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_8244d501193c\nKEY_1 = VALUE_150f8e762319\nKEY_2 = VALUE_cf30e9b789bc",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 82,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 523475.978499628,
+        "started_at": "2026-11-02T04:59:53.213384+00:00",
+        "status": "completed",
+        "stream_id": "a29e6db74de040f9bf86e999a73b850f",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 2,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    }
+  ],
+  "runtime_passed": true,
+  "scenario": {
+    "anchor_max_tokens": 4096,
+    "anchor_tokens": 32768,
+    "base_url": "http://127.0.0.1:8001",
+    "configuration": {
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "label": "Swift1.5 FP8 DFlash2 GPU0 r1",
+      "model_revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "recipe_sha256": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_sha256": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda"
+    },
+    "contender_max_tokens": 2048,
+    "contender_tokens": 8192,
+    "context_limit": 262144,
+    "managed_container": "candidate-dflash2",
+    "mode": "overlap",
+    "model": "candidate-dflash2",
+    "prefix_mode": "unique",
+    "reasoning_effort": "medium",
+    "rounds": 3,
+    "run_timeout_seconds": 1800,
+    "schema": "anvil-serving.stability-scenario/v1",
+    "temperature": 1,
+    "timeout_seconds": 300,
+    "top_p": 0.95
+  },
+  "scenario_sha256": "57ccf22e992b73c3c51829acbc5460b5abf4cb51939b43c6a334f7d4f5953a7d",
+  "scheduler_overlap": "not_measured",
+  "schema": "anvil-serving.stability/v1",
+  "served_model_observed": "candidate-dflash2",
+  "stage": "identity_check",
+  "started_at": "2026-11-02T04:58:15.868369+00:00",
+  "status": "completed"
+}

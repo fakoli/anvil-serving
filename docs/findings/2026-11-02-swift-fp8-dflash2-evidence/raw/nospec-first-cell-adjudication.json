@@ -1,0 +1,9 @@
+{
+  "cell": "nospec-ctx8192-c1",
+  "coverage_passed": false,
+  "decision": "exclude first no-spec8K C1 from qualified speed comparison; preserve unchanged raw evidence. Continue only unrun frozen cells now that streaming series exists; no retry or validator modification.",
+  "native_requests": "3/3 passed",
+  "resource_events": "no OOM; all captured windows passed",
+  "root_cause": "Initial no-spec preflight had only nonstreaming requests; first streaming counter series absent from before-metrics. Frozen collector rejects missing before-series. After-metrics contains prompt22116/output329/requests3 matching native, HTTP delta3; do not retro-certify missing baseline as zero.",
+  "utc": "2026-11-02T05:22:05.989645+00:00"
+}

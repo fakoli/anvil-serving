@@ -1,0 +1,19 @@
+{
+  "generic_inspector": "Generic evidence-show does not recognize multimodal-benchmark-evidence/v1; refusals retained.",
+  "method": "Native hashed corpus loader and deterministic assertion re-evaluation; exact one-based attempt population and frozen serve identity",
+  "passed": true,
+  "results": {
+    "images": {
+      "artifact_sha256": "60e6d0ac35c48691d1580d70603caaa691129b47a56d5f02bdcff40283f05491",
+      "attempts": 12,
+      "corpus_sha256": "a514ae146b5aab3bcb55ae9fb27f55a41791a20863304d1bb95947e93931cd12",
+      "passed": 12
+    },
+    "images8": {
+      "artifact_sha256": "5aee8b029c47ef29ea591daf5d56a5c00b1c9800a7eb5547f0de8b8347d7dcce",
+      "attempts": 2,
+      "corpus_sha256": "c174700b00dacadb3517a10dfd7b45c0092dc42b0de79e737b7e72c8855deb60",
+      "passed": 2
+    }
+  }
+}

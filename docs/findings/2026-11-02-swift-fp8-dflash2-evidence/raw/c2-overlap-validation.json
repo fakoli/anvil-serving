@@ -1,0 +1,29 @@
+{
+  "actual_prompt_tokens": [
+    229218,
+    229246
+  ],
+  "cadence": {
+    "engine": {
+      "maximum_gap_s": 0.6917794839828275,
+      "samples": 620
+    },
+    "slow": {
+      "maximum_gap_s": 2.0688166469917633,
+      "samples": 155
+    }
+  },
+  "cgroup_bytes_max": 33562263552,
+  "claim": "Two overlapping229Kinput requests with16Koutput allowance each; active2 observed. Not a claim of full262K simultaneous context or scheduler batch proof.",
+  "client_overlap_seconds": 107.15165728598367,
+  "gpu0_free_mib_min": 4167,
+  "host_available_mib_min": 63849.8359375,
+  "input_plus_output_reserve_total": 491232,
+  "native_artifact_sha256": "34d7e106d5d1e4e40a6e9ffaedcf8f8610f7bf0372b772caca2949fa8ae4b478",
+  "observed_peak_active_kv_tokens": 458546.0,
+  "output_reserve_per_request": 16384,
+  "passed": true,
+  "running_two_samples": 2,
+  "sample_subset_sha256": "b7d8d3db3102b304ddcf404f9992393bbab4df72fe644de502a0926431049692",
+  "target_kv_capacity_tokens": 822267
+}

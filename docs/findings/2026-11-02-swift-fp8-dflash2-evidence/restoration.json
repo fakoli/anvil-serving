@@ -1,0 +1,23 @@
+{
+  "schema": "public-restoration-attestation/v1",
+  "status": "pretrial-private-serving-state-reestablished-with-tighter-ram-containment",
+  "promoted": false,
+  "verification": {
+    "functional_acceptance_observations_passed": 12,
+    "oom_events": 0,
+    "cgroup_limit_events": 0,
+    "protected_resources": "not reserved by trial or recovery"
+  },
+  "containment": {
+    "ram_and_ram_plus_swap_ceiling_gib_before": 52,
+    "ram_and_ram_plus_swap_ceiling_gib_after": 47,
+    "host_reserve_gib": 24,
+    "previous_peak_gib": 44.23,
+    "independent_review": "accepted within fresh host admission boundary"
+  },
+  "limits": [
+    "Model, route, endpoint, GPU identity, private ports and startup-owner mappings are omitted.",
+    "The private startup recipe was retained; no reboot or fresh provisioning was tested.",
+    "This is a public attestation; detailed native restoration receipts remain private."
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "bound_sha256": {
+    "native/nospec/nospec-ctx8192-c1.json": "47a2fad617ba00a39b85e25464dfd554bf72b2e37d97b4b1b514e18361120359",
+    "nospec-first-cell-adjudication.json": "2719bcfd94eef62ce897d970e24e5c263a3ab7b12fb186c0107654e1b000009b",
+    "plans/queue-nospec.json": "374c51b50ec10d808032d908a2a0fef57508cd0b3a2c90affd3f1baaae60709c",
+    "plans/run-plan.json": "13036c3340fc99fd18cd36f9d771fee029de5109fd2242536dd9c7f5896b9251",
+    "telemetry/nospec/nospec-ctx8192-c1/cell-summary.json": "4218801cf058a0f03fa7ec184a38b0581b50c59a5c4ff8e7d333134656566d2a",
+    "telemetry/run_cell.py": "a91d4d9e8e789b15db8e3dbee950c0a7d712ae561c264df87ba7c1476e024e43"
+  },
+  "entrypoint_sha256": "e30a8faecc833563b19717b3a377744650bb9f2169990ee9a6eb0187e4b23158",
+  "excluded": "nospec-ctx8192-c1",
+  "finished": {
+    "monotonic_ns": 525150070894194,
+    "unix_ns": 1793597267305792568
+  },
+  "identity_sha256": "a1d7cdc40ce645f77a809a1fe231444158615491251c3532066c52e6b77838ba",
+  "prior_coverage_passed": false,
+  "results": [
+    {
+      "cell": "nospec-ctx8192-c2",
+      "exit_status": 0
+    },
+    {
+      "cell": "nospec-ctx8192-c4",
+      "exit_status": 0
+    },
+    {
+      "cell": "nospec-ctx32768-c1",
+      "exit_status": 0
+    },
+    {
+      "cell": "nospec-ctx32768-c2",
+      "exit_status": 0
+    },
+    {
+      "cell": "nospec-ctx32768-c4",
+      "exit_status": 0
+    }
+  ],
+  "selected": [
+    "nospec-ctx8192-c2",
+    "nospec-ctx8192-c4",
+    "nospec-ctx32768-c1",
+    "nospec-ctx32768-c2",
+    "nospec-ctx32768-c4"
+  ],
+  "started": {
+    "monotonic_ns": 524947185657194,
+    "unix_ns": 1793597064420555850
+  }
+}
