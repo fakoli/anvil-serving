@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- `scripts/journey_smoke.py` installs the wheel into a stock Python container and
+  walks the gateway quickstart and every step of the seven product journeys as a
+  new user would. CI runs it on Linux; a step may refuse where it needs hardware,
+  but a crash, a hang, or a regression in a step that works today fails the build.
 - `router maintenance-console` runs a prepared, protected router cutover from a
   POSIX terminal. It shows a fresh native preview for the stop and for the
   reopening and takes a separate typed YES for each; piped input cannot

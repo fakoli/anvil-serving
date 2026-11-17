@@ -152,6 +152,13 @@ silently change direction and never delete an ADR — supersede it.
   `python scripts/wheel_smoke.py`. The smoke creates and removes a temporary virtual environment,
   installs the single wheel with `--no-deps`, verifies required package data, and invokes the
   installed `anvil-serving router run --help` outside the checkout.
+- To walk the product as a new user would, run `python scripts/journey_smoke.py` after the build
+  (needs Docker). It installs the wheel into a stock Python container with no checkout, operator
+  repository, Docker, or GPU, follows the gateway quickstart against a stand-in model server, and
+  then runs every step of the seven product journeys twice: once with only the quickstart done,
+  once with `ANVIL_SERVING_HOME` pointing at the `init --out-dir` scaffold. A step may refuse where
+  it needs hardware; it must never crash or hang, and the steps listed in `MUST_PASS` must exit 0.
+  `--pypi` checks the published release instead, and `--json` prints every step's output.
 - Delivery PRs use `.github/PULL_REQUEST_TEMPLATE.md` to record namespaced PRD/task IDs,
   the exact reviewed Git commit, proof status, implementer/reviewer separation, human apply/merge disposition, and final
   documentation/adversarial review outcomes. Run the local read-only gate with

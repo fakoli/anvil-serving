@@ -257,6 +257,10 @@ jobs:
       - name: Clean-install smoke (fresh venv, Hermes dependency, exact versions, package data)
         run: python scripts/wheel_smoke.py
 
+      - name: Journey smoke (quickstart and seven journeys in a clean container)
+        if: runner.os == 'Linux'
+        run: python scripts/journey_smoke.py
+
   mcp-bridge-bundle:
     name: mcp bridge bundle reproducible
     runs-on: ubuntu-latest
