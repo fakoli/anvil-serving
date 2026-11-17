@@ -8,6 +8,9 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- `eval benchmark speed plan` validates a privately prepared SPEED-Bench JSONL
+  corpus and prints a deterministic, prompt-free offline plan with pinned input
+  identities. Planning only: it prepares no corpus and sends no model request.
 - `eval benchmark records` lists every dated finding as one
   `anvil-serving.benchmark-record/v1` record (model, engine, quantization,
   hardware, context, concurrency, decision, and explicit evidence gaps). The
