@@ -102,3 +102,19 @@ def test_existing_edge_manifest_records_remain_unchanged():
     edges = [entry for entry in manifest_data()["commands"] if entry["path"] == "edge" or entry["path"].startswith("edge ")]
     digest = hashlib.sha256(json.dumps(edges, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     assert digest == "69eb1f26a60755fb425afc69dd53b9a2955599e7a9f192cf2823a5529e67fce6"
+
+
+def test_missing_declaration_is_distinguished_without_echoing_the_reason(fake_manager, monkeypatch, tmp_path, capsys):
+    from anvil_serving.connect.config import ManifestError
+
+    package = importlib.import_module("anvil_serving.connect")
+    def fail(*args, **kwargs):
+        raise ManifestError("$.private: reason")
+    monkeypatch.setattr(package.manage, "validate", fail)
+    present = tmp_path / "deployment.json"
+    present.write_text("{}", encoding="utf-8")
+    for manifest, code in ((tmp_path / "absent.json", "connect_manifest_missing"), (present, "connect_manifest_invalid")):
+        assert cli.main(["connect", "validate", "--manifest", str(manifest), "--json"]) == 2
+        output = capsys.readouterr().out
+        assert json.loads(output)["error"]["code"] == code
+        assert "$.private" not in output and "ANVIL-CONNECT.md" in output

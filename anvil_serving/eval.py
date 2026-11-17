@@ -90,7 +90,9 @@ def resolve_endpoint_target(
         if tier not in tiers:
             source = manifest or "the bundled reference manifest"
             raise ValueError(
-                "unknown tier %r in %s; available tiers: %s"
+                "unknown tier %r in %s; --tier takes a serve name, not a router tier id "
+                "(for an endpoint you already run, pass --base-url and --model); "
+                "available serves: %s"
                 % (tier, source, ", ".join(tiers) or "(none)")
             )
         selected = tiers[tier]

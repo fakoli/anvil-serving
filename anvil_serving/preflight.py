@@ -981,7 +981,11 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
     endpoint.add_argument("--model", help="served model id")
     manifest = ap.add_argument_group("serves manifest input")
     manifest.add_argument("--manifest", help="serves manifest TOML (used with --tier)")
-    manifest.add_argument("--tier", help="serve name in the manifest; fills endpoint and model")
+    manifest.add_argument(
+        "--tier",
+        help="serve name in the serves manifest (see `serves status`), not a router tier id; "
+             "fills endpoint and model",
+    )
     recipe = ap.add_argument_group("serve recipe input")
     recipe.add_argument("--recipe", help="recorded recipe model selector")
     recipe.add_argument("--registry", help="serve-recipe registry used with --recipe")

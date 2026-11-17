@@ -79,6 +79,11 @@ anvil-serving router logs --tail 200 --since 10m
 anvil-serving --json router status
 ```
 
+`router status` reports the Docker-managed router. When Docker has no router
+container but a front door answers on `127.0.0.1:8000` (one started with
+`router run`), it says so and exits 0; `data.process_front_door` carries the
+HTTP status.
+
 `router status --json` and the controller/MCP status report include a `custody`
 observation: container/image IDs, the configured image reference and its current
 local image ID, Compose project/service, start/restart metadata, and mount

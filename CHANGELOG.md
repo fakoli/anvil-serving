@@ -8,6 +8,13 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- `scripts/journey_smoke.py` installs the wheel into a stock Python container and
+  walks the gateway quickstart and every step of the seven product journeys as a
+  new user would. CI runs it on Linux; a step may refuse where it needs hardware,
+  but a crash, a hang, or a regression in a step that works today fails the build.
+  `--real-model` runs the same walk against a small real model and qualifies it
+  with `eval preflight`, directly and through the gateway.
+- The Control Plane & Fleet journey now starts with `anvil-serving doctor`.
 - `router maintenance-console` runs a prepared, protected router cutover from a
   POSIX terminal. It shows a fresh native preview for the stop and for the
   reopening and takes a separate typed YES for each; piped input cannot
@@ -49,6 +56,25 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- First-run gaps found by the journey smoke:
+  - `init --out-dir DIR` now tells you to export `ANVIL_SERVING_HOME=DIR` before
+    its next steps, which read that directory.
+  - `eval benchmark evidence list` no longer fails outside a checkout. Without
+    `--root` it reads `./docs/findings`, then `findings/` in the operator home,
+    and reports an empty list when neither exists.
+  - `router up` and `router down` refuse when no Compose file resolves, instead
+    of planning against a path the installed package does not ship.
+  - `router status` reports a front door started with `router run` when Docker
+    does not manage one.
+  - `connect` distinguishes a missing deployment declaration from an invalid one
+    and points to the example. The reason itself stays redacted.
+  - `serves up` says that Docker did not answer when it cannot read container
+    state, and `fleet version` says when the topology exists but is not valid yet.
+  - `eval preflight --tier` help and errors say that it takes a serve name, not
+    a router tier id. The Evaluation journey now writes `<SERVE>` and names the
+    `--base-url`/`--model` form for an endpoint you already run.
+  - The Anvil Connect journey's enroll step now includes the required
+    `--manifest`.
 - `eval benchmark evidence list` no longer crashes on campaign evidence
   artifacts.
 

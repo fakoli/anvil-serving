@@ -36,6 +36,7 @@ import json
 import os
 import re
 import secrets
+import shlex
 import subprocess
 import sys
 import tomllib
@@ -1093,10 +1094,6 @@ def _main_home(a):
         if token["tightened"]:
             print("  WARNING: %s was readable by other users; permissions set to 0600."
                   % token["path"], file=sys.stderr)
-        if os.path.dirname(token["path"]) != config_home():
-            print("  NOTE: the router reads %s, not this file; copy %s there or use "
-                  "ANVIL_SERVING_HOME=%s." % (os.path.join(config_home(), ".env"),
-                  ROUTER_TOKEN_ENV, result["out_dir"]))
     if not (discovery["compute_a_gpu"] and discovery["compute_b_gpu"]):
         why = ("was not probed (--no-detect-host)" if a.no_detect_host
                else "has no detected two-GPU topology")
@@ -1105,6 +1102,14 @@ def _main_home(a):
               "--model NAME`; for a local model use `init --single-model`." % why)
     print("  Secrets: add values from .env.example to .env (never committed; do not copy over it).")
     print()
+    if result["out_dir"] != config_home():
+        print("Select this configuration home in your shell before the next steps:")
+        print("  Bash/zsh:")
+        print("    export ANVIL_SERVING_HOME=%s" % shlex.quote(result["out_dir"]))
+        print("  PowerShell:")
+        print("    $env:ANVIL_SERVING_HOME = '%s'" % result["out_dir"].replace("'", "''"))
+        print("  This selects the manifests and .env together; no token copy is needed.")
+        print()
     print("Next steps (zero hand-assembly):")
     print("  1. add host values and secrets from .env.example to %s"
           "   # do not cp over it: it holds the router token"
@@ -1113,14 +1118,12 @@ def _main_home(a):
     print("     For media, first: anvil-serving host docker-image build media-worker --confirm")
     print("  3. anvil-serving serves up --group voice   # (or llm-stack / comfy / ...)")
     print("  4. anvil-serving serves status")
-    router_path = os.path.join(result["out_dir"], "router.toml")
-    if a.out_dir:
-        print("  5. anvil-serving router run --config %s"
-              "   # front door on 127.0.0.1:8000" % router_path)
-    else:
-        print("  5. anvil-serving router run"
-              "   # uses the config-home router.toml; front door on 127.0.0.1:8000")
+    print("  5. anvil-serving router run"
+          "   # uses the config-home router.toml; front door on 127.0.0.1:8000")
     edge_path = os.path.join(result["out_dir"], "edge.toml")
-    print("  6. Optional tailnet edge (ADR-0019): anvil-serving edge render "
-          "--config %s" % edge_path)
+    print("  6. Optional tailnet edge (ADR-0019), preview only:")
+    print("     Bash/zsh:")
+    print("       anvil-serving edge render --config %s" % shlex.quote(edge_path))
+    print("     PowerShell:")
+    print("       anvil-serving edge render --config '%s'" % edge_path.replace("'", "''"))
     return 0

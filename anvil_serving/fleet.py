@@ -180,6 +180,17 @@ def _topology_remote_hosts():
     return declared_remote_hosts(topology)
 
 
+def _no_hosts_message() -> str:
+    """Say whether the topology is missing or merely not valid yet."""
+    from .paths import resolve_topology_path
+
+    cause = "no operator topology found"
+    if os.path.isfile(resolve_topology_path(None)):
+        cause = ("the operator topology is not valid yet "
+                 "(see `anvil-serving topology validate`)")
+    return cause + " and no --host given; pass --host NAME at least once"
+
+
 def cmd_version(
     hosts,
     *,
@@ -585,9 +596,7 @@ def _fleet_version_result_from_args(args) -> CommandResult:
     else:
         hosts, note = _topology_remote_hosts()
         if hosts is None:
-            message = (
-                "no operator topology found and no --host given; pass --host NAME at least once"
-            )
+            message = _no_hosts_message()
             error = UsageError(message, code="fleet_hosts_unavailable")
             return CommandResult(error=error, human_stderr=message + "\n")
     warnings = (note,) if note else ()
@@ -637,10 +646,7 @@ def main(argv=None) -> int:
     else:
         hosts, note = _topology_remote_hosts()
         if hosts is None:
-            print(
-                "no operator topology found and no --host given; pass --host NAME at least once",
-                file=sys.stderr,
-            )
+            print(_no_hosts_message(), file=sys.stderr)
             return 2
         if note:
             print(note, file=sys.stderr)

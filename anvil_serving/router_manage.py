@@ -839,8 +839,8 @@ def cmd_logs(container, tail="200", since=None, follow=False, _run=subprocess.ru
     return result.returncode
 
 
-def _health(_open, port=8000):
-    url = runtime_url("http://127.0.0.1:%s/" % port)
+def _health(_open, port=8000, path=""):
+    url = runtime_url("http://127.0.0.1:%s/%s" % (port, path))
     try:
         with _open(url, timeout=3) as response:
             return getattr(response, "status", None) or response.getcode()
@@ -1193,6 +1193,16 @@ def main(argv=None):
             container=getattr(args, "container", DEFAULT_CONTAINER),
             recreate=getattr(args, "recreate", False),
         )
+        if (args.action in {"up", "down"} and not getattr(args, "compose", None)
+                and not os.path.isfile(plan["compose"])):
+            # No default resolved: a plan naming a packaged path nobody has is not reviewable.
+            print(
+                "no router Compose file at %s: run `anvil-serving init` to scaffold one, pass "
+                "--compose PATH, or start a process-run gateway with `anvil-serving router run`"
+                % config_path("docker-compose.yml"),
+                file=sys.stderr,
+            )
+            return 2
         if args.dry_run and not (args.action == 'up' and (args.current_stop_receipt or args.rollback_current_stop)):
             print(json.dumps({"applied": False, "dry_run": True, **plan}, sort_keys=True))
             return 0
@@ -1222,9 +1232,16 @@ def main(argv=None):
         human = "router container: %s\ndocker state:     %s\n" % (
             args.container, summary["docker_state"])
         error = None
+        if summary["docker_state"] in {"error", "absent"}:
+            # `router run` starts a front door that Docker never sees.
+            summary["process_front_door"] = _health(urllib.request.urlopen, path="healthz")
         if summary["docker_state"] == "error":
             human += "status:           UNKNOWN (docker unavailable)\n"
-            error = OperatorError("Docker unavailable", code="router_status_unavailable")
+            if not summary["process_front_door"]:
+                error = OperatorError("Docker unavailable", code="router_status_unavailable")
+        if summary.get("process_front_door"):
+            human += ("front door:       answering on http://127.0.0.1:8000/healthz "
+                      "(a `router run` process, not Docker-managed)\n")
         return CommandResult(data=summary, human_stdout=human, error=error)
     if args.action == "fleet-status":
         return cmd_fleet_status(

@@ -239,6 +239,7 @@ def test_init_generates_private_token_without_printing_it(token_home, capsys):
     assert (os.stat(token_home / ".env").st_mode & 0o777) == 0o600
     assert token not in output
     assert str(token_home / ".env") in output
+    assert "export ANVIL_SERVING_HOME=" not in output
 
 
 def test_init_twice_keeps_token(token_home, capsys):
@@ -282,9 +283,11 @@ def test_init_refuses_symlinked_env(token_home, tmp_path, capsys):
     assert target.read_text(encoding="utf-8") == ""
 
 
-def test_init_out_dir_outside_home_notes_where_router_reads(token_home, tmp_path, capsys):
+def test_init_out_dir_outside_home_selects_token_and_manifests_together(token_home, tmp_path, capsys):
     output = _init_cli(capsys, "--out-dir", str(tmp_path / "other"))
-    assert str(token_home / ".env") in output
+    assert "export ANVIL_SERVING_HOME=" + str(tmp_path / "other") in output
+    assert "no token copy is needed" in output
+    assert "export ANVIL_SERVING_HOME" not in _init_cli(capsys)
     assert _env_token(tmp_path / "other")
 
 
@@ -587,3 +590,34 @@ def test_tailnet_ip_without_gpu_fills_companion_placeholder_and_findings_stay_in
     topo = (tmp_path / "operator-topology.toml").read_text(encoding="utf-8")
     assert "100.64.0.7" in topo and "REPLACE-WITH-YOUR-MINI-TAILNET-IP" not in topo
     assert "../.." not in (tmp_path / "serves.toml").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("existing_token", [False, True])
+def test_home_out_dir_prints_quoted_shell_selection_before_next_steps(
+    token_home, tmp_path, monkeypatch, capsys, existing_token,
+):
+    import shlex
+    from anvil_serving import cli
+    from anvil_serving.paths import config_path
+
+    target = tmp_path / "operator's config $literal"
+    if existing_token:
+        monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "fixture-token")
+    output = _init_cli(capsys, "--out-dir", str(target))
+    line = next(line.strip() for line in output.splitlines() if line.strip().startswith("export "))
+    assert shlex.split(line) == ["export", "ANVIL_SERVING_HOME=" + str(target)]
+    assert "$env:ANVIL_SERVING_HOME = '" + str(target).replace("'", "''") + "'" in output
+    assert output.index(line) < output.index("anvil-serving serves groups")
+    assert "copy ANVIL_ROUTER_TOKEN" not in output
+    assert "router run --config" not in output
+    edge_command = next(line.strip() for line in output.splitlines()
+                        if line.strip().startswith("anvil-serving edge render"))
+    assert shlex.split(edge_command) == ["anvil-serving", "edge", "render", "--config",
+                                          str(target / "edge.toml")]
+    assert "--config '" + str(target / "edge.toml").replace("'", "''") + "'" in output
+    assert "fixture-token" not in output
+    assert os.environ["ANVIL_SERVING_HOME"] == str(token_home)  # init cannot change the shell
+    monkeypatch.setenv("ANVIL_SERVING_HOME", shlex.split(line)[1].split("=", 1)[1])
+    assert config_path("serves.toml") == str(target / "serves.toml")
+    assert cli.main(["serves", "groups"]) == 0
+    assert "llm-stack" in capsys.readouterr().out
