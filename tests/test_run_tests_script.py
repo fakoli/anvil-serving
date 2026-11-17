@@ -53,3 +53,14 @@ def test_plan_launches_partitions_files_and_isolates_junit(tmp_path, monkeypatch
     junit = [item for command, _env, _log in launches for item in command if item.startswith("--junitxml=")]
     assert len(set(junit)) == 3 and all(item.startswith(f"--junitxml={base}") for item in junit)
     assert len({env["TMPDIR"] for _command, env, _log in launches}) == 3
+
+
+def test_balance_separates_recorded_slow_files_and_keeps_every_file(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "tests").mkdir()
+    # Sorted round-robin would put both slow files (a and c) in the first shard.
+    run_tests.WEIGHTS.write_text('{"tests/test_a.py": 9, "tests/test_c.py": 8}')
+    files = [f"tests/test_{name}.py" for name in "abcdef"]
+    first, second = run_tests.balance(files, 2)
+    assert sorted(first + second) == files
+    assert ("tests/test_a.py" in first) != ("tests/test_c.py" in first)

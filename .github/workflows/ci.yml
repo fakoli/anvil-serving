@@ -69,14 +69,15 @@ jobs:
         run: node --version
 
       - name: Run tests
-        # Four parallel pytest shards, one per runner vCPU. The 3.13 leg adds
+        # Four duration-balanced pytest shards, one per runner vCPU. The 3.13 leg adds
         # coverage and runs everything; the others skip tests marked slow.
         if: runner.os == 'Linux'
         run: python scripts/run_tests.py --shards 4 ${{ matrix.python-version == '3.13' && '--coverage' || '-m "not slow"' }} -x -q --durations=40 --junitxml=test-results.xml -o faulthandler_timeout=120 -o faulthandler_exit_on_timeout=true
 
-      - name: Run tests (macOS, single process)
+      - name: Run tests (macOS)
+        # One balanced shard per runner vCPU; the whole suite, slow tests included.
         if: runner.os == 'macOS'
-        run: python -m pytest tests/ -q --durations=40 --junitxml=test-results.xml -o faulthandler_timeout=120 -o faulthandler_exit_on_timeout=true
+        run: python scripts/run_tests.py --shards auto -q --durations=40 --junitxml=test-results.xml -o faulthandler_timeout=120 -o faulthandler_exit_on_timeout=true
 
       - name: Retain test timings and outcomes
         if: always()

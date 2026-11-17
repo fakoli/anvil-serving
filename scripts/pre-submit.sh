@@ -9,7 +9,7 @@
 #       docs/CLI.md generated blocks, and the audit fixture) and FAIL if the
 #       regeneration changes any of those files — that means they were stale
 #       and the regenerated output must be reviewed and committed;
-#   (b) run the full test suite (scripts/run_tests.py --shards 4);
+#   (b) run the full test suite (scripts/run_tests.py --shards auto);
 #   (c) mirror CI's ruff lint gate when ruff is available.
 #
 # Root cause it fixes: a contributor/agent who adds or removes a file, forgets
@@ -79,10 +79,10 @@ else
 fi
 
 # (b) Full test suite — the gate the review runs.
-if $PY scripts/run_tests.py --shards 4 -x -q; then
+if $PY scripts/run_tests.py --shards auto -x -q; then
     pass 'full test suite green'
 else
-    fail 'full test suite red (scripts/run_tests.py --shards 4 -x -q)'
+    fail 'full test suite red (scripts/run_tests.py --shards auto -x -q)'
 fi
 
 # (c) Ruff lint — a whole-repo gate CI enforces in its own job. Optional here
