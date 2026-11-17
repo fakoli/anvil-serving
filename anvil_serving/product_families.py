@@ -86,7 +86,8 @@ PRODUCT_FAMILIES = (
         journey=(
             JourneyStep(
                 "initialize",
-                "Create the private operator scaffold.",
+                "Create the private operator scaffold, then export ANVIL_SERVING_HOME=<OPERATOR_HOME> "
+                "so every later command reads it.",
                 "anvil-serving init --out-dir <OPERATOR_HOME>",
                 "A reviewable host-local configuration scaffold exists outside the public repo.",
             ),
@@ -167,14 +168,14 @@ PRODUCT_FAMILIES = (
         journey=(
             JourneyStep(
                 "plan",
-                "Resolve a bounded functional gate without sending requests.",
-                "anvil-serving eval preflight --tier <TIER> --dry-run",
+                "Resolve a bounded functional gate for one declared serve without sending requests.",
+                "anvil-serving eval preflight --tier <SERVE> --dry-run",
                 "Endpoint, model, checks, and output contract are validated before execution.",
             ),
             JourneyStep(
                 "qualify",
                 "Run the independently defined endpoint checks.",
-                "anvil-serving eval preflight --tier <TIER> --confirm",
+                "anvil-serving eval preflight --tier <SERVE> --confirm",
                 "A concrete served configuration receives pass/fail evidence.",
             ),
             JourneyStep(
@@ -315,7 +316,7 @@ PRODUCT_FAMILIES = (
             JourneyStep(
                 "enroll",
                 "Enroll a connector and approve its fingerprint independently.",
-                "anvil-serving connect init --service connector:<ID> --bundle <FILE> --confirm",
+                "anvil-serving connect init --manifest <PATH> --service connector:<ID> --bundle <FILE> --confirm",
                 "Trust is established out of band: invitation, identity fingerprint, human approval.",
             ),
             JourneyStep(
@@ -352,6 +353,12 @@ PRODUCT_FAMILIES = (
         ),
         docs_anchor="docs/PRODUCT-FAMILIES.md#control-plane-fleet",
         journey=(
+            JourneyStep(
+                "diagnose",
+                "Check this install, its dependencies, and configured endpoint health.",
+                "anvil-serving doctor",
+                "Missing prerequisites and unreachable configured endpoints are named first.",
+            ),
             JourneyStep(
                 "validate",
                 "Validate the public schema and private topology values offline.",

@@ -285,6 +285,8 @@ def test_init_refuses_symlinked_env(token_home, tmp_path, capsys):
 def test_init_out_dir_outside_home_notes_where_router_reads(token_home, tmp_path, capsys):
     output = _init_cli(capsys, "--out-dir", str(tmp_path / "other"))
     assert str(token_home / ".env") in output
+    assert "export ANVIL_SERVING_HOME=%s" % (tmp_path / "other") in output
+    assert "export ANVIL_SERVING_HOME" not in _init_cli(capsys)
     assert _env_token(tmp_path / "other")
 
 

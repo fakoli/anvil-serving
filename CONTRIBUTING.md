@@ -159,6 +159,9 @@ silently change direction and never delete an ADR — supersede it.
   once with `ANVIL_SERVING_HOME` pointing at the `init --out-dir` scaffold. A step may refuse where
   it needs hardware; it must never crash or hang, and the steps listed in `MUST_PASS` must exit 0.
   `--pypi` checks the published release instead, and `--json` prints every step's output.
+  `--real-model` replaces the stand-in with a small real model served from a second container
+  and adds `eval preflight` against the model and through the gateway. First use takes about
+  1.7 GB of disk (server image and weights), so CI does not run it.
 - Delivery PRs use `.github/PULL_REQUEST_TEMPLATE.md` to record namespaced PRD/task IDs,
   the exact reviewed Git commit, proof status, implementer/reviewer separation, human apply/merge disposition, and final
   documentation/adversarial review outcomes. Run the local read-only gate with

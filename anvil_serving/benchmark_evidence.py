@@ -1140,6 +1140,17 @@ def _render_compare(result: Mapping[str, Any]) -> None:
             print(f"  {name}: {json.dumps(values, ensure_ascii=True)}")
 
 
+def _operator_root() -> str:
+    from .paths import config_path
+
+    return config_path("findings")
+
+
+def _default_root() -> str | None:
+    """First existing evidence root: a checkout's, then the operator home's."""
+    return next((root for root in (DEFAULT_ROOT, _operator_root()) if os.path.isdir(root)), None)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="anvil-serving eval benchmark evidence",
@@ -1147,7 +1158,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     actions = parser.add_subparsers(dest="action", required=True)
     list_parser = actions.add_parser("list", help="List normalized benchmark artifacts below a root.")
-    list_parser.add_argument("--root", default=DEFAULT_ROOT)
+    list_parser.add_argument(
+        "--root",
+        help="Evidence root (default: ./docs/findings, then findings/ in the operator home).",
+    )
     list_parser.add_argument("--model")
     list_parser.add_argument("--suite")
     list_parser.add_argument(
@@ -1178,9 +1192,20 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(list(argv) if argv is not None else None)
     try:
-        if args.action == "list":
+        if args.action == "list" and not (args.root or _default_root()):
+            print(
+                "no retained evidence yet: neither ./%s nor %s exists; pass --root PATH to read "
+                "another directory" % (DEFAULT_ROOT, _operator_root()),
+                file=sys.stderr,
+            )
+            result = {
+                "schema": "anvil-serving.benchmark-evidence-index/v1",
+                "scanned_entries": 0, "scanned_json_files": 0, "matched": 0,
+                "limit": args.limit, "truncated": False, "artifacts": [],
+            }
+        elif args.action == "list":
             result = discover_artifacts(
-                args.root,
+                args.root or _default_root(),
                 model=args.model,
                 suite=args.suite,
                 kind=args.kind,

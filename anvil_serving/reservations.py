@@ -319,8 +319,11 @@ def deny_exclusive_conflict(
         owner, state = unresolved[0]
         return [
             "exclusive admission denied: cannot resolve exclusive owner %s "
-            "(container %s state %s)" % (
+            "(container %s state %s%s)" % (
                 owner["name"], owner["container"], state,
+                # "error" is docker_state's "could not ask Docker", not a container fault.
+                "; Docker did not answer -- is it installed and running on this host?"
+                if state == "error" else "",
             ),
             "no container command was run",
         ]

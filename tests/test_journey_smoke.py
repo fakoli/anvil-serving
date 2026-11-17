@@ -37,9 +37,8 @@ def test_every_journey_placeholder_has_a_value() -> None:
 
 
 def test_gated_steps_exist_in_the_catalog() -> None:
-    assert smoke.MUST_PASS <= STEPS
-    assert smoke.MUST_PASS_OPERATOR <= STEPS
-    assert not smoke.MUST_PASS & smoke.MUST_PASS_OPERATOR
+    assert smoke.MUST_PASS | smoke.MUST_PASS_OPERATOR | smoke.MUST_PASS_GATEWAY <= STEPS
+    assert not smoke.MUST_PASS & (smoke.MUST_PASS_OPERATOR | smoke.MUST_PASS_GATEWAY)
 
 
 def test_failures_flag_crashes_and_gated_refusals_only() -> None:
@@ -53,6 +52,8 @@ def test_failures_flag_crashes_and_gated_refusals_only() -> None:
             _step("operator", "anvil-connect", "validate", "refused"),   # may refuse
             _step("operator", "anvil-connect", "render", "crash"),       # never allowed
             _step("gateway", "anvil-media", "discover", "ok"),
+            _step("gateway", "control-plane-fleet", "diagnose", "refused"),   # gated without the scaffold
+            _step("operator", "control-plane-fleet", "diagnose", "refused"),  # needs Docker there
         ],
     }
     problems = smoke.failures(report)
@@ -61,5 +62,6 @@ def test_failures_flag_crashes_and_gated_refusals_only() -> None:
         "gateway/model-serving/select",
         "operator/model-serving/observe",
         "operator/anvil-connect/render",
+        "gateway/control-plane-fleet/diagnose",
     ]
     assert "refused" in smoke.render(report)

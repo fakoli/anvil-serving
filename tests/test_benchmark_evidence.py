@@ -242,3 +242,19 @@ def test_retained_protocol_v2_artifact_normalizes_without_custom_extraction() ->
     assert summary["capacity"]["wall_ms"] == pytest.approx(458778.985)
     assert suite["fully_correct_items"] == 9
     assert suite["passed_attempts"] == 27
+
+
+def test_list_without_any_evidence_root_reports_none_instead_of_failing(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "home"))
+    assert benchmark_evidence.main(["list", "--format", "json"]) == 0
+    captured = capsys.readouterr()
+    assert json.loads(captured.out)["artifacts"] == []
+    assert "no retained evidence yet" in captured.err
+
+    _write(tmp_path / "home" / "findings" / "one.json", {
+        "schema": "anvil-serving.benchmark/v1", "model": "alpha-model", "metrics": {"ttft_p50_ms": 10},
+    })
+    assert benchmark_evidence.main(["list", "--format", "json"]) == 0
+    assert json.loads(capsys.readouterr().out)["matched"] == 1
+    assert benchmark_evidence.main(["list", "--root", str(tmp_path / "missing")]) == 2

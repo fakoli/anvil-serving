@@ -67,6 +67,12 @@ def test_no_hosts_anywhere_exits_two(tmp_path, monkeypatch, capsys):
     rc = fleet.main(["version"])
     assert rc == 2
     assert "no operator topology" in capsys.readouterr().err
+    home = tmp_path / "placeholders"
+    home.mkdir()
+    (home / "operator-topology.toml").write_text("schema_version = 1\n", encoding="utf-8")
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
+    assert fleet.main(["version"]) == 2
+    assert "not valid yet" in capsys.readouterr().err
 
 
 def test_global_json_preserves_typed_report_when_version_gate_fails(monkeypatch, capsys):

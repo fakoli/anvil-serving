@@ -1106,6 +1106,10 @@ def _main_home(a):
     print("  Secrets: add values from .env.example to .env (never committed; do not copy over it).")
     print()
     print("Next steps (zero hand-assembly):")
+    if result["out_dir"] != config_home():
+        # Every later command reads the operator home, not this directory.
+        print("  0. export ANVIL_SERVING_HOME=%s"
+              "   # the steps below read this directory" % result["out_dir"])
     print("  1. add host values and secrets from .env.example to %s"
           "   # do not cp over it: it holds the router token"
           % os.path.join(result["out_dir"], ".env"))

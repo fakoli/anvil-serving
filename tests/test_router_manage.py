@@ -603,3 +603,20 @@ def test_managed_route_state_initializer_refuses_unverified_selected_image(tmp_p
         return type("Result", (), {"returncode": 0, "stdout": "not-an-image-id"})()
     with pytest.raises(ValueError, match="route_state_image_unknown"):
         router_manage.initialize_route_state_managed(str(config), str(tmp_path / "compose.yml"), _run=docker)
+
+
+def test_lifecycle_without_any_compose_file_refuses_instead_of_planning(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(router_manage, "default_compose_candidates", lambda: [str(tmp_path / "none.yml")])
+    monkeypatch.setattr(router_manage, "DEFAULT_COMPOSE", str(tmp_path / "packaged.yml"))
+    assert router_manage.main(["up", "--dry-run"]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == "" and "router run" in captured.err
+
+
+@pytest.mark.parametrize("answering,ok", [(200, True), (None, False)])
+def test_status_reports_a_process_run_front_door_when_docker_is_unavailable(monkeypatch, answering, ok):
+    monkeypatch.setattr(router_manage, "status_summary", lambda container: {"docker_state": "error"})
+    monkeypatch.setattr(router_manage, "_health", lambda _open, **_kwargs: answering)
+    result = router_manage.main(["status"])
+    assert (result.error is None) is ok
+    assert ("router run" in result.human_stdout) is ok

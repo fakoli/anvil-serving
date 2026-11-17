@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sqlite3
 import subprocess
 import sys
@@ -420,7 +421,20 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
     except UsageError as exc:
         return CommandResult(error=exc)
     except ManifestError:
-        return CommandResult(error=UsageError("Invalid Connect deployment declaration.", code="connect_manifest_invalid"))
+        # The reason stays redacted; say which of the two cases this is and where the example lives.
+        manifest = getattr(args, "manifest", None)
+        if manifest and not os.path.isfile(manifest):
+            return CommandResult(error=UsageError(
+                "Connect deployment declaration not found. Start from the example in "
+                "docs/ANVIL-CONNECT.md#declarations-and-operation.",
+                code="connect_manifest_missing",
+            ))
+        return CommandResult(error=UsageError(
+            "Invalid Connect deployment declaration, or the files and directories it names are "
+            "not prepared on this host. Compare with the example in "
+            "docs/ANVIL-CONNECT.md#declarations-and-operation.",
+            code="connect_manifest_invalid",
+        ))
     except (OSError, ValueError, RuntimeError, sqlite3.Error, subprocess.SubprocessError) as exc:
         partial = getattr(exc, "may_have_executed", False) is True
         error_type = PartialResultError if partial else OperatorError

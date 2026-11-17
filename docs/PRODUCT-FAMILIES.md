@@ -35,7 +35,8 @@ loaded and qualified without becoming caller-visible. A serve can be ready
 without being routed.
 
 1. Create a private operator scaffold with
-   `anvil-serving init --out-dir <OPERATOR_HOME>`.
+   `anvil-serving init --out-dir <OPERATOR_HOME>`, then
+   `export ANVIL_SERVING_HOME=<OPERATOR_HOME>` so every later command reads it.
 2. Inspect pinned candidates with `anvil-serving models recipes list`.
 3. Review lifecycle and reservation changes with
    `anvil-serving serves up --group <GROUP> --dry-run`.
@@ -71,7 +72,10 @@ Passing evidence supports a human decision; it never changes serving state on
 its own.
 
 1. Resolve the endpoint and checks with
-   `anvil-serving eval preflight --tier <TIER> --dry-run`.
+   `anvil-serving eval preflight --tier <SERVE> --dry-run`. `<SERVE>` is a
+   serve name from `anvil-serving serves status`, not a router tier id. For an
+   endpoint you already run, replace `--tier <SERVE>` with
+   `--base-url URL --model NAME`.
 2. Execute the reviewed gate with the same command plus `--confirm`.
 3. Choose the benchmark matching the claim through
    `anvil-serving eval benchmark --help`.
@@ -163,11 +167,13 @@ and the optional Workbench stack. Browser application access belongs to
 surfaces. Verified SSH exists only as bounded recovery for commands that
 declare it.
 
-1. Validate ownership offline with `anvil-serving topology validate`.
-2. Inspect the command host with `anvil-serving host status`.
-3. Probe the typed remote boundary with `anvil-serving controller status`.
-4. Check package parity with `anvil-serving fleet version`.
-5. Inspect the agent-facing catalog with `anvil-serving mcp tools` before
+1. Check the install, its dependencies, and configured endpoint health with
+   `anvil-serving doctor`.
+2. Validate ownership offline with `anvil-serving topology validate`.
+3. Inspect the command host with `anvil-serving host status`.
+4. Probe the typed remote boundary with `anvil-serving controller status`.
+5. Check package parity with `anvil-serving fleet version`.
+6. Inspect the agent-facing catalog with `anvil-serving mcp tools` before
    reconciling a client.
 
 Continue with [Control Plane & Fleet commands](cli/control-plane.md),

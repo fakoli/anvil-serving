@@ -13,6 +13,10 @@ Two personas run every journey step:
 
 A refusal is expected wherever a step needs Docker, a GPU, or a second host. A crash
 or a hang never is, and neither is a failed quickstart.
+
+``--real-model`` swaps the stand-in for a small real model served from a second
+container, and adds the endpoint qualification a stand-in cannot pass: ``eval
+preflight`` against the model directly and through the gateway.
 """
 
 from __future__ import annotations
@@ -34,14 +38,19 @@ DEFAULT_IMAGE = "python:3.13-slim"
 MARKER = "JOURNEY-SMOKE-REPORT "
 STEP_TIMEOUT_SECONDS = 60
 UPSTREAM = "http://127.0.0.1:11434/v1"
-UPSTREAM_MODEL = "llama3.2"
+UPSTREAM_MODEL = "journey-smoke-model"
+# The real-model lane. Any OpenAI-compatible server would do; this pair runs on a CPU.
+REAL_IMAGE = "ghcr.io/ggml-org/llama.cpp:server"
+REAL_MODEL = "Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M"
+REAL_CACHE_VOLUME = "anvil-journey-smoke-models"
+REAL_READY_SECONDS = 900  # first run downloads about 500 MB of weights
 GATEWAY = "http://127.0.0.1:8000"
 OPERATOR_HOME = "/root/operator"
 
 # What a new user would type for each placeholder. Names come from the packaged
 # scaffold; ``--tier`` names a serve in the serves manifest, not a router tier id.
 VALUES = {
-    "<OPERATOR_HOME>": OPERATOR_HOME, "<GROUP>": "llm-stack", "<TIER>": "primary",
+    "<OPERATOR_HOME>": OPERATOR_HOME, "<GROUP>": "llm-stack", "<SERVE>": "primary",
     "<PROFILE>": "dark-audio", "<WORKFLOW>": "image.flux2-klein-4b-fp8-v1", "<VERSION>": "v1",
     "<VOLUME>": "anvil-models", "<URL>": "http://127.0.0.1:8188",
     "<JSON>": '{"prompt":"a red cube","seed":1}', "<JOB_ID>": "job-not-submitted",
@@ -55,9 +64,11 @@ VALUES = {
 MUST_PASS = frozenset({
     ("model-serving", "initialize"),
     ("model-serving", "select"),
+    ("capability-gateway", "observe"),
     ("capability-gateway", "verify"),
     ("evaluation-evidence", "plan"),
     ("evaluation-evidence", "measure"),
+    ("evaluation-evidence", "review"),
     ("anvil-voice", "qualify"),
     ("anvil-media", "discover"),
     ("anvil-media", "preview"),
@@ -69,6 +80,10 @@ MUST_PASS_OPERATOR = frozenset({
     ("model-serving", "observe"),
     ("capability-gateway", "preview"),
     ("anvil-voice", "validate"),
+})
+# This passes only without the scaffold: its managed serves make Docker a required check.
+MUST_PASS_GATEWAY = frozenset({
+    ("control-plane-fleet", "diagnose"),
 })
 
 
@@ -117,11 +132,11 @@ class _Upstream(BaseHTTPRequestHandler):
         }).encode())
 
 
-def _run(argv: list[str], env: dict[str, str]) -> dict[str, object]:
+def _run(argv: list[str], env: dict[str, str], timeout: int = STEP_TIMEOUT_SECONDS) -> dict[str, object]:
     started = time.monotonic()
     try:
         done = subprocess.run(argv, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT, timeout=STEP_TIMEOUT_SECONDS, check=False)
+                              stderr=subprocess.STDOUT, timeout=timeout, check=False)
         code: int | None = done.returncode
         output = done.stdout.decode("utf-8", "replace")
     except subprocess.TimeoutExpired as exc:
@@ -151,9 +166,10 @@ def _call(method: str, path: str, headers: dict[str, str], body: dict | None = N
         return 0, str(exc)
 
 
-def _quickstart(env: dict[str, str]) -> tuple[list[dict[str, object]], subprocess.Popen | None]:
+def _quickstart(env: dict[str, str], real: bool) -> tuple[list[dict[str, object]], subprocess.Popen | None]:
     """docs/QUICKSTART-GATEWAY.md, in order. Returns the checks and the live gateway."""
     checks: list[dict[str, object]] = []
+    reply = "" if real else "pong"  # a real model answers in its own words
 
     def record(name: str, ok: bool, detail: str) -> None:
         checks.append({"check": name, "ok": ok, "detail": detail[:300]})
@@ -180,14 +196,14 @@ def _quickstart(env: dict[str, str]) -> tuple[list[dict[str, object]], subproces
     hello = [{"role": "user", "content": "hello"}]
     for name, want, needle, method, path, headers, body in (
         ("models lists llm.primary", 200, "llm.primary", "GET", "/v1/models", bearer, None),
-        ("OpenAI chat", 200, "pong", "POST", "/v1/chat/completions", bearer,
+        ("OpenAI chat", 200, reply, "POST", "/v1/chat/completions", bearer,
          {"model": "llm.primary", "messages": hello}),
         ("OpenAI chat, streamed", 200, "data:", "POST", "/v1/chat/completions", bearer,
          {"model": "llm.primary", "messages": hello, "stream": True}),
-        ("Anthropic messages", 200, "pong", "POST", "/v1/messages",
+        ("Anthropic messages", 200, reply, "POST", "/v1/messages",
          {"x-api-key": token, "anthropic-version": "2023-06-01"},
          {"model": "llm.primary", "max_tokens": 64, "messages": hello}),
-        ("OpenAI responses", 200, "pong", "POST", "/v1/responses", bearer,
+        ("OpenAI responses", 200, reply, "POST", "/v1/responses", bearer,
          {"model": "llm.primary", "input": "hello"}),
         ("unknown alias is refused", 404, "", "POST", "/v1/chat/completions", bearer,
          {"model": "not.configured", "messages": hello}),
@@ -195,6 +211,16 @@ def _quickstart(env: dict[str, str]) -> tuple[list[dict[str, object]], subproces
     ):
         status, text = _call(method, path, headers, body)
         record(name, status == want and needle in text, f"HTTP {status} {text[:200]}")
+    if real:
+        # What the stand-in cannot prove: the endpoint qualifies, directly and when relayed.
+        gate = ["anvil-serving", "eval", "preflight", "--checks", "smoke,json", "--confirm"]
+        for name, target in (
+            ("preflight, model server", ["--base-url", UPSTREAM, "--model", UPSTREAM_MODEL]),
+            ("preflight, through the gateway",
+             ["--base-url", GATEWAY + "/v1", "--model", "llm.primary", "--api-key-env", "ANVIL_ROUTER_TOKEN"]),
+        ):
+            done = _run(gate + target, {**env, "ANVIL_ROUTER_TOKEN": token}, timeout=600)
+            record(name, done["status"] == "ok", str(done["tail"])[-300:])
     return checks, gateway
 
 
@@ -212,21 +238,40 @@ def _journeys(persona: str, env: dict[str, str]) -> list[dict[str, object]]:
     return results
 
 
-def inside(install: str) -> int:
+def _wait_for_real_model() -> bool:
+    deadline = time.monotonic() + REAL_READY_SECONDS
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(UPSTREAM[:-len("/v1")] + "/health", timeout=5) as response:
+                if response.status == 200:
+                    return True
+        except OSError:
+            pass
+        time.sleep(2)
+    return False
+
+
+def inside(install: str, real: bool = False) -> int:
     env = {**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1"}
     installed = _run([sys.executable, "-m", "pip", "install", "--quiet",
                       "--root-user-action=ignore", install], env)
     version = _run(["anvil-serving", "--version"], env)
     report: dict[str, object] = {"install": installed["status"], "version": version["last_line"],
                                  "python": sys.version.split()[0], "quickstart": [], "steps": []}
-    if installed["status"] == "ok" and version["status"] == "ok":
-        server = ThreadingHTTPServer(("127.0.0.1", 11434), _Upstream)
-        threading.Thread(target=server.serve_forever, daemon=True).start()
-        report["quickstart"], gateway = _quickstart(env)
-        steps = _journeys("gateway", env)
+    report["upstream"] = REAL_MODEL if real else "stand-in"
+    if real and not _wait_for_real_model():
+        report["quickstart"] = [{"check": "real model server ready", "ok": False,
+                                 "detail": f"no answer on {UPSTREAM} in {REAL_READY_SECONDS}s"}]
+    elif installed["status"] == "ok" and version["status"] == "ok":
+        if not real:
+            server = ThreadingHTTPServer(("127.0.0.1", 11434), _Upstream)
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+        report["quickstart"], gateway = _quickstart(env, real)
+        # The gateway stays up for both personas: `router status` should see it.
+        report["steps"] = (_journeys("gateway", env)
+                           + _journeys("operator", {**env, "ANVIL_SERVING_HOME": OPERATOR_HOME}))
         if gateway is not None:
             gateway.terminate()
-        report["steps"] = steps + _journeys("operator", {**env, "ANVIL_SERVING_HOME": OPERATOR_HOME})
     print(MARKER + json.dumps(report))
     return 0
 
@@ -243,7 +288,8 @@ def failures(report: dict) -> list[str]:
     for step in report["steps"]:
         key = (step["family"], step["stage"])
         where = f"{step['persona']}/{step['family']}/{step['stage']}"
-        required = key in MUST_PASS or (step["persona"] == "operator" and key in MUST_PASS_OPERATOR)
+        required = key in MUST_PASS or key in (
+            MUST_PASS_OPERATOR if step["persona"] == "operator" else MUST_PASS_GATEWAY)
         if step["status"] in ("crash", "timeout"):
             problems.append(f"{where}: {step['status']}")
         elif required and step["status"] != "ok":
@@ -252,7 +298,8 @@ def failures(report: dict) -> list[str]:
 
 
 def render(report: dict) -> str:
-    lines = [f"{report['version']} on Python {report['python']}", "", "Quickstart"]
+    lines = [f"{report['version']} on Python {report['python']}, upstream: {report.get('upstream', 'stand-in')}",
+             "", "Quickstart"]
     lines += [f"  {'ok  ' if check['ok'] else 'FAIL'}  {check['check']}" for check in report["quickstart"]]
     for persona in ("gateway", "operator"):
         lines += ["", f"Journeys as the {persona} persona"]
@@ -268,12 +315,25 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--pypi", action="store_true", help="install the published release instead")
     parser.add_argument("--image", default=DEFAULT_IMAGE)
     parser.add_argument("--json", action="store_true", help="print the full report")
+    parser.add_argument("--real-model", action="store_true",
+                        help=f"serve {REAL_MODEL} from {REAL_IMAGE} instead of the stand-in "
+                             "(first use takes about 1.7 GB of disk: a 1.2 GB server image and 0.5 GB of weights kept in a Docker volume)")
     parser.add_argument("--inside", metavar="INSTALL", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if args.inside:
-        return inside(args.inside)
+        return inside(args.inside, args.real_model)
 
     command = ["docker", "run", "--rm", "-v", f"{Path(__file__).resolve()}:/smoke/journey_smoke.py:ro"]
+    model_server = f"anvil-journey-smoke-model-{os.getpid()}" if args.real_model else None
+    if model_server:
+        # Sharing the model server's network namespace keeps every address 127.0.0.1
+        # and publishes nothing on the host.
+        subprocess.run(
+            ["docker", "run", "-d", "--rm", "--name", model_server, "-e", "LLAMA_CACHE=/cache",
+             "-v", f"{REAL_CACHE_VOLUME}:/cache", REAL_IMAGE, "-hf", REAL_MODEL,
+             "--alias", UPSTREAM_MODEL, "--host", "127.0.0.1", "--port", "11434"],
+            check=True, stdout=subprocess.DEVNULL)
+        command += ["--network", f"container:{model_server}"]
     if args.pypi:
         install = "anvil-serving"
     else:
@@ -283,7 +343,12 @@ def main(argv: list[str] | None = None) -> int:
         command += ["-v", f"{wheel}:/smoke/{wheel.name}:ro"]
         install = f"/smoke/{wheel.name}"
     command += [args.image, "python", "/smoke/journey_smoke.py", "--inside", install]
-    done = subprocess.run(command, capture_output=True, text=True, check=False)
+    try:
+        done = subprocess.run(command + (["--real-model"] if model_server else []),
+                              capture_output=True, text=True, check=False)
+    finally:
+        if model_server:
+            subprocess.run(["docker", "rm", "-f", model_server], capture_output=True, check=False)
     payload = [line for line in done.stdout.splitlines() if line.startswith(MARKER)]
     if not payload:
         print(f"journey smoke did not report: {(done.stderr or done.stdout)[-2000:]}", file=sys.stderr)
