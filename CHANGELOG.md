@@ -27,9 +27,18 @@ All notable changes to this project are documented here. The format is based on
 - `product families` help and the CLI reference describe seven product
   families; Anvil Connect is its own family rather than part of Control Plane
   & Fleet.
-- The benchmarks start page is a stable landing page: where to start,
-  hardware, metrics, the five latest decisions, and evidence labels. Every
-  earlier dated decision moved unchanged to a new decision log page.
+- The benchmarks overview is a stable landing page: where to start,
+  hardware, metrics, the latest results, and evidence labels. Every dated
+  decision moved unchanged to a new decision log page.
+- The documentation site has a new design and a shorter structure. Tabs are
+  Home, Get started, Journeys, Benchmarks, Recipes, and Reference. Internal
+  planning records and niche runbooks stay published but leave navigation,
+  and raw evidence bundles leave site search. Journey pages render as numbered
+  steps, and every finding opens with the same record header with evidence
+  and decision badges. The home page and benchmarks overview list the latest
+  findings automatically, the results table is filterable, and a new operator
+  cheat sheet puts every journey's commands on one page. Existing page URLs
+  are unchanged.
 
 ### Fixed
 

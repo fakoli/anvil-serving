@@ -1,7 +1,7 @@
 # Benchmark decision log
 
-Every dated benchmark decision and recommendation that used to lead the
-[benchmarks start page](index.md), newest first. Labels such as `current`,
+Every dated benchmark decision and recommendation in full, newest first.
+The [benchmarks overview](index.md) lists the latest findings automatically. Labels such as `current`,
 `rollback`, and `promoted` describe the decision at that date, not live
 deployment state. Each entry links to the dated finding that holds the exact
 configuration, raw artifacts, failures, and caveats.

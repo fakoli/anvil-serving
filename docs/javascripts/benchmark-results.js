@@ -1,5 +1,19 @@
 // Interactive charts for docs/benchmarks/results.md.
 // Reads the record index the MkDocs hook builds from retained evidence.
+// The record table follows this script in the page, so wait for the full document.
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll("[data-av-filter]").forEach(function (input) {
+    const rows = document.querySelectorAll("#" + input.dataset.avFilter + " tbody tr");
+    input.addEventListener("input", function () {
+      const terms = input.value.toLowerCase().split(/\s+/).filter(Boolean);
+      rows.forEach(function (row) {
+        const text = row.textContent.toLowerCase();
+        row.hidden = !terms.every(function (term) { return text.includes(term); });
+      });
+    });
+  });
+});
+
 (function () {
   "use strict";
 
@@ -140,6 +154,8 @@
       if (sweep) controls.record.value = sweep.id;
       Object.keys(controls).forEach(function (name) { controls[name].addEventListener("change", render); });
       render();
+      // Re-read theme colors when the reader switches between light and dark.
+      new MutationObserver(render).observe(document.body, { attributes: true, attributeFilter: ["data-md-color-scheme"] });
     })
     .catch(function (error) {
       status.textContent = "The benchmark index could not be loaded (" + error.message + "). The table below still lists every record.";

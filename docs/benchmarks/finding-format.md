@@ -26,9 +26,11 @@ the complete role and hashing contract.
 
 Every dated finding is also published as one
 `anvil-serving.benchmark-record/v1` record on the
-[benchmark results page](results.md), and as a record card under the
-finding's title. The site builds records from the finding and its artifact
-set at build time; nothing is written into `docs/`. A record states model,
+[benchmark results page](results.md), as a record header under the
+finding's title, and as a card in the latest-results lists on the home page
+and the [benchmarks overview](index.md). The site builds all three from the
+finding and its artifact set at build time; nothing is written into `docs/`,
+so a new finding needs no landing-page edit. A record states model,
 engine, quantization, hardware, context, concurrency, decision, headline
 results, and limitations, and lists every core field the evidence does not
 record as a gap.

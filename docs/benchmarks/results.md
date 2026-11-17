@@ -37,8 +37,9 @@ Select a point to open its finding.
 
 ## All records
 
-Newest first. *Gaps* lists core fields the retained evidence does not record;
-they are shown rather than inferred. <!-- benchmark-records:download -->
+Newest first. A field the retained evidence does not record reads
+*not recorded*; it is shown rather than inferred.
+<!-- benchmark-records:download -->
 
 <!-- benchmark-records:table -->
 

@@ -49,7 +49,7 @@ def test_tensorfold_reasoning_publication_matches_retained_evidence():
     assert counts["low"] == {"selected": 2, "resolved": 2}
     assert summary["workload"]["unique_tasks"] == 1
     assert not summary["decision"]["promotion_authorized"]
-    for page in ("docs/findings/README.md", "docs/benchmarks/index.md", "docs/benchmarks/runs.md",
+    for page in ("docs/findings/README.md", "docs/benchmarks/decisions.md", "docs/benchmarks/runs.md",
                  "docs/benchmarks/models/glm53-flash.md", "docs/benchmarks/hardware/rtx-pro-6000.md"):
         assert "2026-11-09-tensorfold-reasoning-budget.md" in (ROOT / page).read_text()
     manifest = json.loads((BUNDLE / "artifact-manifest.json").read_text())
@@ -117,7 +117,7 @@ def test_thinking_budget_rollout_keeps_failed_grades_and_populations_separate():
     assert not summary["boundary"]["native_trigger_flag_retained"]
     finding = (ROOT / "docs/findings/2026-11-09-tensorfold-reasoning-budget.md").read_text()
     assert "**1/2 jobs**" in finding and "**1/1**" in finding
-    for page in ("docs/findings/README.md", "docs/benchmarks/index.md", "docs/benchmarks/runs.md",
+    for page in ("docs/findings/README.md", "docs/benchmarks/decisions.md", "docs/benchmarks/runs.md",
                  "docs/benchmarks/models/glm53-flash.md", "docs/benchmarks/hardware/rtx-pro-6000.md"):
         assert "source-and-rollout-follow-up-2026-11-09" in (ROOT / page).read_text()
     manifest = json.loads((bundle / "artifact-manifest.json").read_text())
