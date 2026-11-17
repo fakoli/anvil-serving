@@ -1,0 +1,401 @@
+{
+  "created_at": "2026-09-25T11:37:55.548599Z",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "endpoint": {
+    "auth_env": "ANVIL_ROUTER_TOKEN",
+    "base_url": "https://router.example.test/v1",
+    "model": "llm.secondary"
+  },
+  "failure": null,
+  "harnesses": {
+    "agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "python_environment": {
+      "architecture": "arm64",
+      "platform": "darwin",
+      "python": {
+        "implementation": "CPython",
+        "version": "3.14.6"
+      },
+      "resolved_packages_sha256": "b4ad822012fce20c5c4ee851a71d68920361f61fd6586edc56a85c338d355b52",
+      "schema": "anvil-serving.swe-python-environment/v1"
+    }
+  },
+  "instances": [
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "a576b4b969d344c12b8fca12e352c6c5f29e46e46a154886271172a16ee8a1f9",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "django__django-11099",
+      "prediction_sha256": "e754832b486e044c733c1398de02f9bc0d2d872d5308f2956d16390e061ffd3b",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-073e0cd35f82443bad66e083",
+        "chatcmpl-26d0e8077d724bbbb0d9571a",
+        "chatcmpl-2894211eb4e54d08ac655daf",
+        "chatcmpl-4d9ad0d7c8d54258b595a657",
+        "chatcmpl-715f8d1ff5cc42ffa62a30bb",
+        "chatcmpl-856ba47537c44a64b23e96c3",
+        "chatcmpl-96e4cb99bbb146f8a2a5de0d",
+        "chatcmpl-9fe4d10b4a2841eda6fded18",
+        "chatcmpl-a5657384f2da41eb9bbac4f6",
+        "chatcmpl-ab2528c4f5da4c20ab223dc2",
+        "chatcmpl-ba255cfac80a4fcba6871ee8",
+        "chatcmpl-bdb992b1e83b4e4da0390c84",
+        "chatcmpl-ce4a64ba1b744ddf863ab43b",
+        "chatcmpl-df43f76f7eb544f6a5701552",
+        "chatcmpl-e0a81050b2bf418abddcb20e",
+        "chatcmpl-fa1d6dd5ce2d4be586247d67",
+        "chatcmpl-ff6385c609f94ed19b9fc497"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "/operator-home/.anvil-serving/benchmark-runs/swift15-ninfer-5090-20260925/swift15-ninfer-swe-20260925-003/work/mini-output/django__django-11099/django__django-11099.traj.json",
+        "sha256": "7a9d6ca2ad06fbd9386f7099d7c7fd73e57ea0ab5368eac864a574167c9a9b7f"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "a576b4b969d344c12b8fca12e352c6c5f29e46e46a154886271172a16ee8a1f9",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pytest-dev__pytest-10051",
+      "prediction_sha256": "c5f44a3667a4cfbdeebabf7ba3b2c49b2fd68afa4476345b657cd30924707920",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-11f5625bd1dc43bab475959c",
+        "chatcmpl-1735fedb81b842a098aa6c64",
+        "chatcmpl-36cddff537ef494eae68a7bb",
+        "chatcmpl-38774dad04744f34816f7d80",
+        "chatcmpl-38b5ad4cbb0c4771a6d622af",
+        "chatcmpl-42cb62b499104701bf0fc9cd",
+        "chatcmpl-44b6d9780a5a480e97ffec95",
+        "chatcmpl-45fd01624f4f4762a6f12451",
+        "chatcmpl-4f86661c68784949b1f241a4",
+        "chatcmpl-53cbbc7d0d0e4196a42a7da0",
+        "chatcmpl-738a1bc0fa01434288819ee5",
+        "chatcmpl-76f3cee171c04390b8e6a95c",
+        "chatcmpl-7e5121f8b5a0403b91839402",
+        "chatcmpl-7ffd0b45e5304bc4b76e22a7",
+        "chatcmpl-97cd24494fa84b41a34c9263",
+        "chatcmpl-9961ff1765584338ac826dfb",
+        "chatcmpl-9a887b3c411e4b64a0d984ce",
+        "chatcmpl-9bdc3912a0d94fd28fbe4dec",
+        "chatcmpl-9c5cc4365ae74c96b5a3e33a",
+        "chatcmpl-9c61b1254fbd4189b3062332",
+        "chatcmpl-9f367379d5174fe99f74b7f9",
+        "chatcmpl-a96e371712f24423907116c1",
+        "chatcmpl-db7fd4d3ae564655882b5b74",
+        "chatcmpl-e6d288dca58b4affad6eb1dd",
+        "chatcmpl-faf586d8427544ee9f077c2a"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "/operator-home/.anvil-serving/benchmark-runs/swift15-ninfer-5090-20260925/swift15-ninfer-swe-20260925-003/work/mini-output/pytest-dev__pytest-10051/pytest-dev__pytest-10051.traj.json",
+        "sha256": "32a38876d3e2027f5592c2ca4aea4053a824a38f7b06ac630147c0d0a3b1e049"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "a576b4b969d344c12b8fca12e352c6c5f29e46e46a154886271172a16ee8a1f9",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "scikit-learn__scikit-learn-10297",
+      "prediction_sha256": "619f7f4df05d7fac06f97b2ad1b3dc0b552e70feed3d63d86346ea209ce9c12a",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-02aaa61d98d14ebf9b5d5ca6",
+        "chatcmpl-05122149e331466fb368c472",
+        "chatcmpl-54fdec5c229f484ebc29616e",
+        "chatcmpl-5927a5cdfa6b45beb9e83c13",
+        "chatcmpl-62b9b0dcce554b95bed80adc",
+        "chatcmpl-6f1b071be18f4ceea54d8e0f",
+        "chatcmpl-8059ca46f700485496ca3881",
+        "chatcmpl-8943a465a95742ae870c4d41",
+        "chatcmpl-89b553731ccf4dc382f36fe3",
+        "chatcmpl-a56f1b180c6a4e23a8cae36b",
+        "chatcmpl-ace5b5b722a643ff9fd52e3d",
+        "chatcmpl-b8be81259fe743d8b26ce6a5",
+        "chatcmpl-be8403c2b51a49d4ae60f165",
+        "chatcmpl-c20a83cb73b44eb58a59c174",
+        "chatcmpl-c6d95e2d5f3d4151a2da4b5c",
+        "chatcmpl-d42fe8708d8c47028de7ce58",
+        "chatcmpl-f5f03c08e79f431e9cd43471"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "/operator-home/.anvil-serving/benchmark-runs/swift15-ninfer-5090-20260925/swift15-ninfer-swe-20260925-003/work/mini-output/scikit-learn__scikit-learn-10297/scikit-learn__scikit-learn-10297.traj.json",
+        "sha256": "c8f8de1c6cc20b17d3e66c2f9bb268a37360f4c506934ecd88e15abfdf1a0a30"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "a576b4b969d344c12b8fca12e352c6c5f29e46e46a154886271172a16ee8a1f9",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "psf__requests-1142",
+      "prediction_sha256": "04c36d641a36802a77fe650d8ab51bfd27ba5db7acec34f8a8af04451614b0f7",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-20ee275a04ae4cdb94b230c5",
+        "chatcmpl-274167dc535744e39db7794d",
+        "chatcmpl-391bef2a65c345a1b436e197",
+        "chatcmpl-3b496948fd584ad98335ab46",
+        "chatcmpl-49ef910b7b3145cdb334b584",
+        "chatcmpl-4a0073017c934d2099e6c5f1",
+        "chatcmpl-5a111a5541734a5f82a7127e",
+        "chatcmpl-5e116b63a2044206ad63d275",
+        "chatcmpl-6dc956dc543f4302ab7c6a1e",
+        "chatcmpl-71a0df398cc449a6ac11f7e4",
+        "chatcmpl-7cf97165b0634210a0700b83",
+        "chatcmpl-7f4ddacd1f5345f59bba1c3b",
+        "chatcmpl-87c5d3169ea74dcda4931744",
+        "chatcmpl-888e91ac88ef45319070dc17",
+        "chatcmpl-941c5619bdaa443e923ec10d",
+        "chatcmpl-979af58654004cffbcad1cb1",
+        "chatcmpl-a60ad6c7461e439d8954432e",
+        "chatcmpl-aae0fd17d4514ee7bf41b253",
+        "chatcmpl-ae65086d9ba040448269a29d",
+        "chatcmpl-bfa32e56844c481eaf90620d",
+        "chatcmpl-c6bbeb0d938a456d99161545",
+        "chatcmpl-d34169b2452a4c8da8b8d2a3",
+        "chatcmpl-d486ae8a9db242f68c505541",
+        "chatcmpl-d76a36d1d09c4fab9628d3d4",
+        "chatcmpl-e0d9bb95ef4b474b91a967fa",
+        "chatcmpl-e1fe6db424d64d42adb9dcd1",
+        "chatcmpl-e51dd2226e9746bbb2f5e8d8",
+        "chatcmpl-ee28c7c93ffd409788de4d6b"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "/operator-home/.anvil-serving/benchmark-runs/swift15-ninfer-5090-20260925/swift15-ninfer-swe-20260925-003/work/mini-output/psf__requests-1142/psf__requests-1142.traj.json",
+        "sha256": "46ed1e55bac7893bd07b4c74afbb3d021813260bcdde2a38fc9a4e0116b7e5c1"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "a576b4b969d344c12b8fca12e352c6c5f29e46e46a154886271172a16ee8a1f9",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sympy__sympy-11618",
+      "prediction_sha256": "4aeef238732b924ec69211b21b3bed82266f38dc3ec97ef49ecd226e0547968a",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-0fad81503b4b49cdb166c9a6",
+        "chatcmpl-19b822e542ff43008affd12b",
+        "chatcmpl-1a56d2be690f432a82ac2e4d",
+        "chatcmpl-1d2c61cb2b9547d5a5b8a5ff",
+        "chatcmpl-1f9a1e8719ec4f6b9515bccb",
+        "chatcmpl-282d94e9a6134e69944c9837",
+        "chatcmpl-3205849a107143d791de9b4a",
+        "chatcmpl-471671419e0346b4a325847e",
+        "chatcmpl-4980aebbe8ca4e15a1990533",
+        "chatcmpl-4cc48aa7728d40a0ba56aebb",
+        "chatcmpl-4df448e92f8e452b90634bc8",
+        "chatcmpl-53e351ce1ee14f89bd756fb1",
+        "chatcmpl-54cfba5cfa434237883c2654",
+        "chatcmpl-5d8b1fb0417640458e04ed52",
+        "chatcmpl-617835e95588464b91eb4123",
+        "chatcmpl-6e1b20a9f2fd4f1eb4a3cdfe",
+        "chatcmpl-719c01e2ba714aabab0630fe",
+        "chatcmpl-77acbdc0fad141fb9eb13037",
+        "chatcmpl-8447d982f1ab465b968f2948",
+        "chatcmpl-85e15f9e58ab489080834f04",
+        "chatcmpl-8e21260b7f15404ab2e5be6a",
+        "chatcmpl-8ff1f6b15e5d424a8dca1f1c",
+        "chatcmpl-921aa7ce7b9246828912dd82",
+        "chatcmpl-92492ed8f35b4e88970e1c2f",
+        "chatcmpl-9795d17eeb75489a9691e9ac",
+        "chatcmpl-9e66355f713e4c42a6b85995",
+        "chatcmpl-a71c947809c14a6dbeff5241",
+        "chatcmpl-ab3dccc91c8e4f6b83f16855",
+        "chatcmpl-b69a45fe11fe45a6b70a9840",
+        "chatcmpl-bc1e86cafacc4f1dbd2d2c91",
+        "chatcmpl-c75314eaac9d4d7aa07dbafa",
+        "chatcmpl-c96a1d0d91874d248062938b",
+        "chatcmpl-d618c188e2d940b7b6f014c1",
+        "chatcmpl-e3d21ee1327742bca734b51e",
+        "chatcmpl-e528096e90b14f3b92dd40c0"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "/operator-home/.anvil-serving/benchmark-runs/swift15-ninfer-5090-20260925/swift15-ninfer-swe-20260925-003/work/mini-output/sympy__sympy-11618/sympy__sympy-11618.traj.json",
+        "sha256": "acf0af1efe9684a83da59845ec50b32e5c1ff0e17b7a62f1d416a5500241f224"
+      }
+    }
+  ],
+  "official_grader_complete": true,
+  "ownership_id": "swift15-ninfer-5090-20260925",
+  "plan_sha256": "c042fa5eeb4407de043771ed7ce7d6340413326ae0da35f5c4e171133aca2b20",
+  "profile": "scout",
+  "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion."
+  },
+  "request_controls": {
+    "reasoning_effort": null,
+    "thinking_mode": "default"
+  },
+  "run_id": "swift15-ninfer-swe-20260925-003",
+  "schema": "anvil-serving.swe-run/v1",
+  "selection": {
+    "instance_ids": [
+      "django__django-11099",
+      "pytest-dev__pytest-10051",
+      "scikit-learn__scikit-learn-10297",
+      "psf__requests-1142",
+      "sympy__sympy-11618"
+    ],
+    "kind": "explicit_instance_ids",
+    "sha256": "d17f26180e5775793599e4f42223ac22ba5807b900618b506c1359975ad89672"
+  },
+  "split": "test",
+  "stages": [
+    {
+      "command": [
+        "/operator-home/.anvil-serving/benchmark-harness-cache/swe-python-environments/f814385986b9b579b7cb75a0764a74a25bb1e14dcc84287b61fa97cac60ff7f3/bin/python",
+        "/operator-home/.anvil-serving/benchmark-harness-cache/mini-swe-agent/a83fcae82d2a08f0ee0c688f9d137b3566c097f8/src/minisweagent/run/benchmarks/swebench.py",
+        "--output",
+        "/operator-home/.anvil-serving/benchmark-runs/swift15-ninfer-5090-20260925/swift15-ninfer-swe-20260925-003/work/mini-output",
+        "--model",
+        "openai/llm.secondary",
+        "--subset",
+        "verified",
+        "--split",
+        "test",
+        "--filter",
+        "^(?:django__django\\-11099|pytest\\-dev__pytest\\-10051|scikit\\-learn__scikit\\-learn\\-10297|psf__requests\\-1142|sympy__sympy\\-11618)$",
+        "--workers",
+        "1",
+        "--environment-class",
+        "docker",
+        "--config",
+        "/operator-home/.anvil-serving/benchmark-harness-cache/mini-swe-agent/a83fcae82d2a08f0ee0c688f9d137b3566c097f8/src/minisweagent/config/benchmarks/swebench.yaml",
+        "--config",
+        "/operator-home/.anvil-serving/benchmark-runs/swift15-ninfer-5090-20260925/swift15-ninfer-swe-20260925-003/work/anvil-swe-config.yaml"
+      ],
+      "duration_s": 349.614053,
+      "name": "agent",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed",
+      "stderr": "Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\nRetrying <unknown> in 4 seconds as it raised ServiceUnavailableError: litellm.ServiceUnavailableError: ServiceUnavailableError: OpenAIException - the configured model service is unavailable.\n",
+      "stdout": "minisweagent: INFO: Results will be saved to                                    \n/operator-home/.anvil-serving/benchmark-runs/swift15-ninfer-5090-20260925\n/swift15-ninfer-swe-20260925-003/work/mini-output                               \nLogging to '/operator-home/.anvil-serving/benchmark-runs/swift15-ninfer-5090-20260925/swift15-ninfer-swe-20260925-003/work/mini-output/minisweagent.log'\nminisweagent: INFO: Loading dataset princeton-nlp/SWE-Bench_Verified, split     \ntest...                                                                         \nminisweagent: INFO: Instance filter: 500 -> 5 instances                         \nminisweagent: INFO: Running on 5 instances...                                   \nminisweagent: INFO: Building agent config from specs:                           \n['/operator-home/.anvil-serving/benchmark-harness-cache/mini-swe-agent/a8\n3fcae82d2a08f0ee0c688f9d137b3566c097f8/src/minisweagent/config/benchmarks/sweben\nch.yaml',                                                                       \n'/operator-home/.anvil-serving/benchmark-runs/swift15-ninfer-5090-2026092\n5/swift15-ninfer-swe-20260925-003/work/anvil-swe-config.yaml']                  \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/local/bin/docker run -d --name minisweagent-3c37460b -w /testbed --platform\nlinux/amd64 --network none --rm                                                 \ndocker.io/swebench/sweb.eval.x86_64.django_1776_django-11099:latest sleep 2h    \nminisweagent.environment: INFO: Started container minisweagent-3c37460b with ID \n9c7e0b030b159b7fafb11bde28f2133298835689962e42320adaf0c7d4b7f403                \nminisweagent: INFO: Saved trajectory to                                         \n'/operator-home/.anvil-serving/benchmark-runs/swift15-ninfer-5090-2026092\n5/swift15-ninfer-swe-20260925-003/work/mini-output/django__django-11099/django__\ndjango-11099.traj.json'                                                         \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/local/bin/docker run -d --name minisweagent-a784cd72 -w /testbed --platform\nlinux/amd64 --network none --rm                                                 \ndocker.io/swebench/sweb.eval.x86_64.psf_1776_requests-1142:latest sleep 2h      \nminisweagent.environment: INFO: Started container minisweagent-a784cd72 with ID \nd4a63d81c6f4f5da1124e29b7b2c0c7a232e1600953ed629572ad98007337d40                \nminisweagent: INFO: Saved trajectory to                                         \n'/operator-home/.anvil-serving/benchmark-runs/swift15-ninfer-5090-2026092\n5/swift15-ninfer-swe-20260925-003/work/mini-output/psf__requests-1142/psf__reque\nsts-1142.traj.json'                                                             \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/local/bin/docker run -d --name minisweagent-4d3569d2 -w /testbed --platform\nlinux/amd64 --network none --rm                                                 \ndocker.io/swebench/sweb.eval.x86_64.pytest-dev_1776_pytest-10051:latest sleep 2h\nminisweagent.environment: INFO: Started container minisweagent-4d3569d2 with ID \ne4728c70a1ad47e68692fab5e6bfe2aee6293f99237ba4562a49b270bd0978cd                \nminisweagent: INFO: Saved trajectory to                                         \n'/operator-home/.anvil-serving/benchmark-runs/swift15-ninfer-5090-2026092\n5/swift15-ninfer-swe-20260925-003/work/mini-output/pytest-dev__pytest-10051/pyte\nst-dev__pytest-10051.traj.json'                                                 \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/local/bin/docker run -d --name minisweagent-5e31a263 -w /testbed --platform\nlinux/amd64 --network none --rm                                                 \ndocker.io/swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297:latest \nsleep 2h                                                                        \nminisweagent.environment: INFO: Started container minisweagent-5e31a263 with ID \n6d447cb7824cce9b37ef5b52250cbea776b9a3a5b850859b33e04eddc1b8bcb8                \nminisweagent: INFO: Saved trajectory to                                         \n'/operator-home/.anvil-serving/benchmark-runs/swift15-ninfer-5090-2026092\n5/swift15-ninfer-swe-20260925-003/work/mini-output/scikit-learn__scikit-learn-10\n297/scikit-learn__scikit-learn-10297.traj.json'                                 \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/local/bin/docker run -d --name minisweagent-1a43b908 -w /testbed --platform\nlinux/amd64 --network none --rm                                                 \ndocker.io/swebench/sweb.eval.x86_64.sympy_1776_sympy-11618:latest sleep 2h      \nminisweagent.environment: INFO: Started container minisweagent-1a43b908 with ID \ne575864f0026034972224e8400ab58410fd08311ebbfe614f9e01e31d4412c75                \n\n\u001b[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new\u001b[0m\nLiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.\n\nminisweagent: INFO: Saved trajectory to                                         \n'/operator-home/.anvil-serving/benchmark-runs/swift15-ninfer-5090-2026092\n5/swift15-ninfer-swe-20260925-003/work/mini-output/sympy__sympy-11618/sympy__sym\npy-11618.traj.json'                                                             \n  Overall Progress ($0.00) \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501 5/5 100% 0:05:45 eta: 0:00:00\n\u250f\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2513\n\u2503 Exit Status \u2503 Count \u2503 Most recent instances                                  \u2503\n\u2521\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2547\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2547\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2529\n\u2502 Submitted   \u2502     5 \u2502 sympy__sympy-11618,                                    \u2502\n\u2502             \u2502       \u2502 scikit-learn__scikit-learn-10297...                    \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518"
+    },
+    {
+      "command": [
+        "/operator-home/.anvil-serving/benchmark-harness-cache/swe-python-environments/f814385986b9b579b7cb75a0764a74a25bb1e14dcc84287b61fa97cac60ff7f3/bin/python",
+        "-m",
+        "swebench.harness.run_evaluation",
+        "--dataset_name",
+        "princeton-nlp/SWE-bench_Verified",
+        "--split",
+        "test",
+        "--predictions_path",
+        "/operator-home/.anvil-serving/benchmark-runs/swift15-ninfer-5090-20260925/swift15-ninfer-swe-20260925-003/work/predictions.jsonl",
+        "--max_workers",
+        "1",
+        "--run_id",
+        "swift15-ninfer-swe-20260925-003",
+        "--timeout",
+        "1800",
+        "--report_dir",
+        "/operator-home/.anvil-serving/benchmark-runs/swift15-ninfer-5090-20260925/swift15-ninfer-swe-20260925-003/work/official-grader",
+        "--instance_ids",
+        "django__django-11099",
+        "pytest-dev__pytest-10051",
+        "scikit-learn__scikit-learn-10297",
+        "psf__requests-1142",
+        "sympy__sympy-11618"
+      ],
+      "duration_s": 103.134853,
+      "name": "official_grader",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed",
+      "stderr": "<frozen runpy>:130: RuntimeWarning: 'swebench.harness.run_evaluation' found in sys.modules after import of package 'swebench.harness', but prior to execution of 'swebench.harness.run_evaluation'; this may result in unpredictable behaviour\n2026-09-25 04:43:46,078 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/main/README.md \"HTTP/1.1 307 Temporary Redirect\"\n2026-09-25 04:43:46,165 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/princeton-nlp/SWE-bench_Verified/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/README.md \"HTTP/1.1 200 OK\"\n2026-09-25 04:43:46,259 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/SWE-bench_Verified.py \"HTTP/1.1 404 Not Found\"\n2026-09-25 04:43:46,518 - httpx - INFO - HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/princeton-nlp/SWE-bench_Verified/princeton-nlp/SWE-bench_Verified.py \"HTTP/1.1 404 Not Found\"\n2026-09-25 04:43:46,614 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/datasets/princeton-nlp/SWE-bench_Verified/revision/c104f840cc67f8b6eec6f759ebc8b2693d585d4a \"HTTP/1.1 200 OK\"\n2026-09-25 04:43:46,704 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/.huggingface.yaml \"HTTP/1.1 404 Not Found\"\n2026-09-25 04:43:46,836 - httpx - INFO - HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=princeton-nlp/SWE-bench_Verified \"HTTP/1.1 200 OK\"\n2026-09-25 04:43:46,926 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/datasets/princeton-nlp/SWE-bench_Verified/tree/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/data?recursive=true&expand=false \"HTTP/1.1 200 OK\"\n2026-09-25 04:43:47,016 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/datasets/princeton-nlp/SWE-bench_Verified/tree/c104f840cc67f8b6eec6f759ebc8b2693d585d4a?recursive=false&expand=false \"HTTP/1.1 200 OK\"\n2026-09-25 04:43:47,125 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/dataset_infos.json \"HTTP/1.1 404 Not Found\"\n2026-09-25 04:43:47,240 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/main/README.md \"HTTP/1.1 307 Temporary Redirect\"\n2026-09-25 04:43:47,253 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/princeton-nlp/SWE-bench_Verified/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/README.md \"HTTP/1.1 200 OK\"\n2026-09-25 04:43:47,340 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/SWE-bench_Verified.py \"HTTP/1.1 404 Not Found\"\n2026-09-25 04:43:47,438 - httpx - INFO - HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/princeton-nlp/SWE-bench_Verified/princeton-nlp/SWE-bench_Verified.py \"HTTP/1.1 404 Not Found\"\n2026-09-25 04:43:47,530 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/.huggingface.yaml \"HTTP/1.1 404 Not Found\"\n2026-09-25 04:43:47,622 - httpx - INFO - HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=princeton-nlp/SWE-bench_Verified \"HTTP/1.1 200 OK\"\n2026-09-25 04:43:47,707 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/dataset_infos.json \"HTTP/1.1 404 Not Found\"\n\rEvaluation:   0%|          | 0/5 [00:00<?, ?it/s, error=0, \u2713=0, \u2716=0]\rEvaluation:   0%|          | 0/5 [00:26<?, ?it/s, \u2713=1, \u2716=0, error=0]\rEvaluation:  20%|\u2588\u2588        | 1/5 [00:26<01:44, 26.09s/it, \u2713=1, \u2716=0, error=0]\rEvaluation:  20%|\u2588\u2588        | 1/5 [00:43<01:44, 26.09s/it, \u2713=2, \u2716=0, error=0]\rEvaluation:  40%|\u2588\u2588\u2588\u2588      | 2/5 [00:43<01:03, 21.09s/it, \u2713=2, \u2716=0, error=0]\rEvaluation:  40%|\u2588\u2588\u2588\u2588      | 2/5 [01:03<01:03, 21.09s/it, \u2713=3, \u2716=0, error=0]\rEvaluation:  60%|\u2588\u2588\u2588\u2588\u2588\u2588    | 3/5 [01:03<00:40, 20.36s/it, \u2713=3, \u2716=0, error=0]\rEvaluation:  60%|\u2588\u2588\u2588\u2588\u2588\u2588    | 3/5 [01:22<00:40, 20.36s/it, \u2713=4, \u2716=0, error=0]\rEvaluation:  80%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  | 4/5 [01:22<00:19, 19.81s/it, \u2713=4, \u2716=0, error=0]\rEvaluation:  80%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  | 4/5 [01:40<00:19, 19.81s/it, \u2713=5, \u2716=0, error=0]\rEvaluation: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 5/5 [01:40<00:00, 19.22s/it, \u2713=5, \u2716=0, error=0]\rEvaluation: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 5/5 [01:40<00:00, 20.06s/it, \u2713=5, \u2716=0, error=0]\n",
+      "stdout": "Found 5 existing instance images. Will reuse them.\nRunning 5 instances...\nAll instances run.\nCleaning cached images...\nRemoved 0 images.\nTotal instances: 5\nInstances submitted: 5\nInstances completed: 5\nInstances incomplete: 0\nInstances resolved: 5\nInstances unresolved: 0\nInstances with empty patches: 0\nInstances with errors: 0\nUnstopped containers: 0\nUnremoved images: 5\nReport written to openai__llm.secondary.swift15-ninfer-swe-20260925-003.json\n"
+    }
+  ],
+  "state": "completed",
+  "summary": {
+    "attempted": 5,
+    "graded": 5,
+    "resolve_rate": 1.0,
+    "resolved": 5
+  },
+  "task_container_network": "none"
+}

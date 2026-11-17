@@ -198,6 +198,12 @@ The following rows retain the historical R5–R10 cutoff. The successor above re
 |---|---|---|---|---|---|---|
 | 2026-09-26 | Swift 1.5 Qwen3.8 Flash Next TP2 bounded qualification | Exact NVFP4 `3ff052…`, vLLM 0.30.0 digest `8a69ff…`, TP2/C1, GPU-resident PLE, no CPU offload; 327,680 context and requested 65,536 output allowance | 2x RTX PRO 6000 Blackwell Max-Q | protocol/tools; agentic 18/18; context 12/12 at ~32.7K and ~256.9K actual prompts; images 12/12; eight images 4/4 | `not-qualified`, `no-promotion`; SWE fixed-denominator 2/5 below the 4/5 floor; exact GLM incumbent restored; no performance or full-window claim | [Efficient variants](models/qwen38-efficient-variants.md) · [finding](../findings/2026-09-26-swift-tp2-jev.md) |
 
+## 2026-09-25 Swift-1.5 RTX 5090 secondary promotion
+
+| Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |
+|---|---|---|---|---|---|---|
+| 2026-09-25 | Swift-1.5 Qwen3.8 27B post-promotion benchmark | Pinned all-NVFP4/NInfer DFlash2 K7 baked image, K8V4, 262,144 context, C4 configured, 2 GiB Host KV, 450 W | One RTX 5090 | direct 251,715-token retrieval and routed context 18/18 through 257,898; image/OCR 12/12; small tool/session/intelligence 12/12; routed synthetic agentic 17/18 with one protocol failure; frozen official SWE Verified 5/5; visible 4K C1/C4 100/100, 328.21/615 aggregate tok/s; 128K/C4 **5/10**, five HTTP 503 queue timeouts; exact controlled output 0 | User-authorized `current` secondary route with routed/client acceptance; throughput descriptive and C4 long-context unqualified | [Swift dossier](models/swift15-qwen38-27b.md) · [promotion and benchmark finding](../findings/2026-09-25-swift15-ninfer-5090-promotion.md) |
+
 ## 2026-09-23 GLM runtime investigation
 
 | Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |

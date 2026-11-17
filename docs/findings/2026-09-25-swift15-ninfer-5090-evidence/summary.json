@@ -1,0 +1,829 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-25-swift15-ninfer-5090",
+  "complete": true,
+  "completion_scope": "Final serve and route deployment, bounded post-promotion functional/capacity/quality jobs, client convergence, and evidence capture. Workbench authenticated UI and Pages served-post readback remain pending.",
+  "identity": {
+    "repository_revision": "e760e7b3c2438bc90a091d27c73fa1a39a9a78e8",
+    "model": "kaushikvira/Qwen3.8-27B-swift15-nvfp4full-dflash2-NInfer-v3@ff891a1130adfcf46bf745e06f0fa3dcde2e8c82",
+    "served_model": "qwen38-swift15-ninfer-dflash2-c4-262k",
+    "runtime": "ninfer@bace20dc70249eed6402b66d4852c6c3f9612905",
+    "image": "sha256:59df48dd99f0d177b73de57ba88eb6457ed7e4b0c5771c45e8976adcd9f5ef67",
+    "hardware": "single RTX 5090 32607 MiB, Windows/WSL2",
+    "recipe": "../../../configs/qwen38-swift15-ninfer-dflash2-rtx5090-baked.toml",
+    "configured_context_tokens": 262144,
+    "max_output_tokens": 32768,
+    "concurrency_configured": 4,
+    "host_kv_gib": 2,
+    "power_cap_w": 450
+  },
+  "workload": {
+    "plan": "run-plan.md",
+    "cache": "unique prefixes and request canaries for capacity",
+    "capacity_output_policy": "observe after strict output failure",
+    "response_words_target": 256,
+    "response_max_tokens": 512,
+    "context": "three routed depths, six repetitions per depth, 4096 output reserve",
+    "agentic": "native scout, 18 deterministic cases",
+    "swe": "frozen five-case SWE-bench Verified scout, default thinking, official grading",
+    "vision": "pinned 12-case image/OCR corpus"
+  },
+  "measurement": {
+    "path": "online direct capacity; routed durable context, agentic and SWE; direct image/OCR",
+    "warm_cold_state": "warm server for capacity, separate worker for routed jobs; startup/build evidence retained",
+    "sample_count": "100/100 short C1/C4; 30/30 medium C1/C4; 10/10 long C1; 5/10 long C4; 3/3 near-limit C1",
+    "statistics": [
+      "mean client-observed TTFT",
+      "mean per-request decode proxy",
+      "aggregate visible output tokens per wall second",
+      "deterministic pass count",
+      "official SWE resolved/graded"
+    ]
+  },
+  "gates": [
+    {
+      "name": "managed serve and route readiness",
+      "status": "passed"
+    },
+    {
+      "name": "harness fleet repeat",
+      "status": "passed",
+      "details": "changed=0, failed=0, unreachable=0 on declared hosts"
+    },
+    {
+      "name": "direct protocol and vision",
+      "status": "passed"
+    },
+    {
+      "name": "routed context",
+      "status": "passed",
+      "passed": 18,
+      "attempted": 18
+    },
+    {
+      "name": "agentic",
+      "status": "passed-with-failure",
+      "passed": 17,
+      "attempted": 18
+    },
+    {
+      "name": "official SWE Verified scout",
+      "status": "passed",
+      "resolved": 5,
+      "graded": 5
+    },
+    {
+      "name": "strict controlled output",
+      "status": "failed",
+      "exact_adherence": 0
+    },
+    {
+      "name": "128K C4 capacity",
+      "status": "failed",
+      "completed": 5,
+      "attempted": 10
+    }
+  ],
+  "headline_results": {
+    "capacity": [
+      {
+        "cell": "capacity-4k-c1-visible-observe",
+        "completed": 100,
+        "failed": 0,
+        "prompt_tokens_mean": 3652.69,
+        "ttft_mean_ms": 311.51848199990127,
+        "decode_tok_s_mean": 464.97545766221117,
+        "aggregate_output_tok_s": 328.20645129938134,
+        "exact_output_adherence": 0,
+        "classification": "descriptive-variable-output",
+        "evidence": {
+          "path": "capacity-4k-c1-visible-observe.json",
+          "sha256": "68cb9bc5d33e1b9d6e534cbcb6b9ca682b43099e47f7d0fedc3fab71be2a534b"
+        }
+      },
+      {
+        "cell": "capacity-4k-c4-visible-observe",
+        "completed": 100,
+        "failed": 0,
+        "prompt_tokens_mean": 3652.69,
+        "ttft_mean_ms": 427.1092810000482,
+        "decode_tok_s_mean": 195.37837369251594,
+        "aggregate_output_tok_s": 614.8482810732497,
+        "exact_output_adherence": 0,
+        "classification": "descriptive-variable-output",
+        "evidence": {
+          "path": "capacity-4k-c4-visible-observe.json",
+          "sha256": "17e22b70b3075f88d6c5299d7ccb7c5139449f00b6e8793b96400b085b57556e"
+        }
+      },
+      {
+        "cell": "capacity-32k-c1-visible-observe",
+        "completed": 30,
+        "failed": 0,
+        "prompt_tokens_mean": 30412.133333333335,
+        "ttft_mean_ms": 3041.075683333535,
+        "decode_tok_s_mean": 448.7732363571622,
+        "aggregate_output_tok_s": 118.84662928849373,
+        "exact_output_adherence": 0,
+        "classification": "descriptive-variable-output",
+        "evidence": {
+          "path": "capacity-32k-c1-visible-observe.json",
+          "sha256": "ca908482d6e629c35059a89cf9a8a81f0266690cfe37d73c748d959541616ff1"
+        }
+      },
+      {
+        "cell": "capacity-32k-c4-visible-observe",
+        "completed": 30,
+        "failed": 0,
+        "prompt_tokens_mean": 30412.133333333335,
+        "ttft_mean_ms": 3828.9058666669007,
+        "decode_tok_s_mean": 64.71282602981874,
+        "aggregate_output_tok_s": 149.24415282539698,
+        "exact_output_adherence": 0,
+        "classification": "descriptive-variable-output",
+        "evidence": {
+          "path": "capacity-32k-c4-visible-observe.json",
+          "sha256": "4531ab2046ae991ecf3f39637e6ffdf3396c7a0f6f7bd9516b367ddd70a35a5c"
+        }
+      },
+      {
+        "cell": "capacity-128k-c1-visible-observe",
+        "completed": 10,
+        "failed": 0,
+        "prompt_tokens_mean": 126041.6,
+        "ttft_mean_ms": 24754.510070000288,
+        "decode_tok_s_mean": 405.95225012769754,
+        "aggregate_output_tok_s": 19.68015857785926,
+        "exact_output_adherence": 0,
+        "classification": "descriptive-variable-output",
+        "evidence": {
+          "path": "capacity-128k-c1-visible-observe.json",
+          "sha256": "6c46e03f876b26e1907320fb94f76fb448d0a468abebd39e2bb7b65148caadf9"
+        }
+      },
+      {
+        "cell": "capacity-128k-c4-visible-observe",
+        "completed": 5,
+        "failed": 5,
+        "prompt_tokens_mean": 126041.4,
+        "ttft_mean_ms": 44846.14799999981,
+        "decode_tok_s_mean": null,
+        "aggregate_output_tok_s": null,
+        "exact_output_adherence": 0,
+        "classification": "failed-long-context-concurrency",
+        "evidence": {
+          "path": "capacity-128k-c4-visible-observe.json",
+          "sha256": "e7fe4712ac9e90f5644cd98966945c45b00f9a7a96bcc274214f353e43a27c4d"
+        }
+      },
+      {
+        "cell": "capacity-near-limit-c1-visible-observe",
+        "completed": 3,
+        "failed": 0,
+        "prompt_tokens_mean": 252223.66666666666,
+        "ttft_mean_ms": 82093.96893333299,
+        "decode_tok_s_mean": 356.173965728655,
+        "aggregate_output_tok_s": 6.129229530153966,
+        "exact_output_adherence": 0,
+        "classification": "descriptive-variable-output",
+        "evidence": {
+          "path": "capacity-near-limit-c1-visible-observe.json",
+          "sha256": "4c2f8f48cac9018e09f2a9f2bae0be444781aca8fdb6490c6a8df62fccff6e06"
+        }
+      }
+    ],
+    "context": {
+      "passed": 18,
+      "attempted": 18,
+      "deepest_actual_prompt_tokens": 257898,
+      "evidence": {
+        "path": "context-routed-18.json",
+        "sha256": "f8390fd31ad8863cf5b2f6a921a190b48bd00e37d881d84c2ba84d2012d00e0a"
+      }
+    },
+    "agentic": {
+      "passed": 17,
+      "attempted": 18,
+      "evidence": {
+        "path": "agentic-routed-18.json",
+        "sha256": "ef5a9b2ca159f2affa33e77ee2afb695093e78e31aff939af5e5ab9457b7fdd4"
+      }
+    },
+    "swe": {
+      "resolved": 5,
+      "graded": 5,
+      "official_grader_complete": true,
+      "evidence": {
+        "path": "swe-routed-5.json",
+        "sha256": "52dabd1f96ef7d94186883f89d6d90630a2b5dd9ea4b68dab9a1a7d26cd4468a"
+      }
+    },
+    "vision": {
+      "passed": 12,
+      "attempted": [
+        {
+          "case_id": "adversarial-1",
+          "failure": null,
+          "finish_reason": "stop",
+          "media": [
+            {
+              "bytes": 12964,
+              "kind": "image",
+              "mime": "image/png",
+              "path": "assets/adversarial-1.png",
+              "sha256": "8bc9828c10119880c81254cb89efa443472a67e297e78ca55b8b1ee30e3101a6"
+            }
+          ],
+          "modality": "image",
+          "output": "ACCESS DENIED | A-19",
+          "passed": true,
+          "reasoning": {
+            "chars": 752,
+            "field": "reasoning_content",
+            "tokens": 185
+          },
+          "repetition": 1,
+          "sampling": null,
+          "seconds": 0.937829,
+          "usage": {
+            "completion_tokens": 195,
+            "completion_tokens_details": {
+              "reasoning_tokens": 185
+            },
+            "prompt_tokens": 328,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 523
+          },
+          "validation": {
+            "assertions": [
+              {
+                "passed": true,
+                "type": "equals_normalized_casefold",
+                "value": "Access denied | A-19"
+              }
+            ],
+            "finish_reason_allowed": true,
+            "visible_answer": true
+          }
+        },
+        {
+          "case_id": "adversarial-2",
+          "failure": null,
+          "finish_reason": "stop",
+          "media": [
+            {
+              "bytes": 13007,
+              "kind": "image",
+              "mime": "image/png",
+              "path": "assets/adversarial-2.png",
+              "sha256": "115aec6e1ed95486d99117b9f28e4cc6f1ab8474fd141df6b661f7822ea40d89"
+            }
+          ],
+          "modality": "image",
+          "output": "PAYMENT PENDING | 402",
+          "passed": true,
+          "reasoning": {
+            "chars": 471,
+            "field": "reasoning_content",
+            "tokens": 113
+          },
+          "repetition": 1,
+          "sampling": null,
+          "seconds": 0.564435,
+          "usage": {
+            "completion_tokens": 124,
+            "completion_tokens_details": {
+              "reasoning_tokens": 113
+            },
+            "prompt_tokens": 329,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 453
+          },
+          "validation": {
+            "assertions": [
+              {
+                "passed": true,
+                "type": "equals_normalized_casefold",
+                "value": "Payment pending | 402"
+              }
+            ],
+            "finish_reason_allowed": true,
+            "visible_answer": true
+          }
+        },
+        {
+          "case_id": "charts-1",
+          "failure": null,
+          "finish_reason": "stop",
+          "media": [
+            {
+              "bytes": 7566,
+              "kind": "image",
+              "mime": "image/png",
+              "path": "assets/charts-1.png",
+              "sha256": "ba8e9385cabd0c7f81199269a7749bf2606d30b89e77b6218000f5505d6e9af0"
+            }
+          ],
+          "modality": "image",
+          "output": "MAR",
+          "passed": true,
+          "reasoning": {
+            "chars": 314,
+            "field": "reasoning_content",
+            "tokens": 82
+          },
+          "repetition": 1,
+          "sampling": null,
+          "seconds": 0.405232,
+          "usage": {
+            "completion_tokens": 85,
+            "completion_tokens_details": {
+              "reasoning_tokens": 82
+            },
+            "prompt_tokens": 298,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 383
+          },
+          "validation": {
+            "assertions": [
+              {
+                "passed": true,
+                "type": "equals_normalized_casefold",
+                "value": "Mar"
+              }
+            ],
+            "finish_reason_allowed": true,
+            "visible_answer": true
+          }
+        },
+        {
+          "case_id": "charts-2",
+          "failure": null,
+          "finish_reason": "stop",
+          "media": [
+            {
+              "bytes": 11112,
+              "kind": "image",
+              "mime": "image/png",
+              "path": "assets/charts-2.png",
+              "sha256": "64ea8ac74528c592d0559544da1e1c36aba060038666f74c8179326e95bd939f"
+            }
+          ],
+          "modality": "image",
+          "output": "green | Ready | yellow | Waiting | red | Blocked",
+          "passed": true,
+          "reasoning": {
+            "chars": 467,
+            "field": "reasoning_content",
+            "tokens": 123
+          },
+          "repetition": 1,
+          "sampling": null,
+          "seconds": 0.661487,
+          "usage": {
+            "completion_tokens": 136,
+            "completion_tokens_details": {
+              "reasoning_tokens": 123
+            },
+            "prompt_tokens": 331,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 467
+          },
+          "validation": {
+            "assertions": [
+              {
+                "passed": true,
+                "type": "equals_normalized_casefold",
+                "value": "Green | Ready | Yellow | Waiting | Red | Blocked"
+              }
+            ],
+            "finish_reason_allowed": true,
+            "visible_answer": true
+          }
+        },
+        {
+          "case_id": "disabled-1",
+          "failure": null,
+          "finish_reason": "stop",
+          "media": [
+            {
+              "bytes": 9423,
+              "kind": "image",
+              "mime": "image/png",
+              "path": "assets/disabled-1.png",
+              "sha256": "88074cf22a436ae58cb03e5de06a4327a90b27c5d045d82d8f60b41c06ed75eb"
+            }
+          ],
+          "modality": "image",
+          "output": "SUBMIT | Complete profile first",
+          "passed": true,
+          "reasoning": {
+            "chars": 734,
+            "field": "reasoning_content",
+            "tokens": 162
+          },
+          "repetition": 1,
+          "sampling": null,
+          "seconds": 0.812855,
+          "usage": {
+            "completion_tokens": 170,
+            "completion_tokens_details": {
+              "reasoning_tokens": 162
+            },
+            "prompt_tokens": 302,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 472
+          },
+          "validation": {
+            "assertions": [
+              {
+                "passed": true,
+                "type": "equals_normalized_casefold",
+                "value": "Submit | Complete profile first"
+              }
+            ],
+            "finish_reason_allowed": true,
+            "visible_answer": true
+          }
+        },
+        {
+          "case_id": "disabled-2",
+          "failure": null,
+          "finish_reason": "stop",
+          "media": [
+            {
+              "bytes": 9465,
+              "kind": "image",
+              "mime": "image/png",
+              "path": "assets/disabled-2.png",
+              "sha256": "ecccce58ae90e44df9e65b67de853b41e1917c49fd9d07b27f0cfb1f288c9330"
+            }
+          ],
+          "modality": "image",
+          "output": "file rejected | unavailable",
+          "passed": true,
+          "reasoning": {
+            "chars": 495,
+            "field": "reasoning_content",
+            "tokens": 109
+          },
+          "repetition": 1,
+          "sampling": null,
+          "seconds": 0.50649,
+          "usage": {
+            "completion_tokens": 115,
+            "completion_tokens_details": {
+              "reasoning_tokens": 109
+            },
+            "prompt_tokens": 326,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 441
+          },
+          "validation": {
+            "assertions": [
+              {
+                "passed": true,
+                "type": "equals_normalized_casefold",
+                "value": "File rejected | Unavailable"
+              }
+            ],
+            "finish_reason_allowed": true,
+            "visible_answer": true
+          }
+        },
+        {
+          "case_id": "icons-1",
+          "failure": null,
+          "finish_reason": "stop",
+          "media": [
+            {
+              "bytes": 5354,
+              "kind": "image",
+              "mime": "image/png",
+              "path": "assets/icons-1.png",
+              "sha256": "1ce9fd46bc06be3ca49ee43416ab8e4150dd1604f20f505af59a31ecb457ed73"
+            }
+          ],
+          "modality": "image",
+          "output": "SAVE | COPY | DELETE",
+          "passed": true,
+          "reasoning": {
+            "chars": 369,
+            "field": "reasoning_content",
+            "tokens": 89
+          },
+          "repetition": 1,
+          "sampling": null,
+          "seconds": 0.457144,
+          "usage": {
+            "completion_tokens": 96,
+            "completion_tokens_details": {
+              "reasoning_tokens": 89
+            },
+            "prompt_tokens": 299,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 395
+          },
+          "validation": {
+            "assertions": [
+              {
+                "passed": true,
+                "type": "equals_normalized_casefold",
+                "value": "Save | Copy | Delete"
+              }
+            ],
+            "finish_reason_allowed": true,
+            "visible_answer": true
+          }
+        },
+        {
+          "case_id": "icons-2",
+          "failure": null,
+          "finish_reason": "stop",
+          "media": [
+            {
+              "bytes": 7082,
+              "kind": "image",
+              "mime": "image/png",
+              "path": "assets/icons-2.png",
+              "sha256": "7d3bc901f6d6dec1cfc43e620ea13a4de2f95f840e8656ecb24db4c6279f910e"
+            }
+          ],
+          "modality": "image",
+          "output": "SAVE AS | COPY | DELETE",
+          "passed": true,
+          "reasoning": {
+            "chars": 418,
+            "field": "reasoning_content",
+            "tokens": 95
+          },
+          "repetition": 1,
+          "sampling": null,
+          "seconds": 0.583529,
+          "usage": {
+            "completion_tokens": 103,
+            "completion_tokens_details": {
+              "reasoning_tokens": 95
+            },
+            "prompt_tokens": 305,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 408
+          },
+          "validation": {
+            "assertions": [
+              {
+                "passed": true,
+                "type": "equals_normalized_casefold",
+                "value": "Save As | Copy | Delete"
+              }
+            ],
+            "finish_reason_allowed": true,
+            "visible_answer": true
+          }
+        },
+        {
+          "case_id": "missing-1",
+          "failure": null,
+          "finish_reason": "stop",
+          "media": [
+            {
+              "bytes": 12184,
+              "kind": "image",
+              "mime": "image/png",
+              "path": "assets/missing-1.png",
+              "sha256": "65f5d3479cf5b6d52b2fe93a25cfcbb6aec66ddd72ffce55d4ed79b15fcdf5c4"
+            }
+          ],
+          "modality": "image",
+          "output": "MEMORY",
+          "passed": true,
+          "reasoning": {
+            "chars": 292,
+            "field": "reasoning_content",
+            "tokens": 68
+          },
+          "repetition": 1,
+          "sampling": null,
+          "seconds": 0.38644,
+          "usage": {
+            "completion_tokens": 71,
+            "completion_tokens_details": {
+              "reasoning_tokens": 68
+            },
+            "prompt_tokens": 294,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 365
+          },
+          "validation": {
+            "assertions": [
+              {
+                "passed": true,
+                "type": "equals_normalized_casefold",
+                "value": "Memory"
+              }
+            ],
+            "finish_reason_allowed": true,
+            "visible_answer": true
+          }
+        },
+        {
+          "case_id": "missing-2",
+          "failure": null,
+          "finish_reason": "stop",
+          "media": [
+            {
+              "bytes": 9384,
+              "kind": "image",
+              "mime": "image/png",
+              "path": "assets/missing-2.png",
+              "sha256": "866e2b019204b7620f7153636819ee4d9cc45c84c1a9c29239f68f00c14fd0e8"
+            }
+          ],
+          "modality": "image",
+          "output": "EXPORT",
+          "passed": true,
+          "reasoning": {
+            "chars": 622,
+            "field": "reasoning_content",
+            "tokens": 135
+          },
+          "repetition": 1,
+          "sampling": null,
+          "seconds": 0.723849,
+          "usage": {
+            "completion_tokens": 138,
+            "completion_tokens_details": {
+              "reasoning_tokens": 135
+            },
+            "prompt_tokens": 296,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 434
+          },
+          "validation": {
+            "assertions": [
+              {
+                "passed": true,
+                "type": "equals_normalized_casefold",
+                "value": "Export"
+              }
+            ],
+            "finish_reason_allowed": true,
+            "visible_answer": true
+          }
+        },
+        {
+          "case_id": "small-text-1",
+          "failure": null,
+          "finish_reason": "stop",
+          "media": [
+            {
+              "bytes": 14994,
+              "kind": "image",
+              "mime": "image/png",
+              "path": "assets/small-text-1.png",
+              "sha256": "7a065d780311911f33cb2ccacaa21a1491cf81b6fcaf869d4ee0c5a5cb3e0a46"
+            }
+          ],
+          "modality": "image",
+          "output": "4817 | 73.25 | READY",
+          "passed": true,
+          "reasoning": {
+            "chars": 304,
+            "field": "reasoning_content",
+            "tokens": 79
+          },
+          "repetition": 1,
+          "sampling": null,
+          "seconds": 0.550187,
+          "usage": {
+            "completion_tokens": 94,
+            "completion_tokens_details": {
+              "reasoning_tokens": 79
+            },
+            "prompt_tokens": 308,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 402
+          },
+          "validation": {
+            "assertions": [
+              {
+                "passed": true,
+                "type": "equals_normalized_casefold",
+                "value": "4817 | 73.25 | Ready"
+              }
+            ],
+            "finish_reason_allowed": true,
+            "visible_answer": true
+          }
+        },
+        {
+          "case_id": "small-text-2",
+          "failure": null,
+          "finish_reason": "stop",
+          "media": [
+            {
+              "bytes": 13592,
+              "kind": "image",
+              "mime": "image/png",
+              "path": "assets/small-text-2.png",
+              "sha256": "612bf61b73ff58329bd13582cc1369058c80a906439199e7eec07fdada825971"
+            }
+          ],
+          "modality": "image",
+          "output": "12.4 V | B | CALIBRATED",
+          "passed": true,
+          "reasoning": {
+            "chars": 440,
+            "field": "reasoning_content",
+            "tokens": 119
+          },
+          "repetition": 1,
+          "sampling": null,
+          "seconds": 0.594126,
+          "usage": {
+            "completion_tokens": 133,
+            "completion_tokens_details": {
+              "reasoning_tokens": 119
+            },
+            "prompt_tokens": 321,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 454
+          },
+          "validation": {
+            "assertions": [
+              {
+                "passed": true,
+                "type": "equals_normalized_casefold",
+                "value": "12.4 V | B | Calibrated"
+              }
+            ],
+            "finish_reason_allowed": true,
+            "visible_answer": true
+          }
+        }
+      ],
+      "evidence": {
+        "path": "multimodal-computer-use-12.json",
+        "sha256": "4e0de3d6d34449f721a6574b43a80d785e964439c39dadcaf7175c6e015ca7b4"
+      }
+    }
+  },
+  "failures": [
+    "First NInfer startup rejected --image-token-budget",
+    "Default-thinking strict capacity produced no visible answer; no-thinking strict output missed exact word target",
+    "128K/C4 received five serving HTTP 503 request-queue timeouts",
+    "Agentic debug-loop failed one protocol repetition",
+    "Two SWE setup submissions failed before model execution; corrected third run graded 5/5"
+  ],
+  "limitations": [
+    "Publisher IFBench, GSM8K, 160.8 tok/s decode and 200K prefill were not reproduced",
+    "0 exact word targets make capacity rates descriptive, not matched decode comparisons",
+    "Small bounded quality and SWE populations do not establish broad coding rank",
+    "No four-concurrent-full-window or long soak proof",
+    "Workbench browser and Pages post readback pending"
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional",
+      "bounded-quality",
+      "descriptive-capacity",
+      "failed-long-context-concurrency"
+    ],
+    "decision_labels": [
+      "current"
+    ],
+    "promotion_authorized": true,
+    "authorization": "user-requested exact final serve and promotion before benchmark",
+    "next_gate": "Publication readback and separate C4 long-window mitigation/qualification if reliable 128K concurrency is required"
+  },
+  "evidence": [
+    "README.md",
+    "coverage-and-gaps.md",
+    "restoration.json",
+    "publication-summary.md"
+  ]
+}

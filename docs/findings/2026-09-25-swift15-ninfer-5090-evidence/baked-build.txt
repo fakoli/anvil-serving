@@ -1,0 +1,14 @@
+Managed image build and load, 2026-09-25 UTC
+Source Dockerfile: configs/runtime/ninfer-bace20dc-swift15/Dockerfile
+Dockerfile SHA-256: c4b1cf6fe50bf1c11128d73a758f17c1747bee8b97d627c3fd32ac706137f3b3
+Base CUDA image digest: sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca
+Ubuntu package snapshot: 20260925T000000Z
+NInfer source revision and inspected image label: bace20dc70249eed6402b66d4852c6c3f9612905
+Build limits: four CPUs, 8,192 MiB memory, linux/amd64, 7,200-second timeout.
+Managed build result: success, 489.494 seconds, output log not truncated.
+Immutable image ID and local repository digest: sha256:59df48dd99f0d177b73de57ba88eb6457ed7e4b0c5771c45e8976adcd9f5ef67
+Managed image inspect: linux/amd64 and matching NInfer revision label.
+Baked recipe: configs/qwen38-swift15-ninfer-dflash2-rtx5090-baked.toml
+Baked managed load: success; entrypoint verified the embedded binary SHA-256 and exact 19,782,447,364-byte model artifact SHA-256 before starting NInfer.
+Measured startup: 18.0 GiB weights, 747.3 MiB pinned Host State, 2.00 GiB pinned Host KV, 282,112 shared K8V4 device-KV tokens, four active and four cached device states, 2.63 GiB free device memory.
+Direct baked-image preflight: see native JSON artifacts; all short functional gates passed. Long-context baked-image repeat is pending.

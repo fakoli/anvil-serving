@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -12,7 +13,7 @@ import pytest
 import yaml
 
 from anvil_serving.benchmarking.harnesses import HARNESS_ASSETS_SCHEMA
-from anvil_serving.benchmarking.jobs import canonical_json_bytes
+from anvil_serving.benchmarking.jobs import BenchmarkJobError, canonical_json_bytes
 from anvil_serving.benchmarking.profiles import load_profile
 from anvil_serving.benchmarking import swe
 from anvil_serving.benchmarking import harnesses
@@ -89,6 +90,10 @@ def plan(tmp_path, *, request_controls=None, paired_image_ids=None, prompt_contr
         executable.touch()
     else:
         executable.symlink_to(os.sys.executable)
+        (executable.parent.parent / "pyvenv.cfg").write_text(
+            f"include-system-site-packages = false\nexecutable = {os.sys.executable}\n",
+            encoding="utf-8",
+        )
     return build_fixture_plan(tmp_path,
         profile,
         {**manifest(profile), "python_environment": environment},
@@ -120,6 +125,10 @@ def scout_plan(tmp_path):
         executable.touch()
     else:
         executable.symlink_to(os.sys.executable)
+        (executable.parent.parent / "pyvenv.cfg").write_text(
+            f"include-system-site-packages = false\nexecutable = {os.sys.executable}\n",
+            encoding="utf-8",
+        )
     return build_fixture_plan(tmp_path,
         profile,
         {**manifest(profile), "python_environment": environment},
@@ -157,6 +166,45 @@ def test_prompt_contract_preserves_legacy_bytes_and_discloses_v2_limits(tmp_path
     rendered = yaml.safe_load(Path(generated).read_text())["agent"]["system_template"]
     assert "Full shell and patch submission instructions." in rendered
     assert disclosure in rendered
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX venv Python is a symlink")
+def test_plan_accepts_pinned_venv_with_different_worker_interpreter(tmp_path):
+    value = plan(tmp_path)
+    executable = Path(value["commands"]["agent"][0])
+    base = tmp_path / "independent-python"
+    shutil.copyfile(os.sys.executable, base)
+    executable.unlink()
+    executable.symlink_to(base)
+    (executable.parent.parent / "pyvenv.cfg").write_text(
+        f"include-system-site-packages = false\nexecutable = {base}\n",
+        encoding="utf-8",
+    )
+    value = build_fixture_plan(tmp_path,
+        load_profile("smoke"), manifest(load_profile("smoke")),
+        endpoint={"base_url": "http://100.64.0.10:8000/v1", "model": "deepseek-challenger"},
+        instance_ids=[INSTANCE], run_root=str(tmp_path / "runs"),
+        cache_root=str(tmp_path / "cache"), ownership_id="campaign", run_id="smoke-one",
+    )
+    assert value["commands"]["agent"][0].endswith("bin/python")
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX venv Python is a symlink")
+def test_plan_rejects_venv_symlink_disagreeing_with_config(tmp_path):
+    value = plan(tmp_path)
+    executable = Path(value["commands"]["agent"][0])
+    (executable.parent.parent / "pyvenv.cfg").write_text(
+        "include-system-site-packages = false\nexecutable = /usr/bin/false\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(BenchmarkJobError) as exc:
+        build_fixture_plan(tmp_path,
+            load_profile("smoke"), manifest(load_profile("smoke")),
+            endpoint={"base_url": "http://100.64.0.10:8000/v1", "model": "deepseek-challenger"},
+            instance_ids=[INSTANCE], run_root=str(tmp_path / "runs"),
+            cache_root=str(tmp_path / "cache"), ownership_id="campaign", run_id="smoke-one",
+        )
+    assert exc.value.code == "unsafe_cache_path"
 
 
 class SuccessfulRunner:

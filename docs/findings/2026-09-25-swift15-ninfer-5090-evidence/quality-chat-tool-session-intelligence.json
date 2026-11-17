@@ -1,0 +1,836 @@
+{
+  "context": {
+    "cap_tokens": 258560,
+    "max_model_len": 262144,
+    "targets": [
+      {
+        "attempted_context_tokens": 32768,
+        "chars_per_token": 3.0,
+        "clamped_tokens": 32768,
+        "content_chunks": 9,
+        "decode_tok_s": 200.66754926948448,
+        "e2e_ms": 4681.095300000379,
+        "effective_prefill_tok_s": 9515.323825656651,
+        "estimated_prompt_tokens": 32768,
+        "generation_ms": 1395.3426999996736,
+        "mean_inter_token_latency_ms": 4.9833667857131205,
+        "output_token_source": "usage",
+        "output_tokens": 281,
+        "prompt_tokens": 31265,
+        "reasoning_chunks": 73,
+        "status": "passed",
+        "target_tokens": 32768,
+        "time_to_first_output_ms": 3285.7526000007056,
+        "ttft_ms": 4541.283799999292,
+        "usage": {
+          "completion_tokens": 281,
+          "completion_tokens_details": {
+            "reasoning_tokens": 258
+          },
+          "prompt_tokens": 31265,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 31546
+        },
+        "visible_generation_ms": 139.81150000108755
+      }
+    ]
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 2048,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 3,
+    "visible_answer_tokens": 512
+  },
+  "failures": [],
+  "identity": {
+    "base_url": "http://127.0.0.1:49127/v1",
+    "candidate_id": "swift15-ninfer-5090",
+    "config_id": "baked-post-profile-v1",
+    "engine": "ninfer-bace20dc",
+    "gpu": "rtx5090-32gb",
+    "model": "qwen38-swift15-ninfer-dflash2-c4-262k",
+    "started_at": "2026-09-25T10:54:09Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "content_chars": 82,
+            "content_excerpt": "--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 938.3261000002676,
+            "reasoning_chars": 630,
+            "reasoning_excerpt": "We need answer user's request: editing app.py, original file:\ntimeout = 30\nretries = 2\nReturn only a unified diff that changes timeout to 45 and leaves retries unchanged.\nNeed output only unified diff",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": 173,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 214,
+              "completion_tokens_details": {
+                "reasoning_tokens": 173
+              },
+              "prompt_tokens": 91,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              },
+              "total_tokens": 305
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "content_chars": 82,
+            "content_excerpt": "--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 895.5994000007195,
+            "reasoning_chars": 630,
+            "reasoning_excerpt": "We need answer user's request: editing app.py, original file:\ntimeout = 30\nretries = 2\nReturn only a unified diff that changes timeout to 45 and leaves retries unchanged.\nNeed output only unified diff",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": 173,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 214,
+              "completion_tokens_details": {
+                "reasoning_tokens": 173
+              },
+              "prompt_tokens": 91,
+              "prompt_tokens_details": {
+                "cached_tokens": 86
+              },
+              "total_tokens": 305
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "content_chars": 82,
+            "content_excerpt": "--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 896.2751999988541,
+            "reasoning_chars": 630,
+            "reasoning_excerpt": "We need answer user's request: editing app.py, original file:\ntimeout = 30\nretries = 2\nReturn only a unified diff that changes timeout to 45 and leaves retries unchanged.\nNeed output only unified diff",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": 173,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 214,
+              "completion_tokens_details": {
+                "reasoning_tokens": 173
+              },
+              "prompt_tokens": 91,
+              "prompt_tokens_details": {
+                "cached_tokens": 86
+              },
+              "total_tokens": 305
+            }
+          }
+        ],
+        "id": "unified_diff_timeout_edit",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed",
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "The sequential pipeline takes ~3000 ms (550 + 1800 + 650), exceeding the 2500 ms timeout, so reduce LLM latency\u2014e.g., use a faster/smaller model or stream the response\u2014to fit within the budget.",
+            "content_chars": 193,
+            "content_excerpt": "The sequential pipeline takes ~3000 ms (550 + 1800 + 650), exceeding the 2500 ms timeout, so reduce LLM latency\u2014e.g., use a faster/smaller model or stream the response\u2014to fit within the budget.",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 1147.5702999996429,
+            "reasoning_chars": 826,
+            "reasoning_excerpt": "We need answer user's request: \"A voice agent calls STT, an LLM, and TTS. The total turn timeout is 2500 ms. Logs show STT=550 ms, LLM=1800 ms, TTS=650 ms. In one concise sentence, identify the proble",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": 234,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 297,
+              "completion_tokens_details": {
+                "reasoning_tokens": 234
+              },
+              "prompt_tokens": 119,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              },
+              "total_tokens": 416
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "The sequential pipeline takes ~3000 ms (550 + 1800 + 650), exceeding the 2500 ms timeout, so reduce LLM latency\u2014e.g., use a faster/smaller model or stream the response\u2014to fit within the budget.",
+            "content_chars": 193,
+            "content_excerpt": "The sequential pipeline takes ~3000 ms (550 + 1800 + 650), exceeding the 2500 ms timeout, so reduce LLM latency\u2014e.g., use a faster/smaller model or stream the response\u2014to fit within the budget.",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 2635.9032000000298,
+            "reasoning_chars": 826,
+            "reasoning_excerpt": "We need answer user's request: \"A voice agent calls STT, an LLM, and TTS. The total turn timeout is 2500 ms. Logs show STT=550 ms, LLM=1800 ms, TTS=650 ms. In one concise sentence, identify the proble",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": 234,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 297,
+              "completion_tokens_details": {
+                "reasoning_tokens": 234
+              },
+              "prompt_tokens": 119,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              },
+              "total_tokens": 416
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "The sequential pipeline takes ~3000 ms (550 + 1800 + 650), exceeding the 2500 ms timeout, so reduce LLM latency\u2014e.g., use a faster/smaller model or stream the response\u2014to fit within the budget.",
+            "content_chars": 193,
+            "content_excerpt": "The sequential pipeline takes ~3000 ms (550 + 1800 + 650), exceeding the 2500 ms timeout, so reduce LLM latency\u2014e.g., use a faster/smaller model or stream the response\u2014to fit within the budget.",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 1433.1580999987636,
+            "reasoning_chars": 826,
+            "reasoning_excerpt": "We need answer user's request: \"A voice agent calls STT, an LLM, and TTS. The total turn timeout is 2500 ms. Logs show STT=550 ms, LLM=1800 ms, TTS=650 ms. In one concise sentence, identify the proble",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": 234,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 297,
+              "completion_tokens_details": {
+                "reasoning_tokens": 234
+              },
+              "prompt_tokens": 119,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              },
+              "total_tokens": 416
+            }
+          }
+        ],
+        "id": "parallel_timeout_triage",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed",
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "passed"
+  },
+  "run_id": "fast-bakeoff-20260925T105409Z",
+  "sampling": {
+    "temperature": {
+      "effective_request": 0.0,
+      "requested": null,
+      "sent": true
+    },
+    "top_p": {
+      "effective_request": null,
+      "requested": null,
+      "sent": false
+    }
+  },
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 4681.095300000379,
+    "intelligence_pass_rate": 1.0,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": true,
+    "thinking_mode": "default",
+    "tool_call_passed": true,
+    "ttft_p50_ms": 4541.283799999292,
+    "usable_context_tokens": 32768,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "tool",
+      "session",
+      "intelligence"
+    ]
+  },
+  "session": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "RIVER-918",
+            "content_chars": 9,
+            "content_excerpt": "RIVER-918",
+            "expected": "RIVER-918",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 361.47560000063095,
+            "reasoning_chars": 253,
+            "reasoning_excerpt": "The user is asking me what session code should be used. In the previous message, they asked me to remember the session code \"RIVER-918\" and I replied \"ok\". Now they're asking me to reply with only the",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": 68,
+            "status": "passed",
+            "usage": {
+              "completion_tokens": 76,
+              "completion_tokens_details": {
+                "reasoning_tokens": 68
+              },
+              "prompt_tokens": 96,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              },
+              "total_tokens": 172
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "RIVER-918",
+            "content_chars": 9,
+            "content_excerpt": "RIVER-918",
+            "expected": "RIVER-918",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 297.3055000002205,
+            "reasoning_chars": 253,
+            "reasoning_excerpt": "The user is asking me what session code should be used. In the previous message, they asked me to remember the session code \"RIVER-918\" and I replied \"ok\". Now they're asking me to reply with only the",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": 68,
+            "status": "passed",
+            "usage": {
+              "completion_tokens": 76,
+              "completion_tokens_details": {
+                "reasoning_tokens": 68
+              },
+              "prompt_tokens": 96,
+              "prompt_tokens_details": {
+                "cached_tokens": 91
+              },
+              "total_tokens": 172
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "RIVER-918",
+            "content_chars": 9,
+            "content_excerpt": "RIVER-918",
+            "expected": "RIVER-918",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 296.9462000000931,
+            "reasoning_chars": 253,
+            "reasoning_excerpt": "The user is asking me what session code should be used. In the previous message, they asked me to remember the session code \"RIVER-918\" and I replied \"ok\". Now they're asking me to reply with only the",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": 68,
+            "status": "passed",
+            "usage": {
+              "completion_tokens": 76,
+              "completion_tokens_details": {
+                "reasoning_tokens": 68
+              },
+              "prompt_tokens": 96,
+              "prompt_tokens_details": {
+                "cached_tokens": 91
+              },
+              "total_tokens": 172
+            }
+          }
+        ],
+        "name": "single_request_multiturn_recall",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {},
+  "thinking": {
+    "chat_template_kwargs": null,
+    "control_evidence": null,
+    "control_evidence_sha256": null,
+    "control_mechanism": "none",
+    "control_requested": null,
+    "control_status": "none",
+    "mode": "default",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "completion_tokens_max": 281.0,
+      "completion_tokens_mean": 281.0,
+      "completion_tokens_mean_ci95_high": 281.0,
+      "completion_tokens_mean_ci95_low": 281.0,
+      "completion_tokens_min": 281.0,
+      "completion_tokens_p25": 281.0,
+      "completion_tokens_p50": 281.0,
+      "completion_tokens_p75": 281.0,
+      "completion_tokens_p90": 281.0,
+      "completion_tokens_p95": 281.0,
+      "completion_tokens_p99": 281.0,
+      "completion_tokens_samples": 1,
+      "completion_tokens_stddev": 0.0,
+      "content_chunks": 9,
+      "controlled_output_exact_adherence": 0,
+      "controlled_output_exact_adherence_rate": null,
+      "controlled_output_samples": 0,
+      "controlled_output_unobservable": 0,
+      "decode_tok_s_max": 200.66754926948448,
+      "decode_tok_s_mean": 200.66754926948448,
+      "decode_tok_s_mean_ci95_high": 200.66754926948448,
+      "decode_tok_s_mean_ci95_low": 200.66754926948448,
+      "decode_tok_s_min": 200.66754926948448,
+      "decode_tok_s_p25": 200.66754926948448,
+      "decode_tok_s_p50": 200.66754926948448,
+      "decode_tok_s_p75": 200.66754926948448,
+      "decode_tok_s_p90": 200.66754926948448,
+      "decode_tok_s_p95": 200.66754926948448,
+      "decode_tok_s_p99": 200.66754926948448,
+      "decode_tok_s_samples": 1,
+      "decode_tok_s_stddev": 0.0,
+      "e2e_max_ms": 4681.095300000379,
+      "e2e_mean_ci95_high_ms": 4681.095300000379,
+      "e2e_mean_ci95_low_ms": 4681.095300000379,
+      "e2e_mean_ms": 4681.095300000379,
+      "e2e_min_ms": 4681.095300000379,
+      "e2e_p25_ms": 4681.095300000379,
+      "e2e_p50_ms": 4681.095300000379,
+      "e2e_p75_ms": 4681.095300000379,
+      "e2e_p90_ms": 4681.095300000379,
+      "e2e_p95_ms": 4681.095300000379,
+      "e2e_p99_ms": 4681.095300000379,
+      "e2e_samples": 1,
+      "e2e_stddev_ms": 0.0,
+      "effective_prefill_tok_s_max": 9515.323825656651,
+      "effective_prefill_tok_s_mean": 9515.323825656651,
+      "effective_prefill_tok_s_mean_ci95_high": 9515.323825656651,
+      "effective_prefill_tok_s_mean_ci95_low": 9515.323825656651,
+      "effective_prefill_tok_s_min": 9515.323825656651,
+      "effective_prefill_tok_s_p25": 9515.323825656651,
+      "effective_prefill_tok_s_p50": 9515.323825656651,
+      "effective_prefill_tok_s_p75": 9515.323825656651,
+      "effective_prefill_tok_s_p90": 9515.323825656651,
+      "effective_prefill_tok_s_p95": 9515.323825656651,
+      "effective_prefill_tok_s_p99": 9515.323825656651,
+      "effective_prefill_tok_s_samples": 1,
+      "effective_prefill_tok_s_stddev": 0.0,
+      "generation_max_ms": 1395.3426999996736,
+      "generation_mean_ci95_high_ms": 1395.3426999996736,
+      "generation_mean_ci95_low_ms": 1395.3426999996736,
+      "generation_mean_ms": 1395.3426999996736,
+      "generation_min_ms": 1395.3426999996736,
+      "generation_p25_ms": 1395.3426999996736,
+      "generation_p50_ms": 1395.3426999996736,
+      "generation_p75_ms": 1395.3426999996736,
+      "generation_p90_ms": 1395.3426999996736,
+      "generation_p95_ms": 1395.3426999996736,
+      "generation_p99_ms": 1395.3426999996736,
+      "generation_samples": 1,
+      "generation_stddev_ms": 0.0,
+      "mean_inter_token_latency_ms_max": 4.9833667857131205,
+      "mean_inter_token_latency_ms_mean": 4.9833667857131205,
+      "mean_inter_token_latency_ms_mean_ci95_high": 4.9833667857131205,
+      "mean_inter_token_latency_ms_mean_ci95_low": 4.9833667857131205,
+      "mean_inter_token_latency_ms_min": 4.9833667857131205,
+      "mean_inter_token_latency_ms_p25": 4.9833667857131205,
+      "mean_inter_token_latency_ms_p50": 4.9833667857131205,
+      "mean_inter_token_latency_ms_p75": 4.9833667857131205,
+      "mean_inter_token_latency_ms_p90": 4.9833667857131205,
+      "mean_inter_token_latency_ms_p95": 4.9833667857131205,
+      "mean_inter_token_latency_ms_p99": 4.9833667857131205,
+      "mean_inter_token_latency_ms_samples": 1,
+      "mean_inter_token_latency_ms_stddev": 0.0,
+      "mean_time_per_output_token_max_ms": 4.9833667857131205,
+      "mean_time_per_output_token_mean_ci95_high_ms": 4.9833667857131205,
+      "mean_time_per_output_token_mean_ci95_low_ms": 4.9833667857131205,
+      "mean_time_per_output_token_mean_ms": 4.9833667857131205,
+      "mean_time_per_output_token_min_ms": 4.9833667857131205,
+      "mean_time_per_output_token_p25_ms": 4.9833667857131205,
+      "mean_time_per_output_token_p50_ms": 4.9833667857131205,
+      "mean_time_per_output_token_p75_ms": 4.9833667857131205,
+      "mean_time_per_output_token_p90_ms": 4.9833667857131205,
+      "mean_time_per_output_token_p95_ms": 4.9833667857131205,
+      "mean_time_per_output_token_p99_ms": 4.9833667857131205,
+      "mean_time_per_output_token_samples": 1,
+      "mean_time_per_output_token_stddev_ms": 0.0,
+      "output_tokens": 281,
+      "prompt_token_samples": 1,
+      "prompt_tokens": 31265,
+      "prompt_tokens_max": 31265.0,
+      "prompt_tokens_mean": 31265.0,
+      "prompt_tokens_mean_ci95_high": 31265.0,
+      "prompt_tokens_mean_ci95_low": 31265.0,
+      "prompt_tokens_min": 31265.0,
+      "prompt_tokens_p25": 31265.0,
+      "prompt_tokens_p50": 31265.0,
+      "prompt_tokens_p75": 31265.0,
+      "prompt_tokens_p90": 31265.0,
+      "prompt_tokens_p95": 31265.0,
+      "prompt_tokens_p99": 31265.0,
+      "prompt_tokens_samples": 1,
+      "prompt_tokens_stddev": 0.0,
+      "reasoning_chunks": 73,
+      "request_canary_passed": 0,
+      "request_canary_samples": 0,
+      "time_to_first_output_max_ms": 3285.7526000007056,
+      "time_to_first_output_mean_ci95_high_ms": 3285.7526000007056,
+      "time_to_first_output_mean_ci95_low_ms": 3285.7526000007056,
+      "time_to_first_output_mean_ms": 3285.7526000007056,
+      "time_to_first_output_min_ms": 3285.7526000007056,
+      "time_to_first_output_p25_ms": 3285.7526000007056,
+      "time_to_first_output_p50_ms": 3285.7526000007056,
+      "time_to_first_output_p75_ms": 3285.7526000007056,
+      "time_to_first_output_p90_ms": 3285.7526000007056,
+      "time_to_first_output_p95_ms": 3285.7526000007056,
+      "time_to_first_output_p99_ms": 3285.7526000007056,
+      "time_to_first_output_samples": 1,
+      "time_to_first_output_stddev_ms": 0.0,
+      "tpot_max_ms": 4.9833667857131205,
+      "tpot_mean_ci95_high_ms": 4.9833667857131205,
+      "tpot_mean_ci95_low_ms": 4.9833667857131205,
+      "tpot_mean_ms": 4.9833667857131205,
+      "tpot_min_ms": 4.9833667857131205,
+      "tpot_p25_ms": 4.9833667857131205,
+      "tpot_p50_ms": 4.9833667857131205,
+      "tpot_p75_ms": 4.9833667857131205,
+      "tpot_p90_ms": 4.9833667857131205,
+      "tpot_p95_ms": 4.9833667857131205,
+      "tpot_p99_ms": 4.9833667857131205,
+      "tpot_samples": 1,
+      "tpot_stddev_ms": 0.0,
+      "ttft_max_ms": 4541.283799999292,
+      "ttft_mean_ci95_high_ms": 4541.283799999292,
+      "ttft_mean_ci95_low_ms": 4541.283799999292,
+      "ttft_mean_ms": 4541.283799999292,
+      "ttft_min_ms": 4541.283799999292,
+      "ttft_p25_ms": 4541.283799999292,
+      "ttft_p50_ms": 4541.283799999292,
+      "ttft_p75_ms": 4541.283799999292,
+      "ttft_p90_ms": 4541.283799999292,
+      "ttft_p95_ms": 4541.283799999292,
+      "ttft_p99_ms": 4541.283799999292,
+      "ttft_samples": 1,
+      "ttft_stddev_ms": 0.0
+    },
+    "wall_ms": 14412.919500000498
+  },
+  "tool": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "",
+            "content_chars": 0,
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 314.72819999908097,
+            "reasoning_chars": 115,
+            "reasoning_excerpt": "We need answer user's request: \"Call record_weather_zip with zip 98101.\" Need use tool. Then final likely confirm.\n",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": 32,
+            "status": "passed",
+            "tool_argument_observations": [
+              {
+                "arguments_chars": 15,
+                "arguments_excerpt": "{\"zip\":\"98101\"}",
+                "arguments_truncated": false,
+                "arguments_wire_type": "str",
+                "name": "record_weather_zip"
+              }
+            ],
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 65,
+              "completion_tokens_details": {
+                "reasoning_tokens": 32
+              },
+              "prompt_tokens": 330,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              },
+              "total_tokens": 395
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          },
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "",
+            "content_chars": 0,
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 244.90700000023935,
+            "reasoning_chars": 115,
+            "reasoning_excerpt": "We need answer user's request: \"Call record_weather_zip with zip 98101.\" Need use tool. Then final likely confirm.\n",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": 32,
+            "status": "passed",
+            "tool_argument_observations": [
+              {
+                "arguments_chars": 15,
+                "arguments_excerpt": "{\"zip\":\"98101\"}",
+                "arguments_truncated": false,
+                "arguments_wire_type": "str",
+                "name": "record_weather_zip"
+              }
+            ],
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 65,
+              "completion_tokens_details": {
+                "reasoning_tokens": 32
+              },
+              "prompt_tokens": 330,
+              "prompt_tokens_details": {
+                "cached_tokens": 325
+              },
+              "total_tokens": 395
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          },
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "",
+            "content_chars": 0,
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 245.1801000006526,
+            "reasoning_chars": 115,
+            "reasoning_excerpt": "We need answer user's request: \"Call record_weather_zip with zip 98101.\" Need use tool. Then final likely confirm.\n",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": 32,
+            "status": "passed",
+            "tool_argument_observations": [
+              {
+                "arguments_chars": 15,
+                "arguments_excerpt": "{\"zip\":\"98101\"}",
+                "arguments_truncated": false,
+                "arguments_wire_type": "str",
+                "name": "record_weather_zip"
+              }
+            ],
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 65,
+              "completion_tokens_details": {
+                "reasoning_tokens": 32
+              },
+              "prompt_tokens": 330,
+              "prompt_tokens_details": {
+                "cached_tokens": 325
+              },
+              "total_tokens": 395
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          }
+        ],
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "name": "openai_tool_call_smoke",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "voice": {
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

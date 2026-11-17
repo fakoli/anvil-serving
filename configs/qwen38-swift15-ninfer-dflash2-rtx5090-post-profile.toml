@@ -1,0 +1,67 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "kaushikvira/Qwen3.8-27B-Swift15-NInfer-DFlash2-Post-262K"
+status = "candidate"
+source = "2026-09-25 community post's RTX 5090 settings; host-KV and Host State capacities adapted to a 32 GiB-RAM qualification host"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "kaushikvira/Qwen3.8-27B-swift15-nvfp4full-dflash2-NInfer-v3"
+revision = "ff891a1130adfcf46bf745e06f0fa3dcde2e8c82"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120a"
+vram_total_gb = 32
+vram_note = "Publisher reports 18.0 GiB resident weights and 308,736 shared device-KV tokens; this exact local profile remains unmeasured."
+
+[recipe.serve]
+engine = "ninfer"
+image = "nvidia/cuda:13.1.2-devel-ubuntu24.04@sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca"
+entrypoint = ["/bin/bash", "-lc", 'set -euo pipefail; model_path="$1"; shift; revision="bace20dc70249eed6402b66d4852c6c3f9612905"; artifact_sha="16f313c043c06a19f7c27d74f8259ed9d86c8cb5beed631efbb96f392b373d96"; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install --yes --no-install-recommends ca-certificates cmake git libavcodec-dev libavformat-dev libavutil-dev libcurl4-openssl-dev libswscale-dev ninja-build pkg-config; if [ ! -d /opt/ninfer-cache/repo/.git ]; then git clone https://github.com/Neroued/ninfer.git /opt/ninfer-cache/repo; fi; git -C /opt/ninfer-cache/repo fetch --depth 1 origin "$revision"; git -C /opt/ninfer-cache/repo checkout --detach "$revision"; test "$(git -C /opt/ninfer-cache/repo rev-parse HEAD)" = "$revision"; if [ ! -x /opt/ninfer-cache/build/apps/ninfer-serve ] || [ ! -f /opt/ninfer-cache/build-revision ] || [ "$(cat /opt/ninfer-cache/build-revision)" != "$revision" ]; then rm -rf /opt/ninfer-cache/build; cmake -S /opt/ninfer-cache/repo -B /opt/ninfer-cache/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DNINFER_BUILD_APPS=ON -DBUILD_TESTING=OFF -DNINFER_BUILD_BENCHMARKS=OFF; cmake --build /opt/ninfer-cache/build --parallel 4 --target ninfer ninfer-serve; printf "%s\n" "$revision" > /opt/ninfer-cache/build-revision; fi; test "$(cat /opt/ninfer-cache/build-revision)" = "$revision"; printf "%s  %s\n" "$artifact_sha" "$model_path" | sha256sum --check; exec /opt/ninfer-cache/build/apps/ninfer-serve "$model_path" "$@"', "ninfer-build-run"]
+model_path = "/root/.cache/huggingface/hub/models--kaushikvira--Qwen3.8-27B-swift15-nvfp4full-dflash2-NInfer-v3/snapshots/ff891a1130adfcf46bf745e06f0fa3dcde2e8c82/qwen3_8_27b_swift15_nvfp4full-dflash2.ninfer"
+named_volumes = ["anvil-ninfer-swift15-bace20-build:/opt/ninfer-cache"]
+quantization = "all-NVFP4 W4A4 target, BF16 DFlash2 companion, K8V4 KV"
+context_tokens = 262144
+port = 39127
+health = "/health"
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-swift15-ninfer-dflash2-c4-262k"
+flags = [
+  "--host 0.0.0.0",
+  "--port 39127",
+  "--model-id qwen38-swift15-ninfer-dflash2-c4-262k",
+  "--max-context 262144",
+  "--kv-capacity auto",
+  "--kv-dtype k8v4",
+  "--max-concurrency 4",
+  "--default-max-tokens 32768",
+  "--prefill-chunk 4096",
+  "--temperature 0.9",
+  "--min-p 0.05",
+  "--spec dflash2",
+  "--draft-tokens 7",
+  "--lm-head-draft",
+  "--host-kv-mib 2048",
+  "--host-state-slots 4",
+  "--vision",
+  "--default-thinking-budget 16384",
+  "--preserve-thinking",
+]
+note = "Reproduces every setting explicitly stated in the community post. The linked card's sample command instead uses 48 GiB Host KV and 16 Host State slots; its Host KV alone exceeds the measured host's 30.91 GiB physical RAM. This managed source-build profile uses 2 GiB Host KV and four Host State slots for a bounded local startup trial. Apt packages are not digest-pinned, so a baked runtime is needed before any promotion review."
+
+[recipe.fit]
+suited = ["single-rtx5090", "long-context", "vision", "agentic-candidate"]
+not_suited = ["automatic-promotion", "publisher-profile-performance-comparison"]
+rationale = "Test local startup and correctness with the post's GPU-side settings and a host-memory capacity that can fit this machine."
+
+[recipe.sources]
+official = ["https://github.com/Neroued/ninfer/tree/bace20dc70249eed6402b66d4852c6c3f9612905"]
+community = [
+  "https://www.reddit.com/r/LocalLLM/comments/1wplkrm/swift15_qwen3827b_on_a_single_rtx_5090_allnvfp4/",
+  "https://huggingface.co/kaushikvira/Qwen3.8-27B-swift15-nvfp4full-dflash2-NInfer-v3/tree/ff891a1130adfcf46bf745e06f0fa3dcde2e8c82",
+]
