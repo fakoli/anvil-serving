@@ -1,0 +1,27 @@
+{
+  "command": "eval benchmark agentic artifact --run-id swift-fp8-dflash2-20261102-agentic --path evidence/0-preflight.json --transport local",
+  "context": {
+    "command": "eval-benchmark-agentic-artifact",
+    "command_host": "primary-node",
+    "command_runtime": "primary-node",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "primary-node",
+    "execution_runtime": "primary-node",
+    "gpu_role": null,
+    "gpu_uuid": "[REDACTED_OPERATOR_IDENTITY]",
+    "overlay": null,
+    "resource": "evaluation",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "primary-node",
+    "resource_runtime": "primary-node",
+    "target": null,
+    "topology": "primary-node",
+    "transport": "local"
+  },
+  "data": "{\"data\": {\"bytes\": 2146, \"data\": {\"checks\": [{\"code\": null, \"detail\": \"co-resident benchmark client explicitly declared\", \"name\": \"worker_isolation\", \"passed\": true}, {\"code\": null, \"detail\": \"platform=linux architecture=x86_64\", \"name\": \"worker_compatibility\", \"passed\": true}, {\"code\": null, \"detail\": \"free_bytes=501933330432\", \"name\": \"free_disk\", \"passed\": true}, {\"code\": null, \"detail\": \"available\", \"name\": \"container_capability\", \"passed\": true}, {\"code\": null, \"detail\": \"writable\", \"name\": \"owned_output\", \"passed\": true}, {\"code\": null, \"detail\": \"all locked assets present\", \"name\": \"harness_assets\", \"passed\": true}, {\"code\": null, \"detail\": \"requested model is served\", \"name\": \"endpoint_identity\", \"passed\": true}], \"created_at\": \"2026-11-02T04:16:23.648874Z\", \"observed\": {\"endpoint\": {\"authentication\": \"none\", \"base_url\": \"http://127.0.0.1:8001\", \"configured_context\": 262144, \"output_budget\": {\"declared_tokens\": 8192, \"router_max_output_tokens\": null, \"status\": \"unknown\"}, \"requested_model\": \"candidate-dflash2\", \"served_models\": [\"candidate-dflash2\"]}, \"worker\": {\"architecture\": \"x86_64\", \"container_capable\": true, \"free_disk_bytes\": 501933330432, \"harness_assets\": [], \"id\": \"primary-node\", \"owned_output_writable\": true, \"platform\": \"linux\"}}, \"passed\": true, \"requirements\": {\"architectures\": [], \"container_required\": false, \"harness_assets\": [], \"harness_locks\": {}, \"min_free_disk_bytes\": 5368709120, \"model_host_id\": \"primary-node\", \"platforms\": []}, \"run_id\": \"swift-fp8-dflash2-20261102-agentic\", \"schema\": \"anvil-serving.benchmark-preflight/v1\", \"side_effects\": {\"model_lifecycle\": false, \"route_mutation\": false}, \"unsupported_telemetry\": []}, \"path\": \"evidence/0-preflight.json\", \"sha256\": \"5f1b98fe50e5a43c7699cbd981adb27de744508078720672a5fd22b49d77c00c\"}, \"ok\": true}",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

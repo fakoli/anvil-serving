@@ -178,6 +178,7 @@ nav:
           - Recipe trace artifacts: cli/recipe-traces.md
           - Recipe monitoring: cli/recipe-monitoring.md
           - Capability Gateway: cli/router.md
+          - Router maintenance console: cli/router-maintenance-console.md
           - Evaluation and benchmarks: cli/eval.md
           - Voice: cli/voice.md
           - Media: cli/media.md
