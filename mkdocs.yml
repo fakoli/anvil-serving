@@ -103,6 +103,7 @@ nav:
           - Context, agentic, and SWE jobs: benchmarks/context-agentic-swe.md
           - Finding publication format: benchmarks/finding-format.md
           - External benchmarks: EXTERNAL-BENCHMARKS.md
+          - SPEED-Bench integration: benchmarks/speed-bench.md
           - Isolated reasoning-limit probe: benchmarks/reasoning-limit-probe.md
           - Shadow Jev evidence pilot: benchmarks/jev-pilot.md
       - Anvil Voice:
