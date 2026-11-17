@@ -11,6 +11,24 @@ a serve, a route, or a promotion.
 
 <!-- product-journey:evaluation-evidence -->
 
+## Select your retained evidence
+
+The review step reads local JSON artifacts; it does not download the published
+benchmark archive. By default it looks for `docs/findings` relative to your
+current directory, then `findings` in your operator configuration home. The
+checkout's published archive is not bundled in a pip installation. If neither
+location exists, the command reports that no evidence is retained yet and
+returns an empty index. This is not a passing model evaluation.
+
+To select another existing evidence directory:
+
+```bash
+anvil-serving eval benchmark evidence list --root /path/to/retained-results
+```
+
+An explicitly selected missing directory is an error. To read the project's
+published findings instead, open [Benchmark results](../benchmarks/results.md).
+
 ## When to use it
 
 - You are about to route real traffic to a new model or configuration.

@@ -46,6 +46,11 @@ REAL_CACHE_VOLUME = "anvil-journey-smoke-models"
 REAL_READY_SECONDS = 900  # first run downloads about 500 MB of weights
 GATEWAY = "http://127.0.0.1:8000"
 OPERATOR_HOME = "/root/operator"
+QUICKSTART_CHECKS = frozenset({
+    "init --gateway-only", "router run", "token written to .env", "models lists llm.primary",
+    "OpenAI chat", "OpenAI chat, streamed", "Anthropic messages", "OpenAI responses",
+    "unknown alias is refused", "missing token is refused",
+})
 
 # What a new user would type for each placeholder. Names come from the packaged
 # scaffold; ``--tier`` names a serve in the serves manifest, not a router tier id.
@@ -143,7 +148,7 @@ def _run(argv: list[str], env: dict[str, str], timeout: int = STEP_TIMEOUT_SECON
         code, output = None, (exc.stdout or b"").decode("utf-8", "replace")
     if code is None:
         status = "timeout"
-    elif "Traceback (most recent call last)" in output:
+    elif code < 0 or "Traceback (most recent call last)" in output:
         status = "crash"
     else:
         status = "ok" if code == 0 else "refused"
@@ -257,12 +262,18 @@ def inside(install: str, real: bool = False) -> int:
                       "--root-user-action=ignore", install], env)
     version = _run(["anvil-serving", "--version"], env)
     report: dict[str, object] = {"install": installed["status"], "version": version["last_line"],
-                                 "python": sys.version.split()[0], "quickstart": [], "steps": []}
+                                 "python": sys.version.split()[0], "version_status": version["status"],
+                                 "expected_steps": [], "quickstart": [], "steps": []}
+    report["real_model"] = real
     report["upstream"] = REAL_MODEL if real else "stand-in"
     if real and not _wait_for_real_model():
         report["quickstart"] = [{"check": "real model server ready", "ok": False,
                                  "detail": f"no answer on {UPSTREAM} in {REAL_READY_SECONDS}s"}]
     elif installed["status"] == "ok" and version["status"] == "ok":
+        from anvil_serving.product_families import PRODUCT_FAMILIES
+
+        report["expected_steps"] = [[family.id, step.stage]
+                                    for family in PRODUCT_FAMILIES for step in family.journey]
         if not real:
             server = ThreadingHTTPServer(("127.0.0.1", 11434), _Upstream)
             threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -283,6 +294,20 @@ def failures(report: dict) -> list[str]:
     problems = []
     if report["install"] != "ok":
         problems.append("package did not install")
+    if report.get("version_status") != "ok":
+        problems.append("version command did not succeed")
+    checks = [check["check"] for check in report["quickstart"]]
+    required_checks = QUICKSTART_CHECKS
+    if report.get("real_model"):
+        required_checks = required_checks | {"preflight, model server", "preflight, through the gateway"}
+    if set(checks) != required_checks or len(checks) != len(required_checks):
+        problems.append("quickstart report is incomplete or duplicated")
+    expected = [tuple(step) for step in report.get("expected_steps", [])]
+    observed = [(step["persona"], step["family"], step["stage"]) for step in report["steps"]]
+    required_steps = {(persona, *step) for persona in ("gateway", "operator") for step in expected}
+    if (not expected or len(set(expected)) != len(expected)
+            or set(observed) != required_steps or len(observed) != len(required_steps)):
+        problems.append("journey report is incomplete or duplicated")
     problems += [f"quickstart: {check['check']} ({check['detail']})"
                  for check in report["quickstart"] if not check["ok"]]
     for step in report["steps"]:
