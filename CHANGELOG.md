@@ -27,6 +27,9 @@ All notable changes to this project are documented here. The format is based on
 - `product families` help and the CLI reference describe seven product
   families; Anvil Connect is its own family rather than part of Control Plane
   & Fleet.
+- The benchmarks start page is a stable landing page: where to start,
+  hardware, metrics, the five latest decisions, and evidence labels. Every
+  earlier dated decision moved unchanged to a new decision log page.
 
 ### Fixed
 
