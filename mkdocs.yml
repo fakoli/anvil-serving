@@ -170,6 +170,7 @@ nav:
           - Deployment security model: SECURITY-MODEL.md
           - Public product and private operator state: OPERATOR-PRIVACY.md
           - Migrating to generic names: MIGRATION-GENERIC-NAMES.md
+          - Upgrading to 3.0: UPGRADING-3.0.md
       - Command-line reference:
           - Command index: CLI.md
           - Product discovery: cli/product.md
