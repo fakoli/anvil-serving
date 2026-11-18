@@ -254,7 +254,12 @@ def _read_until(sock, needle, timeout=1.0, *, body_only=False):
 
 
 def test_silent_upstream_hits_startup_deadline_despite_heartbeats():
-    settings = ServerConfig(startup_timeout_s=0.08, idle_timeout_s=1, total_timeout_s=1,
+    # The keepalive must fit between SSE header commit and the startup
+    # deadline. An 0.08 s budget left about 60 ms after setup, which one
+    # scheduler stall on a loaded macOS runner consumed (no keepalive, while
+    # the 504 still fired correctly). 0.25 s leaves room for several beats and
+    # stays well inside the idle/total deadlines and the 1 s read below.
+    settings = ServerConfig(startup_timeout_s=0.25, idle_timeout_s=1, total_timeout_s=1,
                             heartbeat_interval_s=0.02)
     with _Upstream() as upstream, _gateway(upstream, settings) as ((host, port), routing):
         with socket.create_connection((host, port), timeout=1) as client:
