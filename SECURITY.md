@@ -3,12 +3,12 @@
 ## Supported versions
 
 Security fixes target the **latest minor release line** of the current major version (currently
-`2.0.x`, matching the version in [CHANGELOG.md](CHANGELOG.md)); older lines are not supported.
+`3.0.x`, matching the version in [CHANGELOG.md](CHANGELOG.md)); older lines are not supported.
 
 | Version              | Supported          |
 | -------------------- | ------------------ |
-| Latest 2.x minor     | :white_check_mark: |
-| Older minors and 0.x/1.x | :x:            |
+| Latest 3.x minor     | :white_check_mark: |
+| Older minors and 0.x/1.x/2.x | :x:        |
 
 ## Reporting a vulnerability
 

@@ -54,6 +54,10 @@ All notable changes to this project are documented here. The format is based on
   cheat sheet puts every journey's commands on one page. Existing page URLs
   are unchanged.
 
+- `SECURITY.md` names 3.x as the supported release line, and
+  `docs/UPGRADING-3.0.md` collects the 3.0.0 breaking defaults, migration
+  steps and opt-outs in one page.
+
 ### Fixed
 
 - First-run gaps found by the journey smoke:
