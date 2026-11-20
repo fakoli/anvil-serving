@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+from contextlib import contextmanager, nullcontext
 import ctypes
 import hashlib
 import json
@@ -30,6 +31,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 from .comfyui import ComfyUIClient, MAX_METADATA_BYTES, MAX_UPLOAD_BYTES
 from .errors import MediaError, MediaSubmissionRefused
 from .gpu_budget import ENV as BUDGET_ENV, FEATURE as BUDGET_FEATURE
+from .gpu_telemetry import DEADLINE_SECONDS, NvmlSampler, valid_options as valid_telemetry_options
 from .memory_guard import load_policy, signal_reason, _read_signal
 from .worker_runtime import require_admission, runtime_status, WorkerRuntimeRefused
 
@@ -51,10 +53,12 @@ def _check(condition, message, status=409):
 
 def load_config(path):
     value = json.loads(Path(path).read_text(encoding="utf-8"))
-    _check(isinstance(value, dict) and set(value) == {
+    _check(isinstance(value, dict) and set(value) - {"gpuTelemetry"} == {
         "schema", "root", "command", "imageBudgetMiB", "contextReserveMiB", "deviceReserveMiB", "workflows",
         "hostPolicy", "hostSignal", "imageCommitReserveGiB"
     } and value["schema"] == FEATURE, "invalid worker pool configuration")
+    _check("gpuTelemetry" not in value or valid_telemetry_options(value["gpuTelemetry"]),
+           "invalid GPU telemetry configuration")
     _check(isinstance(value["root"], str) and Path(value["root"]).is_absolute(), "pool root must be absolute")
     _check(all(isinstance(value[k], str) and Path(value[k]).is_absolute() for k in ("hostPolicy", "hostSignal")),
            "host guard paths must be absolute")
@@ -123,6 +127,8 @@ def _container_memory():
 class WorkerPool:
     def __init__(self, config):
         self.config = config
+        options = config.get("gpuTelemetry")
+        self._nvml = NvmlSampler(options["deviceUuid"], reserve_mib=config["deviceReserveMiB"]) if options is not None else None
         self.host_policy = load_policy(config["hostPolicy"])
         self.host_policy["lease_path"] = config["hostSignal"]
         self.root = Path(config["root"]).resolve()
@@ -266,6 +272,7 @@ class WorkerPool:
                and 0 < value["sequence"] < 2**63, "invalid preparation identity", 400)
         key = (value["workflow"], value["version"], value["profile"])
         _check(all(isinstance(k, str) for k in key) and key in self.workflows, "workflow profile is not qualified")
+        sample = self._sample_for_request(skip_switching=True)
         with self.lock:
             _check(not self.fault, "worker pool is quarantined", 503)
             row = self.db.execute("SELECT * FROM prompts WHERE client=?", ("anvil-" + job,)).fetchone()
@@ -280,7 +287,11 @@ class WorkerPool:
                                     (time.monotonic() + 60, secrets.token_urlsafe(32), self.run_id, row["alias"]))
                 elif row["phase"] != "waiting":
                     _check(row["phase"] == "prepared", "job has already been submitted")
-                    self.db.execute("UPDATE prompts SET expires=? WHERE alias=?", (time.monotonic() + 60, row["alias"]))
+                    if self._nvml is not None:
+                        if sample is None or self.switching:
+                            return {"ready": False}
+                    with self._commit_gpu_reserve(sample, default_sample=False):
+                        self.db.execute("UPDATE prompts SET expires=? WHERE alias=?", (time.monotonic() + 60, row["alias"]))
                     return {"ready": True, "lease": row["lease"]}
             else:
                 _check(len(self._rows()) < 4096, "worker pool ledger is full", 503)
@@ -318,10 +329,11 @@ class WorkerPool:
                     self.fault = "unowned_native_prompt"
                     return {"ready": False}
                 _check(runtime_status()["acceptingNewWork"], "worker lifetime cannot reserve another job")
-                _, free = gpu_memory()
-                _check(free >= self.config["deviceReserveMiB"], "GPU reserve is unavailable", 503)
-                self.db.execute("UPDATE prompts SET phase='prepared',incarnation=?,expires=? WHERE alias=?",
-                                (child["id"], time.monotonic() + 60, row["alias"]))
+                if self._nvml is not None and sample is None:
+                    return {"ready": False}
+                with self._commit_gpu_reserve(sample):
+                    self.db.execute("UPDATE prompts SET phase='prepared',incarnation=?,expires=? WHERE alias=?",
+                                    (child["id"], time.monotonic() + 60, row["alias"]))
                 return {"ready": True, "lease": row["lease"]}
             return {"ready": False}
 
@@ -352,12 +364,17 @@ class WorkerPool:
             if prior and prior["digest"]:
                 _check(prior["digest"] == digest and prior["native"], "submission outcome is uncertain or changed")
                 return {"prompt_id": prior["alias"], "number": prior["sequence"], "node_errors": {}}
+            if self._nvml is not None:
+                _check(not self.fault and not self.switching, "worker pool is quarantined or switching", 503)
             row = self._lease(token)
             _check(isinstance(value, dict) and value.get("client_id") == row["client"]
                    and isinstance(value.get("prompt"), dict), "submission does not match its lease", 400)
             require_admission({**value.get("extra_data", {}), "client_id": row["client"]}, busy=False)
             child = self._child(row)
-            self.db.execute("UPDATE prompts SET phase='submitting',digest=? WHERE alias=?", (digest, row["alias"]))
+            # No fifth sample: a live prepared lease cannot straddle a mode
+            # switch; this fence refuses a poisoned helper before new dispatch.
+            with self._nvml.validate(self._nvml.epoch) if self._nvml is not None else nullcontext():
+                self.db.execute("UPDATE prompts SET phase='submitting',digest=? WHERE alias=?", (digest, row["alias"]))
             # Commit intent before I/O. Even a lost response can only be recovered on this child.
             try:
                 response = child["client"].request_json("POST", "/prompt", value, max_bytes=65536)
@@ -439,6 +456,10 @@ class WorkerPool:
         return path
 
     def diagnostics(self):
+        try:
+            sample = self._sample_for_request(skip_switching=True)
+        except MediaError:
+            sample = None  # Report diagnostics without inventing physical headroom.
         with self.lock:
             workers = []
             for child in self.children:
@@ -450,7 +471,13 @@ class WorkerPool:
                     item.update(running=q["running"], pending=q["pending"],
                                 runtime=stats["system"]["anvil_runtime"], cudaBudget=stats["system"].get("anvil_cuda_budget"))
                 workers.append(item)
-            total, free = gpu_memory()
+            if self._nvml is None:
+                total, free = self._sample_gpu()
+            else:
+                try:
+                    total, free = self._fresh_sample(sample) if sample is not None and not self.fault else (None, None)
+                except MediaError:
+                    total, free = None, None
             return {"schema": FEATURE, "mode": self.mode, "switching": self.switching, "fault": self.fault,
                     "workers": workers, "gpuTotalMiB": total, "gpuFreeMiB": free,
                     "runtime": runtime_status(), "activeAssignments": len(self._active()),
@@ -480,7 +507,46 @@ class WorkerPool:
                 self.metadata[path] = child["client"].request_json("GET", path)
             return self.metadata[path]
 
+    def _sample_gpu(self):
+        return self._nvml.sample() if self._nvml is not None else gpu_memory()
+
+    def _sample_for_request(self, *, skip_switching=False):
+        if self._nvml is None:
+            return None  # Leave the default provider's existing call sites unchanged.
+        with self.lock:
+            if skip_switching and (self.switching or self.fault):
+                return None
+        started = time.monotonic()
+        generation, reading = self._nvml.sample_with_revision()
+        return started, generation, reading
+
+    def _fresh_sample(self, sample):
+        started, generation, reading = sample
+        _check(time.monotonic() - started < DEADLINE_SECONDS and generation == self._nvml.epoch,
+               "GPU telemetry sample is stale", 503)
+        return reading
+
+    @contextmanager
+    def _commit_gpu_reserve(self, sample, *, default_sample=True):
+        if sample is None:
+            if default_sample:
+                _check(self._sample_gpu()[1] >= self.config["deviceReserveMiB"], "GPU reserve is unavailable", 503)
+            yield
+        else:
+            # Fast validation pins the sampler generation only for the local
+            # admission record. It will refuse rather than wait under pool lock.
+            with self._nvml.validate(sample[1]):
+                _check(self._fresh_sample(sample)[1] >= self.config["deviceReserveMiB"],
+                       "GPU reserve is unavailable", 503)
+                yield
+
     def _stop_children(self):
+        # Synchronize the helper with orphan containment, never exempt an
+        # unreaped PID from the pool's existing native-descendant sweep.
+        with self._nvml.contain() if self._nvml is not None else nullcontext():
+            self._stop_render_children()
+
+    def _stop_render_children(self):
         for child in self.children:
             if child["process"].poll() is None:
                 child["process"].terminate()
@@ -518,7 +584,13 @@ class WorkerPool:
 
     def _start_children(self, mode):
         count = 2 if mode == "images" else 1
-        total, free = gpu_memory()
+        if self._nvml is not None:
+            # Startup may block in process creation; no render child or active
+            # assignment exists here. Four seconds bounds provider reads only.
+            self._nvml.start()
+        total, free = self._sample_gpu()
+        if self._nvml is not None:
+            _check(free >= self.config["deviceReserveMiB"], "physical GPU reserve was breached", 503)
         need = count * (self.config["imageBudgetMiB"] + self.config["contextReserveMiB"]) + self.config["deviceReserveMiB"]
         _check(mode != "images" or total >= need and free >= need, "device cannot reserve two isolated image workers", 503)
         children = []
@@ -576,7 +648,7 @@ class WorkerPool:
             self._start_children("images")
             self.switching = False
             while not self.stop.wait(2):
-                _, free = gpu_memory()
+                _, free = self._sample_gpu()
                 _check(free >= self.config["deviceReserveMiB"], "physical GPU reserve was breached", 503)
                 _check(all(c["process"].poll() is None for c in self.children), "an isolated child exited", 503)
                 self._prune()
@@ -610,6 +682,8 @@ class WorkerPool:
                          "errorType": type(exc).__name__, "errno": getattr(exc, "errno", None),
                          "message": str(exc)[:512]}).decode(), flush=True)
         finally:
+            if self._nvml is not None:
+                self._nvml.close()
             self._stop_children()
 
 class _Server(ThreadingHTTPServer):

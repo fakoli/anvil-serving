@@ -1,4 +1,5 @@
 """Independent queue, custody and containment checks for the native front door."""
+from contextlib import nullcontext
 import dataclasses
 import json
 import os
@@ -328,3 +329,134 @@ def test_child_port_probe_accepts_closed_server_time_wait_but_refuses_live_owner
     with socket.socket() as restarted:
         restarted.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         restarted.bind(address)
+
+
+def test_opt_in_gpu_guard_blocks_prepare_and_quarantines_active_assignment(pool, monkeypatch):
+    from contextlib import contextmanager
+    events = []
+    fresh = True
+
+    def sample():
+        events.append("sample")
+        if not fresh:
+            raise MediaError("gpu_telemetry_unavailable", "physical GPU telemetry unavailable", status=503)
+        return 32607, 30000
+
+    @contextmanager
+    def contain():
+        events.append("fence")
+        yield
+        events.append("unfence")
+
+    pool._nvml = SimpleNamespace(epoch=0, validate=lambda _: nullcontext(), sample=sample,
+                                 sample_with_revision=lambda: (0, sample()), contain=contain, close=lambda: events.append("close"))
+    monkeypatch.setattr(module, "gpu_memory", lambda: pytest.fail("opt-in silently fell back"))
+    assert pool.diagnostics()["gpuFreeMiB"] == 30000
+    first = prepare(pool, 1)
+    alias = pool.submit(first["lease"], payload(1))["prompt_id"]
+    fresh = False
+    with pytest.raises(MediaError, match="physical GPU telemetry unavailable"):
+        prepare(pool, 2)
+    assert len(pool._active()) == 1 and pool._active()[0]["phase"] == "active"
+    pool._start_children = lambda _: None
+    pool._stop_render_children = lambda: events.append("sweep")
+    pool.stop = SimpleNamespace(wait=lambda _: False)
+    pool.drive()
+    assert pool.fault == "gpu_telemetry_unavailable"
+    assert pool.history(alias)[alias]["status"]["status_str"] == "error"
+    assert events == ["sample", "sample", "sample", "sample", "fence", "sweep", "unfence",
+                      "close", "fence", "sweep", "unfence"]
+
+
+def test_opt_in_start_checks_same_two_image_budget_before_launch(pool, monkeypatch):
+    original = pool.children.copy()
+    pool.config["contextReserveMiB"] = 1024
+    pool._nvml = SimpleNamespace(epoch=0, validate=lambda _: nullcontext(), start=lambda: None, sample=lambda: (32607, 25000))
+    monkeypatch.setattr(module, "gpu_memory", lambda: pytest.fail("opt-in silently fell back"))
+    monkeypatch.setattr(module.subprocess, "Popen", lambda *_args, **_kwargs: pytest.fail("budget was denied"))
+    with pytest.raises(MediaError, match="device cannot reserve two isolated image workers"):
+        pool._start_children("images")
+    assert pool.children == original
+
+
+def test_prepared_before_fault_cannot_submit_but_known_replay_survives(pool, monkeypatch):
+    pool._nvml = SimpleNamespace(epoch=0, validate=lambda _: nullcontext(), sample=lambda: (32607, 30000),
+                                 sample_with_revision=lambda: (0, (32607, 30000)))
+    monkeypatch.setattr(module, "gpu_memory", lambda: pytest.fail("opt-in silently fell back"))
+    first = prepare(pool, 1)
+    posted = pool.submit(first["lease"], payload(1))
+    second = prepare(pool, 2)
+    pool.fault = "gpu_telemetry_unavailable"
+    assert pool.submit(first["lease"], payload(1)) == posted
+    with pytest.raises(MediaError, match="worker pool is quarantined"):
+        pool.submit(second["lease"], payload(2))
+    assert [c["client"].posts for c in pool.children] == [1, 0]
+
+
+def test_opt_in_provider_never_waits_under_pool_lock_or_admits_stale_sample(pool, monkeypatch):
+    clock = [100.]
+
+    def read():
+        assert not pool.lock._is_owned()
+        return 32607, 30000
+
+    pool._nvml = SimpleNamespace(epoch=0, validate=lambda _: nullcontext(), sample=read,
+                                 sample_with_revision=lambda: (0, read()))
+    monkeypatch.setattr(module.time, "monotonic", lambda: clock[0])
+    assert pool.diagnostics()["gpuFreeMiB"] == 30000
+    first = prepare(pool, 1)
+    assert pool.submit(first["lease"], payload(1))["prompt_id"]
+    next_child = pool.children[1]["client"]
+    original = next_child.queue
+
+    def delayed_queue():
+        clock[0] += 4
+        return original()
+
+    next_child.queue = delayed_queue
+    with pytest.raises(MediaError, match="GPU telemetry sample is stale"):
+        prepare(pool, 2)
+    assert [c["client"].posts for c in pool.children] == [1, 0]
+
+
+def test_provider_epoch_change_invalidates_prepared_decision(pool):
+    telemetry = SimpleNamespace(epoch=0, validate=lambda _: nullcontext(), sample=lambda: (32607, 30000),
+                                 sample_with_revision=lambda: (0, (32607, 30000)))
+    pool._nvml = telemetry
+    first = prepare(pool, 1)
+    pool.submit(first["lease"], payload(1))
+    next_child = pool.children[1]["client"]
+    original = next_child.queue
+
+    def provider_lost_between_sample_and_decision():
+        telemetry.epoch += 1
+        return original()
+
+    next_child.queue = provider_lost_between_sample_and_decision
+    with pytest.raises(MediaError, match="GPU telemetry sample is stale"):
+        prepare(pool, 2)
+    assert not any(row["phase"] == "prepared" for row in pool._active())
+
+
+@pytest.mark.parametrize("headroom", [1023, 1024])
+def test_nvml_exclusive_start_checks_physical_floor_before_launch(pool, monkeypatch, headroom):
+    pool.config["contextReserveMiB"] = 1024
+    pool._nvml = SimpleNamespace(start=lambda: None, sample=lambda: (32607, headroom))
+    # Avoid a real socket/child; the stub proves whether startup reached launch.
+    sink = SimpleNamespace(setsockopt=lambda *_: None, bind=lambda *_: None)
+    monkeypatch.setattr(module.socket, "socket", lambda: nullcontext(sink))
+
+    class WouldLaunch(Exception):
+        pass
+
+    def launch(*_args, **_kwargs):
+        raise WouldLaunch
+
+    pool.config["command"] = [sys.executable, "fixture.py"]
+    monkeypatch.setattr(module.subprocess, "Popen", launch)
+    if headroom == 1024:
+        with pytest.raises(WouldLaunch):
+            pool._start_children("exclusive")
+    else:
+        with pytest.raises(MediaError, match="physical GPU reserve was breached"):
+            pool._start_children("exclusive")
