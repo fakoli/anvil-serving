@@ -8,7 +8,8 @@ from anvil_serving.media import worker_pool
 from anvil_serving.media.errors import MediaError
 
 
-UUID = "GPU-12345678-1234-1234-1234-123456789abc"
+UUID = "GPU-11111111-1111-1111-1111-111111111111"
+OTHER_UUID = "GPU-33333333-3333-3333-3333-333333333333"
 pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="worker is Linux-only")
 
 
@@ -43,7 +44,7 @@ def test_telemetry_worker_reuses_helper_with_new_validated_readings(monkeypatch)
 @pytest.mark.parametrize("reply", [
     "time.sleep(15)",
     "s.sendall(b'x'); s.close(); break",
-    "s.sendall(struct.pack('!40sQQ', b'GPU-98765432-1234-1234-1234-123456789abc', 32<<30, 1<<20))",
+    f"s.sendall(struct.pack('!40sQQ', b'{OTHER_UUID}', 32<<30, 1<<20))",
     f"s.sendall(struct.pack('!40sQQ', b'{UUID}', 1<<20, 2<<20))",
 ])
 def test_bad_late_partial_or_wrong_gpu_sample_is_never_returned(monkeypatch, reply):
