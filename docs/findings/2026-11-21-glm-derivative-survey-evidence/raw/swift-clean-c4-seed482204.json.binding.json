@@ -1,0 +1,52 @@
+{
+  "original_bytes": 21904,
+  "original_sha256": "b905edb87425d51830db4d8834b41656ae0d0baf6ce39cd45421f1a697b7965f",
+  "public_bytes": 21477,
+  "public_path": "swift-clean-c4-seed482204.json",
+  "public_sha256": "c2ce49a394596966b75a15bb2d338453fcb2ed6158d269343b30d9455e5013ac",
+  "redactions": [
+    "api_key",
+    "argv",
+    "authorization",
+    "base_url",
+    "command",
+    "container",
+    "container_id",
+    "credential",
+    "credentials",
+    "endpoint",
+    "env",
+    "environment",
+    "failures",
+    "gpu_uuid",
+    "gpu_uuids",
+    "host",
+    "hostname",
+    "output",
+    "path",
+    "paths",
+    "prompt",
+    "reasoning",
+    "recipe",
+    "request_journal",
+    "scope",
+    "scopes",
+    "serve_flags",
+    "served_model",
+    "token",
+    "values",
+    "worker"
+  ],
+  "sanitized_fields": {
+    "endpoint_values": "http://127.0.0.1:8000/v1",
+    "model_aliases": [
+      "az-focus-exl3-tp2",
+      "az-focus-exl3-tp2",
+      "mia-glm-exl3-tp2",
+      "qwen-fp4-local-tp1",
+      "swift-light-iq4xs-layer-split"
+    ]
+  },
+  "schema": "anvil-serving.private-publication-binding/v1",
+  "synthetic_endpoint": "http://127.0.0.1:8000/v1"
+}

@@ -4,6 +4,12 @@ Every retained model configuration measured on this hardware, in one place:
 what it ran on, how fast it was, whether reasoning was on or off, and where the
 working recipe lives.
 
+**2026-11-21 GLM derivative comparison addendum:** Mia and AZ327-Focus tied at
+49/60 on a matched text/reasoning set; AZ327-Focus used 55.8% less summed
+sequential C1 request time. Do not transpose that result to concurrent serving: the
+separate matched C4 natural-output population has near-tied median E2E and
+lower AZ aggregate output. Use the [dated finding](../findings/2026-11-21-glm-derivative-survey.md), [AZ327 C4 receipt](../findings/2026-11-21-glm-derivative-survey-evidence/raw/az327-natural-c4.json), and [Mia C4 receipt](../findings/2026-11-21-glm-derivative-survey-evidence/raw/mia-natural-c4.json) together.
+
 **September 25 secondary update:** The [Swift-1.5 NInfer RTX 5090
 profile](models/swift15-qwen38-27b.md) is deployed at 262,144 configured
 tokens/C4. Routed retrieval passed 18/18 through 257,898 actual prompt tokens;

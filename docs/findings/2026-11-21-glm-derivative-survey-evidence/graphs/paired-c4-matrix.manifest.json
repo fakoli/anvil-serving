@@ -1,0 +1,80 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "Bounded natural-output C4 observations",
+  "subtitle": "Unique-cache 8-request C4 cells with a 7,680-token target. AZ327/Mia observed 5,679.375 prompt tokens each; Swift/Mia observed 5,288/5,677.375. Pairs remain separate and are not pooled.",
+  "output": "paired-c4-matrix.svg",
+  "data_output": "paired-c4-matrix-data.json",
+  "metric_semantics": {
+    "comparison_boundary": "Each line is a separate same-seed candidate/control pair. The chart does not aggregate pairs, prove capacity, or establish promotion.",
+    "cache_mode": "unique; all plotted artifacts record completed=8, failed=0, performance_eligible=true, and request canaries.",
+    "sample_limit": "n=8 per point; p50 values are descriptive observations, not stable tail estimates."
+  },
+  "charts": [
+    {
+      "title": "Time to first visible token",
+      "metric": "metrics.ttft_p50_ms",
+      "x_label": "candidate/control within seed-matched pair",
+      "y_label": "p50 milliseconds (n=8 per point)",
+      "series": [
+        {
+          "label": "AZ327/Mia (seed 482004)",
+          "points": [
+            {"x": "candidate", "artifact": "sources/az327-natural-c4.json"},
+            {"x": "control", "artifact": "sources/mia-natural-c4.json"}
+          ]
+        },
+        {
+          "label": "Swift/Mia (seed 482204; separate)",
+          "points": [
+            {"x": "candidate", "artifact": "sources/swift-clean-c4-seed482204.json"},
+            {"x": "control", "artifact": "sources/mia-clean-c4-seed482204.json"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Aggregate output throughput",
+      "metric": "metrics.throughput_tok_s",
+      "x_label": "candidate/control within seed-matched pair",
+      "y_label": "aggregate output tokens/s (n=8 per point)",
+      "series": [
+        {
+          "label": "AZ327/Mia (seed 482004)",
+          "points": [
+            {"x": "candidate", "artifact": "sources/az327-natural-c4.json"},
+            {"x": "control", "artifact": "sources/mia-natural-c4.json"}
+          ]
+        },
+        {
+          "label": "Swift/Mia (seed 482204; separate)",
+          "points": [
+            {"x": "candidate", "artifact": "sources/swift-clean-c4-seed482204.json"},
+            {"x": "control", "artifact": "sources/mia-clean-c4-seed482204.json"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "End-to-end latency",
+      "metric": "metrics.e2e_p50_ms",
+      "x_label": "candidate/control within seed-matched pair",
+      "y_label": "p50 milliseconds (n=8 per point)",
+      "series": [
+        {
+          "label": "AZ327/Mia (seed 482004)",
+          "points": [
+            {"x": "candidate", "artifact": "sources/az327-natural-c4.json"},
+            {"x": "control", "artifact": "sources/mia-natural-c4.json"}
+          ]
+        },
+        {
+          "label": "Swift/Mia (seed 482204; separate)",
+          "points": [
+            {"x": "candidate", "artifact": "sources/swift-clean-c4-seed482204.json"},
+            {"x": "control", "artifact": "sources/mia-clean-c4-seed482204.json"}
+          ]
+        }
+      ]
+    }
+  ]
+}

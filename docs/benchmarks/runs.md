@@ -1,5 +1,14 @@
 # Benchmark run catalog
 
+## 2026-11-21 GLM derivative survey — matched fixed-set result
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Mia EXL3 TensorFold versus final AZ327-Focus EXL3 TensorFold; fixed 60-case text/reasoning corpus, literal publisher parser, 16,384-token local cap | Two RTX PRO 6000 Blackwell Max-Q GPUs; direct TP2 local comparison | Both profiles: 49/60 complete correct (25/30 MMLU-Pro, 24/30 BBH). AZ327-Focus used 55.8% less summed sequential C1 request time (215.195 s versus 487.233 s), with 36,662 versus 86,651 completion tokens; all requests were independently reexecuted. The matched 327K/C4 summary has near-tied median end-to-end latency and lower AZ aggregate output, so no broad concurrent-speed claim follows. AZ327 passed bounded ~128K retrieval, 20/20 tools, and 12/12 image cases with Mia's exact image template. No capacity, client, or promotion claim. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-11-21-glm-derivative-survey.md) · [Evidence](../findings/2026-11-21-glm-derivative-survey-evidence/README.md) |
+| Paired SWE-Bench Verified five-image scout; independently graded official images | Two RTX PRO 6000 Blackwell Max-Q GPUs; isolated single-job harness | AZ 4/5, Mia 3/5. Both resolved SymPy/xarray; AZ alone Sphinx/pylint; Mia alone Django. Matched controls and official grading per arm; this is not a full-suite score. `no-promotion`. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-11-21-glm-derivative-survey.md) · [Per-case evidence](../findings/2026-11-21-glm-derivative-survey-evidence/raw/paired-swe-five.json) |
+| AZ327 capability scout; Swift light scout | AZ327 TP2; Swift light two-GPU layer split | AZ327: Aider Affine/Go first attempts passed, context 12/12 at 8K/32K, native tools 3/3; matched Mia passed Affine first and Go second attempt. Swift: four actual 24,576-token slots, configured projector, oracle 3/3 semantic/exact versus Mia 3/3 semantic and 2/3 exact. Fresh-seed C4 cohorts are both clean; no broad speed/capacity/replacement claim. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-11-21-glm-derivative-survey.md) · [Aggregate](../findings/2026-11-21-glm-derivative-survey-evidence/capability-scouts-summary.json) |
+| Qwen FP4 QAD R1; one-card direct C1 compatibility receipt | One RTX PRO 6000 Blackwell Max-Q; direct one-card requests | 8/8 responses arrived, but all failed the opening-position canary: 0/8 performance eligible. No timing, quality, capacity, or promotion result. | [Qwen dossier](models/qwen38-flash-next.md) · [Finding](../findings/2026-11-21-glm-derivative-survey.md) · [Evidence](../findings/2026-11-21-glm-derivative-survey-evidence/README.md) |
+
 ## 2026-11-21 Sage S2.1 Flash TensorFold qualification
 
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |

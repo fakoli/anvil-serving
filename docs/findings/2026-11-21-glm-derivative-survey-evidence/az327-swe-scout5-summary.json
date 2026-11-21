@@ -1,0 +1,31 @@
+{
+  "schema": "anvil-serving.swe-scout-summary/v1",
+  "profile": "az327-focus-exl3-tp2",
+  "dataset": {
+    "name": "princeton-nlp/SWE-bench_Verified",
+    "split": "test",
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a"
+  },
+  "harness": {
+    "agent": "mini-swe-agent",
+    "agent_revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8",
+    "grader": "swe-bench",
+    "grader_revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+  },
+  "result": {
+    "attempted": 5,
+    "completed": 5,
+    "independently_graded": 5,
+    "resolved": 4,
+    "resolve_rate": 0.8,
+    "agent_interval_seconds": 740.844267
+  },
+  "instances": [
+    {"id": "sphinx-doc__sphinx-9658", "resolved": true},
+    {"id": "sympy__sympy-12096", "resolved": true},
+    {"id": "pydata__xarray-4356", "resolved": true},
+    {"id": "pylint-dev__pylint-8898", "resolved": true},
+    {"id": "django__django-13512", "resolved": false}
+  ],
+  "boundary": "AZ-only provenance for a five-instance official-image scout. The paired Mia/AZ comparison is retained separately in raw/paired-swe-five.json; neither is a full-suite score."
+}

@@ -1,0 +1,138 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "AZ327/Mia (seed 482004)",
+          "points": [
+            {
+              "artifact": "sources/az327-natural-c4.json",
+              "artifact_sha256": "048b60c8637c992e2cffffc77bc22a967e88a5ad429bfe626743b826b6ff8e24",
+              "value": 4578.685789019801,
+              "x": "candidate"
+            },
+            {
+              "artifact": "sources/mia-natural-c4.json",
+              "artifact_sha256": "652bdc918db9bdc7f6fdaf0046c138e3faab926e1e7f566698010e4d44ab2766",
+              "value": 4027.2328320425004,
+              "x": "control"
+            }
+          ]
+        },
+        {
+          "label": "Swift/Mia (seed 482204; separate)",
+          "points": [
+            {
+              "artifact": "sources/swift-clean-c4-seed482204.json",
+              "artifact_sha256": "c2ce49a394596966b75a15bb2d338453fcb2ed6158d269343b30d9455e5013ac",
+              "value": 21418.974286993034,
+              "x": "candidate"
+            },
+            {
+              "artifact": "sources/mia-clean-c4-seed482204.json",
+              "artifact_sha256": "401bfff8ce657370f53df00d7fc51f677b3e456ba744483ceea715cdd6862c3a",
+              "value": 5407.739649992436,
+              "x": "control"
+            }
+          ]
+        }
+      ],
+      "title": "Time to first visible token",
+      "x_label": "candidate/control within seed-matched pair",
+      "y_label": "p50 milliseconds (n=8 per point)"
+    },
+    {
+      "metric": "metrics.throughput_tok_s",
+      "series": [
+        {
+          "label": "AZ327/Mia (seed 482004)",
+          "points": [
+            {
+              "artifact": "sources/az327-natural-c4.json",
+              "artifact_sha256": "048b60c8637c992e2cffffc77bc22a967e88a5ad429bfe626743b826b6ff8e24",
+              "value": 48.93444369869219,
+              "x": "candidate"
+            },
+            {
+              "artifact": "sources/mia-natural-c4.json",
+              "artifact_sha256": "652bdc918db9bdc7f6fdaf0046c138e3faab926e1e7f566698010e4d44ab2766",
+              "value": 106.93795115624174,
+              "x": "control"
+            }
+          ]
+        },
+        {
+          "label": "Swift/Mia (seed 482204; separate)",
+          "points": [
+            {
+              "artifact": "sources/swift-clean-c4-seed482204.json",
+              "artifact_sha256": "c2ce49a394596966b75a15bb2d338453fcb2ed6158d269343b30d9455e5013ac",
+              "value": 46.377435078931036,
+              "x": "candidate"
+            },
+            {
+              "artifact": "sources/mia-clean-c4-seed482204.json",
+              "artifact_sha256": "401bfff8ce657370f53df00d7fc51f677b3e456ba744483ceea715cdd6862c3a",
+              "value": 118.02896097234026,
+              "x": "control"
+            }
+          ]
+        }
+      ],
+      "title": "Aggregate output throughput",
+      "x_label": "candidate/control within seed-matched pair",
+      "y_label": "aggregate output tokens/s (n=8 per point)"
+    },
+    {
+      "metric": "metrics.e2e_p50_ms",
+      "series": [
+        {
+          "label": "AZ327/Mia (seed 482004)",
+          "points": [
+            {
+              "artifact": "sources/az327-natural-c4.json",
+              "artifact_sha256": "048b60c8637c992e2cffffc77bc22a967e88a5ad429bfe626743b826b6ff8e24",
+              "value": 5257.585430983454,
+              "x": "candidate"
+            },
+            {
+              "artifact": "sources/mia-natural-c4.json",
+              "artifact_sha256": "652bdc918db9bdc7f6fdaf0046c138e3faab926e1e7f566698010e4d44ab2766",
+              "value": 5278.708294034004,
+              "x": "control"
+            }
+          ]
+        },
+        {
+          "label": "Swift/Mia (seed 482204; separate)",
+          "points": [
+            {
+              "artifact": "sources/swift-clean-c4-seed482204.json",
+              "artifact_sha256": "c2ce49a394596966b75a15bb2d338453fcb2ed6158d269343b30d9455e5013ac",
+              "value": 23065.298279980198,
+              "x": "candidate"
+            },
+            {
+              "artifact": "sources/mia-clean-c4-seed482204.json",
+              "artifact_sha256": "401bfff8ce657370f53df00d7fc51f677b3e456ba744483ceea715cdd6862c3a",
+              "value": 6489.36660902109,
+              "x": "control"
+            }
+          ]
+        }
+      ],
+      "title": "End-to-end latency",
+      "x_label": "candidate/control within seed-matched pair",
+      "y_label": "p50 milliseconds (n=8 per point)"
+    }
+  ],
+  "metric_semantics": {
+    "cache_mode": "unique; all plotted artifacts record completed=8, failed=0, performance_eligible=true, and request canaries.",
+    "comparison_boundary": "Each line is a separate same-seed candidate/control pair. The chart does not aggregate pairs, prove capacity, or establish promotion.",
+    "sample_limit": "n=8 per point; p50 values are descriptive observations, not stable tail estimates."
+  },
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Unique-cache 8-request C4 cells with a 7,680-token target. AZ327/Mia observed 5,679.375 prompt tokens each; Swift/Mia observed 5,288/5,677.375. Pairs remain separate and are not pooled.",
+  "title": "Bounded natural-output C4 observations"
+}

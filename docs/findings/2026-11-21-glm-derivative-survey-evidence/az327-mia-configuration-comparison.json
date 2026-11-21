@@ -1,0 +1,14 @@
+{
+  "schema": "anvil-serving.configuration-comparison/v1",
+  "left_profile": "mia-exl3-tensorfold",
+  "right_profile": "az327-focus-exl3-tensorfold",
+  "common_configured_context_tokens": 327680,
+  "same_runtime_image": true,
+  "same_entrypoint": true,
+  "same_invocation_flags_except_name_and_port": true,
+  "right_only_environment_settings": [
+    "offline_model_downloads"
+  ],
+  "separate_model_snapshots": true,
+  "boundary": "Configured equivalence supports this matched comparison only; it is not a capacity, concurrency, or deployment claim."
+}

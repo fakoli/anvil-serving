@@ -1,0 +1,12 @@
+{
+  "direct_endpoints": {
+    "az_focus": {
+      "base_url": "http://127.0.0.1:8000/v1",
+      "context_window": 327680,
+      "model": "az-focus-exl3-tp2",
+      "revision": "d6922a95301c2ec274d96fb8ddb81f32f7b7f9be"
+    }
+  },
+  "schema": "az-paired-endpoint-receipt/v1",
+  "status": "authorized"
+}

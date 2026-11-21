@@ -1,0 +1,51 @@
+{
+  "original_bytes": 268,
+  "original_sha256": "db4eb34cfd6420b6d3bb0b8085a0aa6b50a09d924a64631fccfd17b4b1a7f741",
+  "public_bytes": 302,
+  "public_path": "endpoint-receipt-az-focus.json",
+  "public_sha256": "465dbcbf0d77ed199c436f385eac4a53d8404fb4a2569fb92b0638703f646018",
+  "redactions": [
+    "api_key",
+    "argv",
+    "authorization",
+    "base_url",
+    "command",
+    "container",
+    "container_id",
+    "credential",
+    "credentials",
+    "endpoint",
+    "env",
+    "environment",
+    "failures",
+    "gpu_uuid",
+    "gpu_uuids",
+    "host",
+    "hostname",
+    "output",
+    "path",
+    "paths",
+    "prompt",
+    "reasoning",
+    "recipe",
+    "request_journal",
+    "scope",
+    "scopes",
+    "serve_flags",
+    "served_model",
+    "token",
+    "values",
+    "worker"
+  ],
+  "sanitized_fields": {
+    "endpoint_values": "http://127.0.0.1:8000/v1",
+    "model_aliases": [
+      "az-focus-exl3-tp2",
+      "az-focus-exl3-tp2",
+      "mia-glm-exl3-tp2",
+      "qwen-fp4-local-tp1"
+    ]
+  },
+  "schema": "anvil-serving.private-publication-binding/v1",
+  "synthetic_endpoint": "http://127.0.0.1:8000/v1"
+}

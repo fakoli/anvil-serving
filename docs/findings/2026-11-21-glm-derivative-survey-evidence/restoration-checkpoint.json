@@ -1,0 +1,12 @@
+{
+  "schema": "anvil-serving.restoration-checkpoint/v1",
+  "observed_date": "2026-11-21",
+  "profile": "mia-glm-exl3-tp2",
+  "configured_context_tokens": 327680,
+  "authenticated_primary_alias": {"http_status": 200, "ready": true},
+  "direct_status": "running",
+  "runtime": {"engine_revision": "f350cd3ea253a042e205746928271f9d8f71a82d", "tensor_parallel": 2, "kv_cache_dtype": "fp8"},
+  "checkpoint": {"revision": "76c0b5173166d2795dd48860f45d8224817f894c", "sha256": "7688a118486f4ea946f3c847fcfdca7e643585770d0244c3ec57bc0b4fe3e19f"},
+  "monitoring": "pre-existing monitoring-registration gap retained; authenticated serving healthy",
+  "boundary": "Verified restoration checkpoint; later paired SWE work completed separately. Not a promotion record."
+}

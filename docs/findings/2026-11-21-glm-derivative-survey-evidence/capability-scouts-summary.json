@@ -1,0 +1,27 @@
+{
+  "schema": "anvil-serving.derivative-capability-scouts/v1",
+  "az327": {
+    "aider_affine": {"attempted": 1, "resolved_first_attempt": 1},
+    "aider_go": {"attempted": 1, "resolved_first_attempt": 1},
+    "context": {"passed": 12, "attempted": 12, "token_buckets": [8192, 32768]},
+    "native_agentic_tools": {"passed": 3, "attempted": 3},
+    "oracle_recovery": {
+      "missing_oracle_failures": 2,
+      "occurred_before_inference": true,
+      "same_day_cache_verified": true,
+      "oracle_image_digest_prefix": "8aacb7"
+    },
+    "mia_matched_aider": {"affine_first_attempt": true, "go_second_attempt": true}
+  },
+  "swift_light": {
+    "placement": "two GPUs via layer split with vision projector",
+    "context_slots": {"count": 4, "tokens_each": 24576},
+    "oracle_2048": {
+      "swift_semantic": "3/3",
+      "swift_exact": "3/3",
+      "mia_semantic": "3/3",
+      "mia_exact": "2/3"
+    },
+    "initial_c1_n3_temperature_1": "not comparable to Mia; superseded for C4 by the matched fresh-seed cohort"
+  }
+}
