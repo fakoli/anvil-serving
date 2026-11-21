@@ -1,0 +1,134 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-11-21-sage-s21-flash-qualification",
+  "complete": true,
+  "identity": {
+    "model": "Mia-AiLab/Sage-S2.1-Flash-EXL3-4bpw@e272f9573523b7dee7f1a5579c7b2997644d1c87",
+    "engine": "TensorFold 1.1.9; direct served identity retained",
+    "quantization": "EXL3 4-bit",
+    "hardware": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+  },
+  "workload": {
+    "scope": "checkpoint custody, startup, functional and image gates, agentic/context pilots, natural C2/C4, and bounded long retrieval",
+    "manifest": "workload-manifest.json",
+    "run_plan": "run-plan.json"
+  },
+  "measurement": {
+    "path": "direct bounded functional and natural-output cells",
+    "warm_cold_state": "separate warmup and scored populations where retained",
+    "sample_count": null,
+    "statistics": [
+      "no catch-all population; see per-suite denominators",
+      "natural output lengths are non-fixed",
+      "workload-manifest.json defines the scored workload and run-plan.json binds private frozen plans"
+    ]
+  },
+  "gates": [
+    "pinned checkpoint custody verified",
+    "direct startup and identity retained",
+    "5/5 text/json/tool/OCR functional preflight passed",
+    "matched agentic 6/6 per arm",
+    "matched context 12/12 per arm at 8192 and 32768",
+    "direct image 12/12",
+    "R2 64K/C4 8/8",
+    "R4 327K/C2 8/8 and 4/4 long C1 retrieval",
+    "independent 17/17 cross-suite review",
+    "serving and router restoration verified; historical monitoring gap retained"
+  ],
+  "headline_results": [
+    {
+      "metric": "Sage R2 aggregate output",
+      "value": 115.09,
+      "unit": "tok/s",
+      "condition": "64K/C4 native MTP; n=8; natural non-fixed output"
+    },
+    {
+      "metric": "GLM C4 aggregate output",
+      "value": 110.4,
+      "unit": "tok/s",
+      "condition": "GLM configured at 327,680 tokens, four concurrent natural requests, eight scored; approximately 7,684 input tokens per request."
+    },
+    {
+      "metric": "Sage-versus-GLM C4 aggregate delta",
+      "value": 4.248,
+      "unit": "%",
+      "condition": "Sage R2 (65,536 configured) versus GLM (327,680 configured) under the same four-stream natural workload, eight requests per arm."
+    },
+    {
+      "metric": "Sage R4 aggregate output",
+      "value": 103.77,
+      "unit": "tok/s",
+      "condition": "327K/C2 native MTP; n=8; actual concurrency two; natural input near 7.7K tokens"
+    },
+    {
+      "metric": "GLM C2 aggregate output",
+      "value": 91.85,
+      "unit": "tok/s",
+      "condition": "matched 327K/C2 control; n=8; actual concurrency two; natural input near 7.7K tokens"
+    },
+    {
+      "metric": "Sage R4 visible TTFT p50",
+      "value": 4.14,
+      "unit": "s",
+      "condition": "327K/C2 native MTP; n=8; actual concurrency two"
+    }
+  ],
+  "failures": [
+    "strict controlled-output C1: Sage 0/20 and GLM 0/20; no strict speed population",
+    "GLM natural C1 excluded: 9 bracketed first-token events for 8 owned responses and concurrent activity",
+    "Sage R1, Sage R2 and restored GLM each failed Go alphametics after two attempts. See the individual native grades for failing test cases."
+  ],
+  "limitations": [
+    "natural populations are small and output lengths are not fixed",
+    "historical quality/context are not a replacement conclusion",
+    "R3/R4 long retrieval is ordinary C1/short-output only, not simultaneous C2/C4 at 327K",
+    "historical monitoring had zero generation discovery and the current publisher registration remains pending; this is not an observability rollout",
+    "Long simultaneous full-window occupancy, scientific projectors and broad coding quality were outside the measured workload."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "external-prior",
+      "checkpoint-custody",
+      "functional",
+      "measured"
+    ],
+    "decision_labels": [
+      "challenger",
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "Any change to the selected production model requires a separate human decision and broader matched quality evidence."
+  },
+  "evidence": [
+    "raw/checkpoint-pull-verification.json",
+    "raw/checkpoint-comparison.json",
+    "raw/sage-startup-identity.json",
+    "raw/sage-preflight.json",
+    "raw/r1-eligible-results.json",
+    "raw/historical-comparator-receipt.json",
+    "restoration.json",
+    "native/source-bindings.json",
+    "raw/sampled-resources.json",
+    "workload-manifest.json"
+  ],
+  "metrics_coverage": {
+    "profile": "bounded multi-profile",
+    "status": "closed-partial",
+    "frozen_plan": "run-plan.json",
+    "required_cells": [
+      "workload-manifest.json#natural_and_strict_capacity",
+      "workload-manifest.json#functional"
+    ],
+    "cells": {
+      "strict_c1": "failed and excluded: Sage 0/20, GLM 0/20",
+      "natural_c4": "completed: Sage R1/R2/R3 and fresh GLM control; see native/capacity",
+      "natural_c2": "completed: Sage R4 and matched postrestore GLM, eight owned requests per arm at concurrency two",
+      "long_retrieval": "completed: Sage R3/R4 and postrestore GLM, four C1 requests per arm"
+    },
+    "missing_required_metrics": [
+      "No eligible strict fixed-output throughput sample.",
+      "No isolated fresh single-stream GLM natural timing."
+    ]
+  },
+  "comparison_evidence": "Fresh GLM C4, matched GLM C2, and postrestore GLM C1 retrieval controls are retained with explicit isolation/count limits; results are not broad rankings."
+}

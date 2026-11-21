@@ -1,0 +1,428 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-11-21-sage-s21-flash-qualification",
+    "capability": "language-model serving",
+    "repository_revision": "f7fabbf1b88b38929d2d4ca97762234dbf1fca47",
+    "evidence_labels": [
+      "functional",
+      "capacity",
+      "limited-quality",
+      "external-prior"
+    ],
+    "decision_labels": [
+      "challenger",
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.aider-cancellation/v1",
+    "anvil-serving.aider-run/v1",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.context-suite-run/v1",
+    "jsonl-request-journal",
+    "multimodal-benchmark-evidence/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "d5b9e9cb8cedf7c65e605b80d101004cec335c9b4131810c0da5740a24ad75e6",
+          "bytes": 2566
+        }
+      ],
+      "reason": "Entry point for the final evidence bundle."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "a420b0797ddde23eed1a7d39ea8ad897c0a63308a152253cd532a812265d26f7",
+          "bytes": 3475
+        },
+        {
+          "path": "recipe-comparison.md",
+          "sha256": "76144bc59b20d8a944486919d01908912e7520da4bc3f3326bc5c5696da1ba8c",
+          "bytes": 5223
+        },
+        {
+          "path": "native/source-bindings.json",
+          "sha256": "09082beac38e0c56a6bc075d58465b67dc0f8c30b446556e30f916d4d6ec79f7",
+          "bytes": 32927
+        }
+      ],
+      "reason": "Dated sources, public recipe comparisons and original-to-projection digests."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "cca835fc7622092be9aa4519ebbffeaaf597325711f1494514a8f73f891caddf",
+          "bytes": 4595
+        }
+      ],
+      "reason": "Capacity request settings, long-context controls and independent grading fixtures."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.json",
+          "sha256": "5b8f72d24341d2e291638025fdfa55309da9b097ff839b8dc8dea3063453e4ed",
+          "bytes": 4370
+        },
+        {
+          "path": "campaign-state.json",
+          "sha256": "31e6de1990062dbda0aa0afd6775826cfc13b163a055b6be8c754270f3596acd",
+          "bytes": 2004
+        },
+        {
+          "path": "dispatch-packet.md",
+          "sha256": "0de678b64bdd6200ef11430d59082faab6669be117e3c2683e50732e1b313580",
+          "bytes": 1262
+        }
+      ],
+      "reason": "Hashes of the individual pre-run plans plus the historical dispatch and its terminal campaign state."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "raw/checkpoint-comparison.json",
+          "sha256": "5c31e778adc05ace30191f9771ee8a51ea471c43784d226d558e2a39bb9efc2f",
+          "bytes": 1971
+        },
+        {
+          "path": "raw/checkpoint-pull-verification.json",
+          "sha256": "496506bfa3cf3e197c93fb1c8df35fefb605aecb72e7cbb5c5a8fa95abbf9de6",
+          "bytes": 585
+        },
+        {
+          "path": "raw/sage-startup-identity.json",
+          "sha256": "a92d8f6a48f95cbfc2465438a77a3a8bad7fb5e17408e51419ec9a2bc940ba71",
+          "bytes": 1090
+        }
+      ],
+      "reason": "Quant, tokenizer, template and startup identity records."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "native/capacity/glm-c1-excluded.journal.jsonl",
+          "sha256": "20087e2f39a1308ef7fed24a6df3c2eb83a89409627333cb407e90ea2f683f9b",
+          "bytes": 10155
+        },
+        {
+          "path": "native/capacity/glm-c1-excluded.json",
+          "sha256": "dacefb895157f6d6d4bb0670ae6455013f99c09a265c509239ea8a83dfd6dd80",
+          "bytes": 22079
+        },
+        {
+          "path": "native/capacity/glm-c4.journal.jsonl",
+          "sha256": "31d128ede1c47e70e6d3d3a326ca1bc2ecee5f16b104dd694bb041e5c28cd10e",
+          "bytes": 10169
+        },
+        {
+          "path": "native/capacity/glm-c4.json",
+          "sha256": "dd07ca987685e1fe9a31f39ec7bc3d93856a99941b060a458021b44d1aad5966",
+          "bytes": 21885
+        },
+        {
+          "path": "native/capacity/glm-postrestore-c2.journal.jsonl",
+          "sha256": "2bd95783c89ae821cef881db60644fc8fe589a0935dc3d48ad435c8fef1c3d35",
+          "bytes": 10162
+        },
+        {
+          "path": "native/capacity/glm-postrestore-c2.json",
+          "sha256": "12932171d57140fcbf5aba5c0aab36fe67ca184bbe3840a1f1223c26775c6720",
+          "bytes": 21881
+        },
+        {
+          "path": "native/capacity/r1-c1.journal.jsonl",
+          "sha256": "9c4cd45d3417d27731a6617bc370b7bf425a1bb0b2cc2f6a4eab35202148e5af",
+          "bytes": 10134
+        },
+        {
+          "path": "native/capacity/r1-c1.json",
+          "sha256": "677c29e4dc5409bd6098d2e231487faa70954e3e3f5756f4d988d52934f8e772",
+          "bytes": 21829
+        },
+        {
+          "path": "native/capacity/r1-c4.journal.jsonl",
+          "sha256": "baa43c8ad5d95e72b8e6dbdd69acc8c3d1970175669113575c8a98b20147d139",
+          "bytes": 10149
+        },
+        {
+          "path": "native/capacity/r1-c4.json",
+          "sha256": "a26f9d998a0cfc45045268473278b630177ed8e2e711dd60cd58cefaff956011",
+          "bytes": 21876
+        },
+        {
+          "path": "native/capacity/r2-c1.journal.jsonl",
+          "sha256": "a914e0db57874d36f4a4bca254ea6548383a23f1bfcc5e15b3746e8f1a9710f0",
+          "bytes": 10142
+        },
+        {
+          "path": "native/capacity/r2-c1.json",
+          "sha256": "52d5dd200e591dd7c205be0719f181ad942cd21744e116495ce4e92ed88577d7",
+          "bytes": 21846
+        },
+        {
+          "path": "native/capacity/r2-c4.journal.jsonl",
+          "sha256": "8e56eb53f445003261b9794b28e9f57176c183c07fe548deb86bb9cdaf8467c9",
+          "bytes": 10140
+        },
+        {
+          "path": "native/capacity/r2-c4.json",
+          "sha256": "606492066807337b695fa62a70a6d0db47ba1118e6fd2cc9b56a1d64885307e3",
+          "bytes": 21858
+        },
+        {
+          "path": "native/capacity/r3-c4.journal.jsonl",
+          "sha256": "4842ad99efd732e0a5344e7643ef981491faab4dd7c58ca4ffb20e703815d4c8",
+          "bytes": 10158
+        },
+        {
+          "path": "native/capacity/r3-c4.json",
+          "sha256": "a32e3d79243444317732bad419cf1c22a0c770adf52600a2fcaa6cc8bee6a53b",
+          "bytes": 21854
+        },
+        {
+          "path": "native/capacity/r4-c2.journal.jsonl",
+          "sha256": "ada5c878be3cd662018b65e1bd5f3e2c908e78ec8a4062a8efe98e4030b1d655",
+          "bytes": 10162
+        },
+        {
+          "path": "native/capacity/r4-c2.json",
+          "sha256": "f670fdb909447b5de578b593639ff37d011519a092272dcd4eb8180780832bf1",
+          "bytes": 21880
+        },
+        {
+          "path": "native/strict/glm-c1-failed.journal.jsonl",
+          "sha256": "a5b7b857e54f455767bd09e2eac15974551b4fa40b23d5582ab537d999c6fa25",
+          "bytes": 43905
+        },
+        {
+          "path": "native/strict/glm-c1-failed.json",
+          "sha256": "2db0e4532f3af4f0eff863320d9870c4f387968f5a07386b9daa3e23eb47765d",
+          "bytes": 68725
+        },
+        {
+          "path": "native/strict/sage-c1-failed.journal.jsonl",
+          "sha256": "2ad038a5876bf05815342871d7763b5458912fd5eafc20c54d49be75d6d16c5f",
+          "bytes": 37120
+        },
+        {
+          "path": "native/strict/sage-c1-failed.json",
+          "sha256": "3f1cdf4e8f4aa716c1afcadbb98e814ee70974c4d81b39e7e8d0c137e4b20939",
+          "bytes": 58935
+        },
+        {
+          "path": "native/image/glm.json",
+          "sha256": "6f144c224d6c736aafe5a0590fd8c1cf71f2b59890d9992f51ea566147d23560",
+          "bytes": 24921
+        },
+        {
+          "path": "native/image/r1.json",
+          "sha256": "e573c3bfb97e221796f2a61f8ea3a44087e6538dd9d1dd6ca4871072d84973d6",
+          "bytes": 24924
+        },
+        {
+          "path": "native/image/r2.json",
+          "sha256": "df2e1ade057e9adc41b4d48e60e26a8f586fa1f9fe3b2d68da02008d4e9f5418",
+          "bytes": 24926
+        },
+        {
+          "path": "native/image/r4.json",
+          "sha256": "0ef993df9515c3b1355353f2b8b43ca6c711b9aec13516c5bb3cd2752f015cc0",
+          "bytes": 24894
+        },
+        {
+          "path": "native/suite/glm-postrestore/0-aider-go.json",
+          "sha256": "39069d1cf7655cf5ad57d2784bc85f4856a9842e6fe2348d63aef36c15e7e5a3",
+          "bytes": 8468
+        },
+        {
+          "path": "native/suite/glm-postrestore/0-aider-python.json",
+          "sha256": "0c390c1a6e102f62a8210c2ce8d0700c6b16b48566705feedc07847110200293",
+          "bytes": 7655
+        },
+        {
+          "path": "native/suite/glm-postrestore/0-context.json",
+          "sha256": "847d5360963787a6d833beda6d449110fbeb6b07345338da66617016b2b9e0fb",
+          "bytes": 11160
+        },
+        {
+          "path": "native/suite/glm/0-agentic.json",
+          "sha256": "8f93f2df98a95423f16e680cdb29cea69acd795aea2712b51567ad7ebe1d9275",
+          "bytes": 13054
+        },
+        {
+          "path": "native/suite/glm/0-aider.json",
+          "sha256": "dee3f8a1bd5a213a5c5de067a75cb160a972d65bdb840dce7a442bcffcc80146",
+          "bytes": 844
+        },
+        {
+          "path": "native/suite/glm/0-context.json",
+          "sha256": "79e4a5b4f745b407a79caaab551dde549ab12e631a1bd21bb1db4b648923bda8",
+          "bytes": 28278
+        },
+        {
+          "path": "native/suite/r1/0-agentic.json",
+          "sha256": "6180f818f8d43620775d3722c3bce7446d8932e927329dc335b3390d44e2ec1e",
+          "bytes": 13047
+        },
+        {
+          "path": "native/suite/r1/0-aider-go.json",
+          "sha256": "69e656e047e26dabfc7ef7a183e393d05b06984f2c3f8ebb56dc115ff6588298",
+          "bytes": 8449
+        },
+        {
+          "path": "native/suite/r1/0-aider.json",
+          "sha256": "78c983d1088dafe83a2afe88568dc9a70e62776100f8bdde283402578f034cd6",
+          "bytes": 7635
+        },
+        {
+          "path": "native/suite/r1/0-context.json",
+          "sha256": "3a2fb7615ad55686682176f776a2ad5eeaa02da5570eaaf31d9c932beb537c87",
+          "bytes": 28396
+        },
+        {
+          "path": "native/suite/r2/0-agentic.json",
+          "sha256": "8b19d466c364427b2a9d4a39c4b659e9ac4be7a1079782191f1e98139da11fcb",
+          "bytes": 13055
+        },
+        {
+          "path": "native/suite/r2/0-aider-go.json",
+          "sha256": "313649048115c614314340a936d14d39a6f436b239f13310f74880459e7fb365",
+          "bytes": 8454
+        },
+        {
+          "path": "native/suite/r2/0-aider.json",
+          "sha256": "3bb9a30079df38f7be5797598adbf478a6fbeae5837ca19f9ac5ead394bcf49c",
+          "bytes": 7642
+        },
+        {
+          "path": "native/suite/r2/0-context.json",
+          "sha256": "9134af37ece2c3ce8df0a906897d79c54e4c03f33025d95d33ec5fc0f6adb726",
+          "bytes": 28384
+        },
+        {
+          "path": "native/suite/r3/0-context.json",
+          "sha256": "e885cd6cdea55e01319ed6f5bf7e5c90a42624a4b1cc3a62242c1e43b8ffcfdd",
+          "bytes": 11159
+        },
+        {
+          "path": "native/suite/r4/0-agentic.json",
+          "sha256": "db410f6cbf81721fe00f29276bd102353484de23e8c1f71224083da27965126a",
+          "bytes": 13053
+        },
+        {
+          "path": "native/suite/r4/0-context.json",
+          "sha256": "60d4ad8b8de0e54bbde5d674117379b6b6d5e51dd8b44ea92149ae286b71633b",
+          "bytes": 11161
+        },
+        {
+          "path": "native/accounting/mtp-paired-engine.json",
+          "sha256": "f5ccb5aee8c4bcf8574877e55850e7b693edb71191a7f4abe32abc6e3cc80ab0",
+          "bytes": 4333
+        },
+        {
+          "path": "native/validation.json",
+          "sha256": "9882d4387409863a3f18a1e49f89ebb23c1b18a51f38b33739b51fb4db85b873",
+          "bytes": 1814
+        },
+        {
+          "path": "raw/r1-eligible-results.json",
+          "sha256": "f9340119754fbaf5c1524a1791260fa69efce119b9e09ee402bb5f3e7e6228b1",
+          "bytes": 8123
+        },
+        {
+          "path": "raw/historical-comparator-receipt.json",
+          "sha256": "230ef1efab73d0ef547ab1d91d559ef7c888477225c5b1f08c39bdd189a590cf",
+          "bytes": 2608
+        },
+        {
+          "path": "raw/sage-preflight.json",
+          "sha256": "e14fdb7612c745a811df09b82224e56a6007a3f175384ba2a2c693bfe3a82ee8",
+          "bytes": 1137
+        },
+        {
+          "path": "raw/sampled-resources.json",
+          "sha256": "3c5e4c95296424358fcc48aa23189d07785c7b4a0eafe18b43b394a58e3e49ae",
+          "bytes": 8485
+        }
+      ],
+      "reason": "Bounded native measurements and journals, independent grades, failed samples, gated exclusions and sampled device observations."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "b51b9ff169ce90ad819ef0b23285cbcd40218573ecce27f78562eaaf9c3a6248",
+          "bytes": 2017
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "cb9097dea4514693b62c71ede36c18d143f8c96a12a07aaab9618d16a299d2bb",
+          "bytes": 2928
+        }
+      ],
+      "reason": "Failure causes, measurement eligibility and coverage boundaries."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "8829efbe76a5148aa27ab714780508404f821c5a2dd507e2816ac5bd07e34f90",
+          "bytes": 1885
+        }
+      ],
+      "reason": "Serving and router recovery with a separate account of generation-bound observer coverage."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "11a08a65c42acbf15624ebf397a1120724ed1c6d57cb6490b8a1844629cb9c78",
+          "bytes": 5522
+        }
+      ],
+      "reason": "Machine-readable results and decision limits."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "9f20e194ecadff2f21dd158bde248c9b80a223c31a022ff685421312920b2f86",
+          "bytes": 610
+        }
+      ],
+      "reason": "Reader-facing outcome and publication scope."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

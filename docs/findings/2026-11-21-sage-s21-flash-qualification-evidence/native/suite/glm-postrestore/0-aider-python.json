@@ -1,0 +1,226 @@
+{
+  "budget": {
+    "configured": {
+      "deadline_s": 600,
+      "max_completion_tokens": 16384,
+      "max_model_calls": 12,
+      "max_retries": 0,
+      "min_free_disk_bytes": 21474836480
+    },
+    "elapsed_s": 6.326609,
+    "exhausted": false,
+    "model_calls": 2,
+    "reason": null
+  },
+  "endpoint": {
+    "base_url": "http://127.0.0.1:8000/v1",
+    "model": "glm53-tensorfold-exl3-tp2-327k-c4-dflash2-r1"
+  },
+  "execution_contract": {
+    "attempts": 2,
+    "cpp_header_lint": "pinned basic_lint with C++ grammar for admitted cpp solution .h files; other paths unchanged; local correction, not official leaderboard equivalence",
+    "edit_format": "whole",
+    "lint": "pinned upstream flake8_lint in prepared image via python3 -I, not host Python",
+    "prompt": "[GENERATED-TEXT REDACTED sha256=a4b5294916c103d9 bytes=56]",
+    "test_timeout_s": 180
+  },
+  "failure": null,
+  "instances": [
+    {
+      "artifact_id": "7d8b25dfaaaef2942d00c0879faf706628bace68c3cbdf2169359888253700c1",
+      "first_attempt_passed": true,
+      "instance_id": "python/exercises/practice/affine-cipher",
+      "native": {
+        "path": "public-source/.aider.results.json",
+        "sha256": "286307fb35a632025c1ceabfdb0ad096109b5c8cd3684d199e3558b8c441f14a"
+      },
+      "resolved": true,
+      "second_attempt_passed": null
+    }
+  ],
+  "output_budget": {
+    "classification": null,
+    "configured_output_cap_tokens": 16384,
+    "responses": [
+      {
+        "finish_reason": "stop",
+        "non_reasoning_tokens": 457,
+        "output_cap_reached": false,
+        "usage": {
+          "completion_tokens": 484,
+          "prompt_tokens": 1760,
+          "reasoning_tokens": 27,
+          "total_tokens": 2244
+        },
+        "visible_tokens": null
+      },
+      {
+        "finish_reason": "stop",
+        "non_reasoning_tokens": 241,
+        "output_cap_reached": false,
+        "usage": {
+          "completion_tokens": 242,
+          "prompt_tokens": 1764,
+          "reasoning_tokens": 1,
+          "total_tokens": 2006
+        },
+        "visible_tokens": null
+      }
+    ],
+    "scope": "response_generation_limit"
+  },
+  "plan_sha256": "42da8de7c96bc6b741e2e177559128815591dde0edd7863933ae05adeb72eb4e",
+  "profile": "aider-diagnostic-16k-v1",
+  "promotion": {
+    "authorized": false
+  },
+  "quality": {
+    "oracle_image_id": "sha256:1ddc6f4f28f4bf5a42170e3ea721f6b441e48cc8d033bb0b30ec991c2b91b93c",
+    "status": "measured"
+  },
+  "request_accounting": {
+    "errors": 0,
+    "pending": 0,
+    "responses": 2,
+    "schema": "anvil-serving.aider-request-accounting/v1",
+    "started": 2,
+    "status": "complete"
+  },
+  "request_controls": {
+    "chat_template_kwargs": null,
+    "reasoning_effort": null,
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default"
+  },
+  "request_observations": {
+    "bytes": 4383,
+    "path": "public-source/requests.jsonl",
+    "sha256": "c8ab7df462fedb2ad7a0c9a0ec2f4e54852d7d0bf5b14f216e299aafb94efdbb"
+  },
+  "retention": {
+    "artifacts": [
+      {
+        "bytes": 454801,
+        "path": "public-source/plan.json",
+        "sha256": "66a653c1130ba1d32fe9b253c379e855c266da68cfb5ed3f7e9823418cc2128b"
+      },
+      {
+        "bytes": 1245,
+        "path": "public-source/selection.json",
+        "sha256": "cd0e664eaf5b4b083f17efb6ea452514d9e99ecfeeff137eab5abf3969c97572"
+      },
+      {
+        "bytes": 15107,
+        "path": "public-source/result.json",
+        "sha256": "f5bb03ca06db76c90e1793ecb2b38ec115ac9911f77a30a711e7cacb0eab90d1"
+      },
+      {
+        "bytes": 10188,
+        "path": "public-source/process.json",
+        "sha256": "26777ff81eb8ff00d65cae29ce4fc4652210f770070dae3380e969f4586a2ff6"
+      },
+      {
+        "bytes": 4383,
+        "path": "public-source/requests.jsonl",
+        "sha256": "c8ab7df462fedb2ad7a0c9a0ec2f4e54852d7d0bf5b14f216e299aafb94efdbb"
+      },
+      {
+        "bytes": 765,
+        "path": "public-source/adapter-result.json",
+        "sha256": "d1d667a68a3aedcf8d24344daf2d01864385163fb8f411969dfea946bad24d41"
+      },
+      {
+        "bytes": 930,
+        "path": "public-source/.aider.results.json",
+        "sha256": "286307fb35a632025c1ceabfdb0ad096109b5c8cd3684d199e3558b8c441f14a"
+      },
+      {
+        "bytes": 7171,
+        "path": "public-source/.aider.chat.history.md",
+        "sha256": "438d3f109a973efefb28ece73ae86bd3e3f7802985291c5e7abc281691f3c211"
+      }
+    ],
+    "manifest_reference": {
+      "bytes": 1458,
+      "path": "public-source/retention.json",
+      "sha256": "0930f7a8967192244eef02aafa1445cf0eac2aa39209aedf4aad75d28ea8e919"
+    },
+    "missing": [],
+    "schema": "anvil-serving.aider-retention/v1",
+    "state": "retained"
+  },
+  "run_id": "sage-glm-postrestore-affine",
+  "schema": "anvil-serving.aider-run/v1",
+  "selection": {
+    "excluded": [
+      "cpp/exercises/practice/all-your-base",
+      "go/exercises/practice/alphametics",
+      "java/exercises/practice/affine-cipher",
+      "javascript/exercises/practice/affine-cipher",
+      "rust/exercises/practice/accumulate"
+    ],
+    "files": {
+      "python/exercises/practice/affine-cipher": {
+        ".docs/instructions.append.md": "e5dc5300128239b38b82ecfa24ed5e64df264b4a99e3ae8e23f10ab6a5253f1b",
+        ".docs/instructions.md": "8ca08c38274662d67f1bd6482242161a36a6268851ad1e61acf1bb327b20c729",
+        ".meta/config.json": "89f5e3da0cd332167e2f8362493f6c1e2adef433c3fca9b39ad532d4c1fcecb3",
+        ".meta/example.py": "6952153be60d7690e0bfad52c89c4647e9edb4bd068c77f1c15735e00d9216ba",
+        ".meta/template.j2": "9413f9baf7e44210eb30fe338da0c2043ba898d3c60d9520071b8957e8ff83b2",
+        ".meta/tests.toml": "0034a54f8e7fa9b6cd89b3d4f7d9523b5b0f6c5da8d2183ebbef2bab571021fd",
+        "affine_cipher.py": "d3164dc77d13a429fb14899cd5e74a81d848ed0c7b95b02db3247a75e0bbd72b",
+        "affine_cipher_test.py": "4d9dac99b726068707a37e36145d73f74a52704145fb95bb4acaccdd7cd3ef54"
+      }
+    },
+    "instance_ids": [
+      "python/exercises/practice/affine-cipher"
+    ],
+    "sha256": "de9d40fa0accfdcb9bbe0d89dfd1ffa6a3654bbf89c8a550963877a4cb8bae74"
+  },
+  "stage": {
+    "clock": {
+      "duration": "monotonic",
+      "duration_resolution_s": 1e-09,
+      "synchronized": null,
+      "wall": "UTC system clock",
+      "wall_precision_s": 1e-06,
+      "wall_resolution_s": 1e-09
+    },
+    "command": [
+      "[GENERATED-TEXT REDACTED sha256=47829cd8a8af3903 bytes=145]",
+      "[GENERATED-TEXT REDACTED sha256=4c3a1b75ae7e2fb9 bytes=2]",
+      "[GENERATED-TEXT REDACTED sha256=71fbb8ec87f49f3c bytes=2]",
+      "[GENERATED-TEXT REDACTED sha256=0c3603e13e24a40b bytes=2]",
+      "[GENERATED-TEXT REDACTED sha256=5b38d934c7547104 bytes=132]",
+      "[GENERATED-TEXT REDACTED sha256=e84f0085f30c6f5e bytes=58]",
+      "[GENERATED-TEXT REDACTED sha256=9edee7a3813eff3e bytes=6]",
+      "[GENERATED-TEXT REDACTED sha256=a473ed2aec1cc39d bytes=113]"
+    ],
+    "duration_s": 11.032019,
+    "ended_at": "2026-11-21T09:14:22.988045Z",
+    "output_timing": "buffered; individual stdout/stderr event times unknown",
+    "output_truncated": false,
+    "returncode": 0,
+    "started_at": "2026-11-21T09:14:11.955970Z",
+    "stderr": "[GENERATED-TEXT REDACTED sha256=dd7e4edb84ed0988 bytes=41]",
+    "stdout": "[GENERATED-TEXT REDACTED sha256=9960c8ad61822379 bytes=8275]"
+  },
+  "state": "completed",
+  "suite": "aider",
+  "summary": {
+    "graded": 1,
+    "resolve_rate": 1.0,
+    "resolved": 1,
+    "selected": 1
+  }
+}

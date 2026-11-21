@@ -1,0 +1,23 @@
+{
+  "attachment_projection": "attachments remain retained only in original private capture; public-source path values are labels and no attachment payload is included in this projection",
+  "campaign_invalidation": "explicit projection exceptions may change only named campaign-disposition fields; original producer values and immutable original hashes remain in source-bindings.json",
+  "duplicate_json_keys": "checked for every emitted JSON and JSONL record by this exporter",
+  "endpoint_projection": "base_url is always the synthetic placeholder http://127.0.0.1:8000/v1; it is not an observed or routable service endpoint",
+  "numeric_field_integrity": "every source JSON numeric leaf is compared before write; redaction may replace text only",
+  "request_journal_rebinding": "capacity request_journal remains an object; only its path, sha256, and bytes are intentionally rebound to the redacted sibling journal projection",
+  "schema": "anvil-serving.public-native-validation/v1",
+  "unsafe_text_scan": "checked for private path roots, host identity, GPU UUIDs, and secret-like markers by this exporter",
+  "viewer": {
+    "command": "python -m anvil_serving.cli eval benchmark evidence show ARTIFACT --json",
+    "supported_schema": "anvil-serving.benchmark/v1 capacity artifacts; validate each emitted capacity file after export",
+    "unsupported_reason": "the installed evidence-show command reports these native schemas as unrecognized; they are retained without flattening",
+    "unsupported_schemas": [
+      "anvil-serving.agentic-suite-run/v1",
+      "anvil-serving.context-suite-run/v1",
+      "anvil-serving.aider-run/v1",
+      "anvil-serving.aider-cancellation/v1",
+      "multimodal-benchmark-evidence/v1",
+      "native-MTP paired engine accounting (no declared benchmark schema)"
+    ]
+  }
+}

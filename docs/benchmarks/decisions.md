@@ -12,6 +12,19 @@ For one comparable table of every finding, use
 
 ## November and October 2026
 
+**2026-11-21 Sage S2.1 Flash TensorFold challenger:** the bounded
+[qualification](../findings/2026-11-21-sage-s21-flash-qualification.md) retains
+two practical recipes on the dual RTX PRO 6000 pair: 64K/C4 native MTP for
+concurrent natural-output work (8/8, 115.09 aggregate output tok/s), and
+327K/C2 native MTP for long-context work (8/8, 103.77 aggregate output tok/s,
+plus 4/4 single-request retrievals through 259,774 actual input tokens).
+Matched GLM C2 had lower visible latency, while Sage had higher output rate;
+small non-fixed-output populations prevent a broad speed ranking. Both strict
+C1 arms failed 20/20. Serving and router restoration are verified; the
+historical monitoring gap remains separate. `challenger`, `no-promotion`; no
+alias, route, or selected model changed. [Dossier](models/sage-s21-flash.md)
+· [evidence](../findings/2026-11-21-sage-s21-flash-qualification-evidence/README.md).
+
 **2026-11-09 TensorFold reasoning investigation:** the
 [Max/Low Go controls](../findings/2026-11-09-tensorfold-reasoning-budget.md)
 retain the same 16K total response budget and separate effort instructions

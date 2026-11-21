@@ -1,0 +1,90 @@
+{
+  "campaign": "2026-11-21-sage-s21-flash-qualification",
+  "scope": "Date-ordered qualification with adaptive extensions. Each private source below fixes its own test or method. They were commissioned in stages, rather than preregistered as a single trial. Original hashes refer to protected files. This public projection was prepared after the runs.",
+  "source_revision": "f7fabbf1b88b38929d2d4ca97762234dbf1fca47",
+  "original_plans": [
+    {
+      "purpose": "initial suite and strict-capacity plan",
+      "original_sha256": "65affe0aba891c3909d817bd024ec950e2a067d71a7e0643041d4b9cd7094311",
+      "original_bytes": 2707
+    },
+    {
+      "purpose": "historical overlap fixture",
+      "original_sha256": "5686bae333cc4f763f4991018306aa72b417dd610e27a3f61ead8b3a65d4de1e",
+      "original_bytes": 3673,
+      "frozen_at": "2026-11-21T08:08:00.003420+00:00"
+    },
+    {
+      "purpose": "historical capacity source",
+      "original_sha256": "0391e211d3e1894f208b309e2c78a04ff89180a054c29f0c9777891d9682abc3",
+      "original_bytes": 3208,
+      "frozen_at": "2026-11-21T08:16:13.821506+00:00",
+      "capacity_producer_revision": "8629c882519785dbb6d5c2246fdfaaffb5bf21fc"
+    },
+    {
+      "purpose": "first matched GLM and Sage natural workloads",
+      "original_sha256": "b72ff29d8458cc2849636f9f2cc603bfe3fd9de3b4a826b17af8c225d9f67cc6",
+      "original_bytes": 7769,
+      "frozen_at": "2026-11-21T08:19:36.875253+00:00",
+      "capacity_producer_revision": "8629c882519785dbb6d5c2246fdfaaffb5bf21fc"
+    },
+    {
+      "purpose": "second coding fixture",
+      "original_sha256": "d4b6e5badcdf12afcbf180b4d262bad7d72fd64c810e3e81e5ad31420a26665e",
+      "original_bytes": 588,
+      "frozen_at": "2026-11-21T08:23:51.131744+00:00"
+    },
+    {
+      "purpose": "64K native MTP natural workloads",
+      "original_sha256": "7003efcc4e4fa4379c8cfd4d085d11d295d2684fbf20aa4183dc07ba05e17dcd",
+      "original_bytes": 4433,
+      "frozen_at": "2026-11-21T08:26:54.477361+00:00",
+      "capacity_producer_revision": "8629c882519785dbb6d5c2246fdfaaffb5bf21fc"
+    },
+    {
+      "purpose": "request-level draft ablation",
+      "original_sha256": "fc3a9d437cac371aca4b541d5e10291cae7edcd10dbb84f46be780d39133c3a8",
+      "original_bytes": 3558
+    },
+    {
+      "purpose": "327K sharded four-stream natural workload",
+      "original_sha256": "7710d717d5f99bde7d4fd24c7b532c7a9d8c3ba4ff75353a96588d4a61f645fd",
+      "original_bytes": 3177,
+      "frozen_at": "2026-11-21T08:50:08.207232+00:00",
+      "capacity_producer_revision": "8629c882519785dbb6d5c2246fdfaaffb5bf21fc"
+    },
+    {
+      "purpose": "327K two-stream Sage workload",
+      "original_sha256": "f8b802ee01591bc5a3027dcabc3d27c457220f00cc43bb91780f3a56d9d20d26",
+      "original_bytes": 3028,
+      "capacity_producer_revision": "8629c882519785dbb6d5c2246fdfaaffb5bf21fc"
+    },
+    {
+      "purpose": "matched GLM two-stream workload",
+      "original_sha256": "ecb0f23981b968e4e4e8e2dc47cc79bf6035cd828ab8195c1ce1957fe2471c29",
+      "original_bytes": 1674,
+      "frozen_at": "2026-11-21T08:56:50.505685+00:00",
+      "capacity_producer_revision": "8629c882519785dbb6d5c2246fdfaaffb5bf21fc"
+    },
+    {
+      "purpose": "Sage long retrieval",
+      "original_sha256": "0d9ff11de83f07c45a50eff8945a7a8d8bec3da0c7b8d83b0cc6544860117e92",
+      "original_bytes": 1413
+    },
+    {
+      "purpose": "Sage MTP long retrieval",
+      "original_sha256": "30ba8166420bc3ebdc2425ee4ba89d768bf0b13e706cecd7ad4e993bb3c80c1b",
+      "original_bytes": 1422
+    },
+    {
+      "purpose": "GLM long retrieval",
+      "original_sha256": "60fd4c5a1a0be74d8db82357f3036b52ad4976952cdc0b10cc72b9a85566eda3",
+      "original_bytes": 1431
+    }
+  ],
+  "strict_gate": "Run strict C4 only if both strict C1 arms return an eligible population. Both C1 populations failed. The eight-request natural-output experiments are a separate workload.",
+  "exclusion_rule": "Keep failed attempts. Exclude capacity cells with outside inference in the measurement bracket. Identify warmups separately from scored requests.",
+  "assigned_gpu_window_minutes": 90,
+  "restoration": "Managed unload for each candidate, restore initial GLM identity and GPU settings, then run an authenticated primary-route probe. Follow-up GLM reference calls use the restored configuration.",
+  "public_workload": "workload-manifest.json"
+}

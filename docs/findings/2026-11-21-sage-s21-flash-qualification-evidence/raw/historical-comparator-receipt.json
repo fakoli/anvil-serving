@@ -1,0 +1,18 @@
+{
+  "schema_version": "historical-comparator-receipt-public/v1",
+  "frozen_at": "2026-11-21T08:08:00Z",
+  "scope": "Historical functional and limited-quality controls. Latency is descriptive only. No Sage runtime, full-context, route, performance, or promotion inference is allowed.",
+  "candidate": "Sage candidate not yet run",
+  "fixture_sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e",
+  "historical_output_caps": {"preflight": 256, "quality_and_context": 768},
+  "comparators": [
+    {"arm": "GLM control", "artifact_kind": "preflight", "sha256": "d0e2b4c5e9d8e33e7179ae506c5bdfa72288582eeedeb7719187a15cdf4555b6", "status": "passed", "included": false, "exclusion_reason": "Historical control only; no matched Sage arm."},
+    {"arm": "GLM control", "artifact_kind": "quality", "sha256": "8628a1f6ecbeff4e31e6b2944663ce23bf9a0c2b9d93b43fac51d762fc54fe39", "status": "passed", "denominators": {"intelligence": "6/6", "session": "3/3"}, "included": false, "exclusion_reason": "Historical control only; no matched Sage arm."},
+    {"arm": "GLM control", "artifact_kind": "context", "sha256": "7281b8ac3d1b4936e32849ed62fc9fc9c641cab41b72bd553f47c0553f43417f", "status": "passed", "denominators": {"context_targets": "3/3"}, "included": false, "exclusion_reason": "Historical control only; no matched Sage arm."},
+    {"arm": "secondary historical control", "artifact_kind": "preflight", "sha256": "77ac0793a2d5a0e84e65ce8fbeb4a7e4bb37dc788b89a7c28f4aa58423c5352b", "status": "passed", "included": false, "exclusion_reason": "Historical control only; no matched Sage arm."},
+    {"arm": "secondary historical control", "artifact_kind": "quality", "sha256": "3f274493aea48ded744b7fd9d95cd4716faa421686532e291b53ca46867facdf", "status": "passed", "denominators": {"intelligence": "6/6", "session": "3/3"}, "included": false, "exclusion_reason": "Historical control only; no matched Sage arm."},
+    {"arm": "secondary historical control", "artifact_kind": "context", "sha256": "8a8472153fcbc9f698170e57ef4a7cd6117aa1051c777da322e56944ee0cf46a", "status": "partial", "denominators": {"context_targets": "2/3"}, "failures": [{"target_tokens": 6144, "error": "stream completed without visible content"}], "included": false, "exclusion_reason": "Historical control only; no matched Sage arm and its failed cell is retained."}
+  ],
+  "expected_differences": ["checkpoint", "draft mode", "per-sequence context limit", "cache history", "measurement date"],
+  "redactions": ["endpoints", "machine identities", "local paths", "served model aliases", "private configuration identifiers"]
+}

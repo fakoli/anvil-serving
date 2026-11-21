@@ -1,0 +1,27 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "campaign_id": "2026-11-21-sage-s21-flash-qualification",
+  "updated_at": "2026-11-21",
+  "status": "closed_no_promotion",
+  "current_stage": "publication_closure",
+  "launcher": {
+    "invocation": "anvil-serving managed recipe lifecycle",
+    "version": null,
+    "repository_revision": "f7fabbf1b88b38929d2d4ca97762234dbf1fca47",
+    "module_source": "private operator configuration intentionally omitted",
+    "verified": false
+  },
+  "stages": [
+    {"id": "research", "status": "complete", "evidence": ["source-registry.json", "raw/checkpoint-comparison.json"], "failures": []},
+    {"id": "feasibility", "status": "complete", "evidence": ["raw/checkpoint-pull-verification.json", "raw/sage-startup-identity.json", "raw/sage-preflight.json"], "failures": []},
+    {"id": "scout", "status": "complete", "evidence": ["raw/r1-eligible-results.json", "raw/sampled-resources.json", "native/source-bindings.json"], "failures": ["strict controlled-output C1 0/20 per arm", "GLM natural C1 excluded for contamination"]},
+    {"id": "finalist", "status": "not_applicable", "evidence": [], "failures": []},
+    {"id": "quality", "status": "complete_bounded", "evidence": ["native/source-bindings.json"], "failures": ["Go coding 0/1 per arm"]},
+    {"id": "restoration", "status": "complete_with_monitoring_gap", "evidence": ["restoration.json"], "failures": ["monitoring registration remains pending; no observability rollout"]},
+    {"id": "publication", "status": "complete", "evidence": ["README.md", "summary.json", "publication-summary.md"], "failures": []}
+  ],
+  "active_assignments": [],
+  "completed_cells": ["pinned-checkpoint-custody", "direct-startup-identity", "functional-preflight-5-of-5", "r2-natural-c4", "r3-natural-c4-and-retrieval", "r4-natural-c2-and-retrieval", "matched-glm-c2", "restoration"],
+  "next_actions": ["human promotion review only; no route or selection change is authorized"],
+  "promotion_authorized": false
+}

@@ -1,5 +1,7 @@
 # Findings index
 
+**2026-11-21 Sage S2.1 Flash TensorFold qualification:** [four bounded profiles](2026-11-21-sage-s21-flash-qualification.md) establish 64K/C4 native MTP as the best concurrent Sage lane (8/8, 115.09 aggregate output tok/s) and 327K/C2 native MTP as the best long-context lane (8/8 plus 4/4 single-request retrievals through 259,774 tokens). Startup/preflight, agentic/context, and image evidence are retained; strict C1 failed 20/20 per arm. The matched two-stream and long-context GLM controls completed after restoration. Authenticated inference passed. The pre-existing monitoring gap remains. `challenger`, `no-promotion`.
+
 **2026-11-16 media capacity:** [parallel image workers](2026-11-16-media-parallel.md)
 passed three paired image cases and two real MCP clients with the original
 memory/runtime guards. Video remains exclusive. Exact model identities/native

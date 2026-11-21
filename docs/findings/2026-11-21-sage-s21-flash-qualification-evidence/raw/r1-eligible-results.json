@@ -1,0 +1,280 @@
+{
+  "schema": "sage-r1-public-results/v1",
+  "hardware": {
+    "accelerator": "NVIDIA RTX PRO 6000 Blackwell Max-Q",
+    "count": 2,
+    "power_watts_each": 300
+  },
+  "candidate": "Mia-AiLab/Sage-S2.1-Flash-EXL3-4bpw@e272f9573523b7dee7f1a5579c7b2997644d1c87",
+  "completed": [
+    {
+      "suite": "native-agentic-pilot-v2",
+      "arms": {
+        "sage": "6/6",
+        "glm_control": "6/6"
+      }
+    },
+    {
+      "suite": "native-context-pilot-v2",
+      "arms": {
+        "sage": {
+          "8192": "6/6",
+          "32768": "6/6",
+          "total": "12/12"
+        },
+        "glm_control": {
+          "8192": "6/6",
+          "32768": "6/6",
+          "total": "12/12"
+        }
+      },
+      "scope_limit": "bounded C1 only; not full-window or C4 capacity"
+    },
+    {
+      "suite": "direct-image-corpus",
+      "arm": "sage",
+      "passed": 12,
+      "attempted": 12,
+      "cases": 6,
+      "repetitions_per_case": 2
+    },
+    {
+      "suite": "historical-quality",
+      "arm": "sage",
+      "score": "9/9",
+      "scope_limit": "historical limited-quality control"
+    },
+    {
+      "suite": "historical-context",
+      "arm": "sage",
+      "score": "3/3",
+      "scope_limit": "historical 2048/4096/6144-token checks"
+    },
+    {
+      "suite": "aider-python-affine-cipher",
+      "arm": "sage",
+      "resolved": 1,
+      "graded": 1,
+      "selected": 1,
+      "independent_tests": "passed"
+    },
+    {
+      "suite": "natural-output-c4",
+      "arms": {
+        "sage": "8/8",
+        "glm_control": "8/8"
+      },
+      "scope_limit": "fresh C4 comparison population; detailed rate accounting remains separate"
+    }
+  ],
+  "excluded": [
+    {
+      "suite": "strict-controlled-output-c1",
+      "arms": {
+        "sage": "0/20",
+        "glm_control": "0/20"
+      },
+      "exclusion_reason": "GLM returned 20 controlled-output validation failures. Sage returned 15 controlled-output validation failures and five stream-validation failures. Both arms had zero eligible samples."
+    },
+    {
+      "suite": "natural-output-c1-glm",
+      "score": "8 owned responses but 9 bracketed first-token events",
+      "exclusion_reason": "independently active stream and two concurrent streams contaminate isolation"
+    }
+  ],
+  "r2_natural_c4": {
+    "configuration": "MTP, native unsharded KV, 64K C4",
+    "sage": {
+      "c1": "8/8",
+      "c4": "8/8",
+      "aggregate_output_tok_s": 115.09,
+      "median_visible_ttft_s": 5.465,
+      "median_e2e_s": 6.177,
+      "median_decode_tok_s": 56.84
+    },
+    "glm_control": {
+      "c4": "8/8",
+      "aggregate_output_tok_s": 110.4,
+      "median_visible_ttft_s": 6.668,
+      "median_e2e_s": 7.109,
+      "median_decode_tok_s": 58.62
+    },
+    "boundary": "Each natural R2 C1/C4 bracket had 8 owned first-token events. Natural output lengths are not fixed and n is small; this is nuanced descriptive comparison, not a broad speed ranking."
+  },
+  "r2_speculation_accounting": {
+    "workload": "six paired within-server deterministic prompts",
+    "draft_enabled": {
+      "proposed": 298,
+      "accepted": 214,
+      "acceptance_rate": 0.718,
+      "cached_prompt_tokens": 0
+    },
+    "draft_disabled": {
+      "proposed": 0,
+      "accepted": 0,
+      "cached_prompt_tokens": 0
+    },
+    "identity_binding": "exact public-safe request identity matches retained privately",
+    "boundary": "Tiny deterministic workload only; acceptance must not be generalized to all completions."
+  },
+  "r3_retrieval": {
+    "configuration": "327680 configured, C4, draft-off, sharded KV",
+    "retrieval": {
+      "passed": 4,
+      "attempted": 4,
+      "prompts": [
+        {
+          "actual_tokens": 64252,
+          "elapsed_seconds": [
+            11.44,
+            11.59
+          ],
+          "target_positions": [
+            "early",
+            "late"
+          ]
+        },
+        {
+          "actual_tokens": 259774,
+          "elapsed_seconds": [
+            49.57,
+            50.59
+          ],
+          "target_positions": [
+            "early",
+            "late"
+          ]
+        }
+      ]
+    },
+    "boundary": "ordinary C1 retrieval and short-output proof only; not four simultaneous 327K sequences"
+  },
+  "r3_natural_c4": {
+    "configuration": "327680 configured, C4, draft-off, sharded KV",
+    "sage": {
+      "c4": "8/8",
+      "aggregate_output_tok_s": 70.41,
+      "median_visible_ttft_s": 9.97,
+      "median_e2e_s": 13.934,
+      "median_decode_tok_s": 22.62
+    },
+    "boundary": "one known warmup and eight scored responses are accounted; natural output lengths are not fixed and n is small"
+  },
+  "r4_natural_c2": {
+    "configuration": "327680 configured, C2, native MTP",
+    "startup_seconds": 149.7,
+    "pages_per_rank": 1282,
+    "kv_gib_per_rank": 4.25,
+    "sage": {
+      "c2": "8/8",
+      "aggregate_output_tok_s": 103.77,
+      "median_visible_ttft_s": 4.14,
+      "median_e2e_s": 4.61,
+      "median_decode_tok_s": 92.79
+    },
+    "boundary": "eight owned first-token events were bracketed; actual concurrency two; per-request decode is a p50 at concurrency two. Natural input is near 7.7K tokens, output lengths are not fixed, and n is small."
+  },
+  "glm_natural_c2": {
+    "configuration": "GLM configured for 327680 tokens and four slots, exercised at two concurrent requests.",
+    "glm_control": {
+      "c2": "8/8",
+      "aggregate_output_tok_s": 91.85,
+      "median_visible_ttft_s": 3.603,
+      "median_e2e_s": 4.092,
+      "median_decode_tok_s": 76.14
+    },
+    "boundary": "eight owned responses at actual concurrency two; per-request decode is a p50 at concurrency two. Natural input is near 7.7K tokens, output lengths are not fixed, and n is small. GLM has lower latency while Sage R4 has higher output/decode rates on this workload."
+  },
+  "r4_retrieval": {
+    "configuration": "327680 configured, C2, native MTP",
+    "retrieval": {
+      "passed": 4,
+      "attempted": 4,
+      "prompts": [
+        {
+          "actual_tokens": 64252,
+          "elapsed_seconds": [
+            11.88,
+            12.03
+          ],
+          "target_positions": [
+            "early",
+            "late"
+          ]
+        },
+        {
+          "actual_tokens": 259774,
+          "elapsed_seconds": [
+            52.05,
+            53.04
+          ],
+          "target_positions": [
+            "early",
+            "late"
+          ]
+        }
+      ]
+    },
+    "boundary": "ordinary C1 retrieval and short-output proof only; not simultaneous C2 327K capacity"
+  },
+  "glm_postrestore_retrieval": {
+    "configuration": "327680 configured, C1, postrestore GLM comparison control",
+    "retrieval": {
+      "passed": 4,
+      "attempted": 4,
+      "prompts": [
+        {
+          "actual_tokens": 64293,
+          "elapsed_seconds": [
+            11.31,
+            11.43
+          ],
+          "target_positions": [
+            "early",
+            "late"
+          ]
+        },
+        {
+          "actual_tokens": 259991,
+          "elapsed_seconds": [
+            49.04,
+            50.09
+          ],
+          "target_positions": [
+            "early",
+            "late"
+          ]
+        }
+      ]
+    },
+    "boundary": "ordinary C1 retrieval and short-output control only; actual token counts differ from Sage and this does not establish simultaneous capacity"
+  },
+  "r2_final_suites": {
+    "agentic": "6/6",
+    "context": "12/12",
+    "image": "12/12",
+    "coding": {
+      "python": "1/1 resolved with independent tests",
+      "go": "0/1 unresolved: two-digit carry"
+    }
+  },
+  "r4_final_suites": {
+    "agentic": "6/6",
+    "image": "12/12",
+    "independent_review": "17/17 cross-suite checks"
+  },
+  "glm_postrestore_coding": {
+    "python": "1/1 resolved",
+    "go": "0/1 unresolved after two attempts. The first attempt encountered a leading-zero panic. The second returned invalid solutions.",
+    "comparison": "matches Sage coding denominators"
+  },
+  "in_progress": [],
+  "redactions": [
+    "endpoints",
+    "machine identities",
+    "local paths",
+    "container and GPU identities",
+    "runtime image digest",
+    "response text and reasoning"
+  ]
+}

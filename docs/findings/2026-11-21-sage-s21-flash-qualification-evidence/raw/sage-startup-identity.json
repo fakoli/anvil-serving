@@ -1,0 +1,20 @@
+{
+  "schema_version": "sage-startup-identity-public/v1",
+  "status": "ready",
+  "identity": {
+    "served_model": "sage-s21-flash-exl3-tp2-r1",
+    "checkpoint": "Mia-AiLab/Sage-S2.1-Flash-EXL3-4bpw@e272f9573523b7dee7f1a5579c7b2997644d1c87",
+    "engine": "TensorFold 1.1.9",
+    "engine_commit": "f350cd3ea253a042e205746928271f9d8f71a82d",
+    "quantization": {"method": "exl3", "bits": 4, "codebook": "mcg", "head_bits": 16, "scope": "sage_routed_experts_only"},
+    "compute_dtype": "bfloat16",
+    "kv_cache_dtype": "fp8",
+    "tensor_parallel": 2,
+    "context": 65536,
+    "speculative": false,
+    "reasoning": {"default_enabled": true, "default_effort": "high", "supported_efforts": ["max", "high", "low"]}
+  },
+  "startup": {"loaded_seconds": 147.6, "drafts": "off", "checkpoint_read": "163.6 GiB", "checkpoint_read_seconds": 23.1},
+  "hardware": {"accelerator": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition", "count": 2},
+  "redactions": ["endpoints", "container identity", "GPU UUIDs", "cache paths", "resource/controller topology", "runtime environment", "ports"]
+}

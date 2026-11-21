@@ -1,0 +1,142 @@
+{
+  "campaign": "2026-11-21-sage-s21-flash-qualification",
+  "natural_and_strict_capacity": {
+    "natural 1 concurrent": {
+      "context_seed": 482001,
+      "context_tokens": 10240,
+      "concurrency": 1,
+      "requests": 8,
+      "response_words": 0,
+      "max_tokens": 16384,
+      "request_canaries": true,
+      "controlled_output_policy": "observe",
+      "prompt_cache_mode": "unique",
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "reasoning_effort": "max",
+      "reference": "native/capacity/glm-c1-excluded.json",
+      "prompt_contract": {
+        "prompt_contract_revision": "capacity-prompt-v1",
+        "workload_kind": "synthetic-summary"
+      }
+    },
+    "natural 2 concurrent": {
+      "context_seed": 482002,
+      "context_tokens": 10240,
+      "concurrency": 2,
+      "requests": 8,
+      "response_words": 0,
+      "max_tokens": 16384,
+      "request_canaries": true,
+      "controlled_output_policy": "observe",
+      "prompt_cache_mode": "unique",
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "reasoning_effort": "max",
+      "reference": "native/capacity/glm-postrestore-c2.json",
+      "prompt_contract": {
+        "prompt_contract_revision": "capacity-prompt-v1",
+        "workload_kind": "synthetic-summary"
+      }
+    },
+    "natural 4 concurrent": {
+      "context_seed": 482004,
+      "context_tokens": 10240,
+      "concurrency": 4,
+      "requests": 8,
+      "response_words": 0,
+      "max_tokens": 16384,
+      "request_canaries": true,
+      "controlled_output_policy": "observe",
+      "prompt_cache_mode": "unique",
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "reasoning_effort": "max",
+      "reference": "native/capacity/glm-c4.json",
+      "prompt_contract": {
+        "prompt_contract_revision": "capacity-prompt-v1",
+        "workload_kind": "synthetic-summary"
+      }
+    },
+    "strict 1 concurrent": {
+      "context_seed": 0,
+      "context_tokens": 7680,
+      "concurrency": 1,
+      "requests": 20,
+      "response_words": 128,
+      "max_tokens": 256,
+      "request_canaries": true,
+      "controlled_output_policy": "strict",
+      "prompt_cache_mode": "unique",
+      "temperature": 1.0,
+      "top_p": 0.95,
+      "reasoning_effort": null,
+      "reference": "native/strict/glm-c1-failed.json",
+      "prompt_contract": {
+        "prompt_contract_revision": "capacity-prompt-v1",
+        "workload_kind": "synthetic-repeated-code"
+      }
+    }
+  },
+  "definitions": {
+    "first_visible": "Elapsed time to first visible content. Earlier reasoning chunks are excluded.",
+    "end_to_end": "Per-request elapsed time to stream termination.",
+    "aggregate_output_tok_s": "Total emitted output tokens across completed requests divided by the benchmark wall-clock duration.",
+    "decode_tok_s_p50": "Median of the native per-request decode rates under the stated concurrency.",
+    "natural_output": "Matched generator, seed and requests per concurrency. Each model chooses its output length. Measured inputs were approximately 7,684 tokens; configured server context is a separate property."
+  },
+  "functional": {
+    "agentic": [
+      "structured-edit",
+      "tool-sequence",
+      "parallel-tools",
+      "dependent-result",
+      "tool-recovery",
+      "debug-loop-v2"
+    ],
+    "ordinary_image": {
+      "cases": 6,
+      "repetitions": 2,
+      "projections": "native/image/"
+    },
+    "coding": {
+      "instances": [
+        "python/exercises/practice/affine-cipher",
+        "go/exercises/practice/alphametics"
+      ],
+      "grader": "Executable tests, maximum two attempts per instance. See native/suite for per-attempt results."
+    },
+    "long_retrieval": {
+      "case": "native-needle",
+      "target_input_buckets": [
+        65536,
+        262144
+      ],
+      "positions": [
+        0.1,
+        0.9
+      ],
+      "concurrency": 1,
+      "output_headroom_tokens": 128,
+      "temperature": 0,
+      "top_p": 1,
+      "thinking": "disabled",
+      "actual_input_tokens": {
+        "Sage": [
+          64252,
+          259774
+        ],
+        "GLM": [
+          64293,
+          259991
+        ]
+      }
+    }
+  },
+  "historical_overlap": {
+    "scope": "Separate limited reasoning, session and retrieval fixtures. The protected Sage captures bind the current arm; historical comparators are in raw/historical-comparator-receipt.json.",
+    "protected_sage_quality_sha256": "8e649b1fffd6d365c09572c54c5d830712dcd684b9f98e73789e07024be80320",
+    "protected_sage_context_sha256": "3e5134ffd047fc823f1948c4f584b99631f25b44597e90eac32641802de9c015"
+  },
+  "sources": "run-plan.json"
+}
