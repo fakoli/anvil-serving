@@ -396,6 +396,81 @@ def _lock_authority(path):
     return descriptor
 
 
+def _memory_route_migration_scope(old_config, new_config, old_document, new_document):
+    """Return the one-way, bounded memory-route delta allowed for a rebase."""
+    old_document = _plain(old_document)
+    new_document = _plain(new_document)
+    old_router = dict(old_document.get("router", {}))
+    new_router = dict(new_document.get("router", {}))
+    old_router.pop("memory_routes", None)
+    new_router.pop("memory_routes", None)
+    old_document["router"], new_document["router"] = old_router, new_router
+    _require(old_document == new_document, "route_memory_migration_restart_required")
+    for field in fields(old_config):
+        if field.name != "memory_routes":
+            _require(getattr(old_config, field.name) == getattr(new_config, field.name),
+                     "route_memory_migration_restart_required")
+    old_routes = {(route.alias, route.principal): route for route in old_config.memory_routes}
+    new_routes = {(route.alias, route.principal): route for route in new_config.memory_routes}
+    shared = set(old_routes) & set(new_routes)
+    _require(all(old_routes[key] == new_routes[key] for key in shared),
+             "route_memory_migration_replacement_unsupported")
+    added, removed = set(new_routes) - set(old_routes), set(old_routes) - set(new_routes)
+    _require(not (added and removed), "route_memory_migration_mixed_change")
+    changed = added or removed
+    _require(1 <= len(changed) <= 3, "route_memory_migration_scope_invalid")
+    return {"direction": "add" if added else "remove", "memory_route_count": len(changed)}
+
+
+def migrate_route_state_base_config(
+    old_config_bytes, new_config_bytes, state_path, *, expected_old_config_sha256,
+    expected_new_config_sha256, expected_state_sha256, apply=False,
+):
+    """Atomically rebind settled route authority to a memory-route-only config.
+
+    This deliberately permits only one to three complete memory-route additions
+    or removals. Every overlapping route and every non-memory setting must have
+    identical parsed semantics; route state, projections, revisions, and
+    operation history are preserved unchanged except for the boot-config hash.
+    """
+    _require(type(apply) is bool, "route_migration_apply_invalid", status=400)
+    old_config, old_document = _document(old_config_bytes)
+    new_config, new_document = _document(new_config_bytes)
+    old_sha256 = hashlib.sha256(old_config_bytes).hexdigest()
+    new_sha256 = hashlib.sha256(new_config_bytes).hexdigest()
+    _require(type(expected_old_config_sha256) is str and _DIGEST.fullmatch(expected_old_config_sha256)
+             and expected_old_config_sha256 == old_sha256, "route_migration_old_config_mismatch")
+    _require(type(expected_new_config_sha256) is str and _DIGEST.fullmatch(expected_new_config_sha256)
+             and expected_new_config_sha256 == new_sha256, "route_migration_new_config_mismatch")
+    _require(type(expected_state_sha256) is str and _DIGEST.fullmatch(expected_state_sha256),
+             "route_migration_state_digest_invalid")
+    scope = _memory_route_migration_scope(old_config, new_config, old_document, new_document)
+    path = Path(state_path)
+    _require(path.is_absolute(), "route_state_path_invalid")
+    descriptor = _lock_authority(path)
+    try:
+        state = _read_state(path)
+        _require(_digest(state) == expected_state_sha256, "route_authority_changed")
+        old_validator = RouteUpdateManager(None, old_config_bytes, path)
+        state = old_validator._validate_state(state)
+        operation = state["operation"]
+        _require(operation is None or operation["phase"] in {"complete", "cancelled"},
+                 "route_migration_transaction_pending")
+        migrated = _plain(state)
+        migrated["base_config_sha256"] = new_sha256
+        RouteUpdateManager(None, new_config_bytes, path)._validate_state(migrated)
+        result = {"applied": apply, **scope, "route_revision": state["route_revision"],
+                  "effective_route_sha256": state["effective_route_sha256"],
+                  "previous_base_config_sha256": old_sha256, "base_config_sha256": new_sha256,
+                  "state_sha256": _digest(migrated)}
+        if apply:
+            _write_state(path, migrated, expected=expected_state_sha256)
+            _sync_state(path, result["state_sha256"])
+        return result
+    finally:
+        os.close(descriptor)
+
+
 class RouteUpdateManager:
     """One writer and a bounded preview cache for one already-owned router."""
 
