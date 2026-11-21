@@ -1,0 +1,328 @@
+{
+  "calibration": {
+    "chars_per_token": 4.8316395249173505,
+    "method": "endpoint-usage-filler-ratio/v2",
+    "request_id": null,
+    "sample_chars": 39460,
+    "sample_prompt_tokens": 8167
+  },
+  "curve": {
+    "advertised_context": 327680,
+    "attempted_buckets": [
+      65536,
+      262144
+    ],
+    "buckets": [
+      {
+        "completed_count": 2,
+        "completion_rate": 1.0,
+        "engine_telemetry": {
+          "available": false,
+          "observations": []
+        },
+        "failures": {},
+        "latency_ms": {
+          "available": true,
+          "mean": 11952.86097744247,
+          "observations": [
+            11876.545783947222,
+            12029.176170937717
+          ]
+        },
+        "meets_policy": true,
+        "pass_rate": 1.0,
+        "passed_count": 2,
+        "relative_drop_from_baseline": 0.0,
+        "requested_tokens": 65536,
+        "sample_count": 2,
+        "samples": [
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-65536-0.100-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 11876.545783947222,
+            "passed": true,
+            "position": 0.1,
+            "prompt_tokens": 64252,
+            "raw_reasoning": "[GENERATED-TEXT REDACTED sha256=e3b0c44298fc1c14 bytes=0]",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 65536,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 0.7577960935548055,
+            "token_measurement": "usage",
+            "visible_answer": "[GENERATED-TEXT REDACTED sha256=165c06e1078f0d23 bytes=13]",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-65536-0.900-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 12029.176170937717,
+            "passed": true,
+            "position": 0.9,
+            "prompt_tokens": 64252,
+            "raw_reasoning": "[GENERATED-TEXT REDACTED sha256=e3b0c44298fc1c14 bytes=0]",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 65536,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 0.7481809121512283,
+            "token_measurement": "usage",
+            "visible_answer": "[GENERATED-TEXT REDACTED sha256=165c06e1078f0d23 bytes=13]",
+            "visible_answer_truncated": false
+          }
+        ],
+        "throughput_tps": {
+          "available": true,
+          "mean": 0.7529885028530169,
+          "observations": [
+            0.7577960935548055,
+            0.7481809121512283
+          ]
+        }
+      },
+      {
+        "completed_count": 2,
+        "completion_rate": 1.0,
+        "engine_telemetry": {
+          "available": false,
+          "observations": []
+        },
+        "failures": {},
+        "latency_ms": {
+          "available": true,
+          "mean": 52544.76612905273,
+          "observations": [
+            52045.91067705769,
+            53043.62158104777
+          ]
+        },
+        "meets_policy": true,
+        "pass_rate": 1.0,
+        "passed_count": 2,
+        "relative_drop_from_baseline": 0.0,
+        "requested_tokens": 262144,
+        "sample_count": 2,
+        "samples": [
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-262144-0.100-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 52045.91067705769,
+            "passed": true,
+            "position": 0.1,
+            "prompt_tokens": 259774,
+            "raw_reasoning": "[GENERATED-TEXT REDACTED sha256=e3b0c44298fc1c14 bytes=0]",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 262144,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 0.17292424866661582,
+            "token_measurement": "usage",
+            "visible_answer": "[GENERATED-TEXT REDACTED sha256=165c06e1078f0d23 bytes=13]",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-262144-0.900-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 53043.62158104777,
+            "passed": true,
+            "position": 0.9,
+            "prompt_tokens": 259774,
+            "raw_reasoning": "[GENERATED-TEXT REDACTED sha256=e3b0c44298fc1c14 bytes=0]",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 262144,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 0.1696716727052373,
+            "token_measurement": "usage",
+            "visible_answer": "[GENERATED-TEXT REDACTED sha256=165c06e1078f0d23 bytes=13]",
+            "visible_answer_truncated": false
+          }
+        ],
+        "throughput_tps": {
+          "available": true,
+          "mean": 0.17129796068592656,
+          "observations": [
+            0.17292424866661582,
+            0.1696716727052373
+          ]
+        }
+      }
+    ],
+    "effective_context": 262144,
+    "first_material_degradation": null,
+    "notes": [
+      "effective_context uses attempted buckets only",
+      "missing engine telemetry is unavailable and is not inferred from latency"
+    ],
+    "schema": "anvil-serving.context-curve/v1",
+    "threshold_policy": {
+      "baseline_bucket": 65536,
+      "baseline_pass_rate": 1.0,
+      "max_relative_drop": 0.25,
+      "pass_rate_floor": 0.75
+    }
+  },
+  "observations": [
+    {
+      "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+      "case_id": "native-needle-65536-0.100-r0",
+      "case_type": "native-needle",
+      "completed": true,
+      "distractor_count": 0,
+      "engine_telemetry": null,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 11876.545783947222,
+      "passed": true,
+      "position": 0.1,
+      "prompt_tokens": 64252,
+      "raw_reasoning": "[GENERATED-TEXT REDACTED sha256=e3b0c44298fc1c14 bytes=0]",
+      "raw_reasoning_field": null,
+      "raw_reasoning_truncated": false,
+      "requested_tokens": 65536,
+      "schema": "anvil-serving.context-observation/v1",
+      "target_count": 1,
+      "throughput_tps": 0.7577960935548055,
+      "token_measurement": "usage",
+      "visible_answer": "[GENERATED-TEXT REDACTED sha256=165c06e1078f0d23 bytes=13]",
+      "visible_answer_truncated": false
+    },
+    {
+      "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+      "case_id": "native-needle-65536-0.900-r0",
+      "case_type": "native-needle",
+      "completed": true,
+      "distractor_count": 0,
+      "engine_telemetry": null,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 12029.176170937717,
+      "passed": true,
+      "position": 0.9,
+      "prompt_tokens": 64252,
+      "raw_reasoning": "[GENERATED-TEXT REDACTED sha256=e3b0c44298fc1c14 bytes=0]",
+      "raw_reasoning_field": null,
+      "raw_reasoning_truncated": false,
+      "requested_tokens": 65536,
+      "schema": "anvil-serving.context-observation/v1",
+      "target_count": 1,
+      "throughput_tps": 0.7481809121512283,
+      "token_measurement": "usage",
+      "visible_answer": "[GENERATED-TEXT REDACTED sha256=165c06e1078f0d23 bytes=13]",
+      "visible_answer_truncated": false
+    },
+    {
+      "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+      "case_id": "native-needle-262144-0.100-r0",
+      "case_type": "native-needle",
+      "completed": true,
+      "distractor_count": 0,
+      "engine_telemetry": null,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 52045.91067705769,
+      "passed": true,
+      "position": 0.1,
+      "prompt_tokens": 259774,
+      "raw_reasoning": "[GENERATED-TEXT REDACTED sha256=e3b0c44298fc1c14 bytes=0]",
+      "raw_reasoning_field": null,
+      "raw_reasoning_truncated": false,
+      "requested_tokens": 262144,
+      "schema": "anvil-serving.context-observation/v1",
+      "target_count": 1,
+      "throughput_tps": 0.17292424866661582,
+      "token_measurement": "usage",
+      "visible_answer": "[GENERATED-TEXT REDACTED sha256=165c06e1078f0d23 bytes=13]",
+      "visible_answer_truncated": false
+    },
+    {
+      "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+      "case_id": "native-needle-262144-0.900-r0",
+      "case_type": "native-needle",
+      "completed": true,
+      "distractor_count": 0,
+      "engine_telemetry": null,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 53043.62158104777,
+      "passed": true,
+      "position": 0.9,
+      "prompt_tokens": 259774,
+      "raw_reasoning": "[GENERATED-TEXT REDACTED sha256=e3b0c44298fc1c14 bytes=0]",
+      "raw_reasoning_field": null,
+      "raw_reasoning_truncated": false,
+      "requested_tokens": 262144,
+      "schema": "anvil-serving.context-observation/v1",
+      "target_count": 1,
+      "throughput_tps": 0.1696716727052373,
+      "token_measurement": "usage",
+      "visible_answer": "[GENERATED-TEXT REDACTED sha256=165c06e1078f0d23 bytes=13]",
+      "visible_answer_truncated": false
+    }
+  ],
+  "passed": true,
+  "request_controls": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "reasoning_effort": null,
+    "sampling": {
+      "temperature": {
+        "effective_request": 0.0,
+        "requested": 0.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      }
+    },
+    "thinking_mode": "disabled"
+  },
+  "request_ids": [],
+  "schema": "anvil-serving.context-suite-run/v1",
+  "selection": {
+    "case_ids": [
+      "native-needle"
+    ],
+    "output_headroom_tokens": 128,
+    "positions": [
+      0.1,
+      0.9
+    ],
+    "repetitions": 1,
+    "token_buckets": [
+      65536,
+      262144
+    ]
+  }
+}

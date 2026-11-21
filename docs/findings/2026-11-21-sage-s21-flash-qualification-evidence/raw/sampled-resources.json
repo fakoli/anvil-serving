@@ -1,0 +1,298 @@
+{
+  "unit_memory": "MiB",
+  "cadence_seconds": 5,
+  "coverage": "Observations lying within native wall-clock bounds; sampled peaks are lower bounds. Scores use native requests. These samples cannot prove exact per-request KV, GPU peaks or isolated engine counter agreement.",
+  "cells": [
+    {
+      "arm": "GLM DFlash2",
+      "concurrency": 1,
+      "samples": 5,
+      "sample_errors": 0,
+      "max_observed_running": 2,
+      "max_observed_waiting": 0,
+      "min_host_available_mib": 70843,
+      "gpu_peak_used_mib": [
+        92861,
+        91721
+      ],
+      "gpu_peak_watts": [
+        300.27,
+        300.44
+      ],
+      "managed_samples": 2,
+      "cgroup_max_observed_mib": 16731,
+      "cgroup_oom_kill_counter_range": [
+        0,
+        0
+      ],
+      "first_token_events_between_idle_snapshots": 9,
+      "owned_terminal_responses": 8,
+      "exclusive_population_supported": false,
+      "idle_bracket_seconds": [
+        7.264,
+        0.828
+      ],
+      "capacity_artifact": "native/capacity/glm-c1-excluded.json",
+      "original_capacity_sha256": "2cfa58bb4c2b20b099ec9e60c6befa2ba9768d4746ee62cc5223099c25d5d76b"
+    },
+    {
+      "arm": "GLM DFlash2",
+      "concurrency": 4,
+      "samples": 4,
+      "sample_errors": 0,
+      "max_observed_running": 4,
+      "max_observed_waiting": 1,
+      "min_host_available_mib": 71408,
+      "gpu_peak_used_mib": [
+        93101,
+        91961
+      ],
+      "gpu_peak_watts": [
+        300.62,
+        301.43
+      ],
+      "managed_samples": 1,
+      "cgroup_max_observed_mib": 16499,
+      "cgroup_oom_kill_counter_range": [
+        0,
+        0
+      ],
+      "first_token_events_between_idle_snapshots": 8,
+      "owned_terminal_responses": 8,
+      "exclusive_population_supported": true,
+      "idle_bracket_seconds": [
+        1.909,
+        4.571
+      ],
+      "capacity_artifact": "native/capacity/glm-c4.json",
+      "original_capacity_sha256": "8ab035bf05b5f7f9367ec2fb615a5aef887037dfebf702c021e5eced6c16756d"
+    },
+    {
+      "arm": "Sage draft off",
+      "concurrency": 1,
+      "samples": 7,
+      "sample_errors": 0,
+      "max_observed_running": 1,
+      "max_observed_waiting": 0,
+      "min_host_available_mib": 72701,
+      "gpu_peak_used_mib": [
+        92741,
+        91601
+      ],
+      "gpu_peak_watts": [
+        302.71,
+        301.58
+      ],
+      "managed_samples": 2,
+      "cgroup_max_observed_mib": 13956,
+      "cgroup_oom_kill_counter_range": [
+        0,
+        0
+      ],
+      "first_token_events_between_idle_snapshots": 8,
+      "owned_terminal_responses": 8,
+      "exclusive_population_supported": true,
+      "idle_bracket_seconds": [
+        3.032,
+        1.638
+      ],
+      "capacity_artifact": "native/capacity/r1-c1.json",
+      "original_capacity_sha256": "9e040f4a01b5aa958fe41415176aab11dda3848ccb3fcff65fa07261f6d9abfe"
+    },
+    {
+      "arm": "Sage draft off",
+      "concurrency": 4,
+      "samples": 7,
+      "sample_errors": 0,
+      "max_observed_running": 4,
+      "max_observed_waiting": 1,
+      "min_host_available_mib": 72134,
+      "gpu_peak_used_mib": [
+        93221,
+        92081
+      ],
+      "gpu_peak_watts": [
+        302.84,
+        306.61
+      ],
+      "managed_samples": 3,
+      "cgroup_max_observed_mib": 13960,
+      "cgroup_oom_kill_counter_range": [
+        0,
+        0
+      ],
+      "first_token_events_between_idle_snapshots": 8,
+      "owned_terminal_responses": 8,
+      "exclusive_population_supported": true,
+      "idle_bracket_seconds": [
+        3.144,
+        4.888
+      ],
+      "capacity_artifact": "native/capacity/r1-c4.json",
+      "original_capacity_sha256": "e58fc50835ac472fe399d6b7ecaa6c3db7a496ced0c5e7e82ed06309c9ca346c"
+    },
+    {
+      "arm": "Sage draft off 327K",
+      "concurrency": 4,
+      "samples": 7,
+      "sample_errors": 0,
+      "max_observed_running": 4,
+      "max_observed_waiting": 1,
+      "min_host_available_mib": 70110,
+      "gpu_peak_used_mib": [
+        93221,
+        92081
+      ],
+      "gpu_peak_watts": [
+        302.01,
+        302.66
+      ],
+      "managed_samples": 3,
+      "cgroup_max_observed_mib": 13456,
+      "cgroup_oom_kill_counter_range": [
+        0,
+        0
+      ],
+      "first_token_events_between_idle_snapshots": 9,
+      "owned_terminal_responses": 8,
+      "exclusive_population_supported": true,
+      "idle_bracket_seconds": [
+        4.345,
+        4.776
+      ],
+      "owned_excluded_warmup_in_bracket": 1,
+      "first_token_events_after_excluding_owned_warmup": 8,
+      "capacity_artifact": "native/capacity/r3-c4.json",
+      "original_capacity_sha256": "08b956a1db27019eec3aa050789ff21a254c52272f6611d33380c2464392b520"
+    },
+    {
+      "arm": "Sage native MTP 327K C2",
+      "concurrency": 2,
+      "samples": 4,
+      "sample_errors": 0,
+      "max_observed_running": 2,
+      "max_observed_waiting": 1,
+      "min_host_available_mib": 69055,
+      "gpu_peak_used_mib": [
+        93223,
+        92083
+      ],
+      "gpu_peak_watts": [
+        301.4,
+        301.46
+      ],
+      "managed_samples": 1,
+      "cgroup_max_observed_mib": 12305,
+      "cgroup_oom_kill_counter_range": [
+        0,
+        0
+      ],
+      "first_token_events_between_idle_snapshots": 8,
+      "owned_terminal_responses": 8,
+      "exclusive_population_supported": true,
+      "idle_bracket_seconds": [
+        0.927,
+        3.229
+      ],
+      "capacity_artifact": "native/capacity/r4-c2.json",
+      "original_capacity_sha256": "c7a7a7a026ce63471b1ee7a9d2b4e280ac3149317aa61624bf30fe6a04db6ee1"
+    },
+    {
+      "arm": "Restored GLM DFlash2",
+      "concurrency": 2,
+      "samples": 4,
+      "sample_errors": 0,
+      "max_observed_running": 2,
+      "max_observed_waiting": 0,
+      "min_host_available_mib": 68537,
+      "gpu_peak_used_mib": [
+        92861,
+        91721
+      ],
+      "gpu_peak_watts": [
+        300.15,
+        300.1
+      ],
+      "managed_samples": 2,
+      "cgroup_max_observed_mib": 15462,
+      "cgroup_oom_kill_counter_range": [
+        0,
+        0
+      ],
+      "first_token_events_between_idle_snapshots": 8,
+      "owned_terminal_responses": 8,
+      "exclusive_population_supported": true,
+      "idle_bracket_seconds": [
+        3.239,
+        3.039
+      ],
+      "capacity_artifact": "native/capacity/glm-postrestore-c2.json",
+      "original_capacity_sha256": "f052574b62f840477c5a68e6cce60db3848d77ef2a97f2851765f709ac7234b9"
+    },
+    {
+      "arm": "Sage native MTP",
+      "concurrency": 1,
+      "samples": 4,
+      "sample_errors": 0,
+      "max_observed_running": 1,
+      "max_observed_waiting": 0,
+      "min_host_available_mib": 70833,
+      "gpu_peak_used_mib": [
+        92745,
+        91605
+      ],
+      "gpu_peak_watts": [
+        300.52,
+        301.06
+      ],
+      "managed_samples": 1,
+      "cgroup_max_observed_mib": 12295,
+      "cgroup_oom_kill_counter_range": [
+        0,
+        0
+      ],
+      "first_token_events_between_idle_snapshots": 8,
+      "owned_terminal_responses": 8,
+      "exclusive_population_supported": true,
+      "idle_bracket_seconds": [
+        0.167,
+        1.808
+      ],
+      "capacity_artifact": "native/capacity/r2-c1.json",
+      "original_capacity_sha256": "d0da9a2bc81441d11a03429cac3e8d8bef5894c95d052ebb3d7844b4fe41acfe"
+    },
+    {
+      "arm": "Sage native MTP",
+      "concurrency": 4,
+      "samples": 4,
+      "sample_errors": 0,
+      "max_observed_running": 4,
+      "max_observed_waiting": 1,
+      "min_host_available_mib": 70848,
+      "gpu_peak_used_mib": [
+        93225,
+        92085
+      ],
+      "gpu_peak_watts": [
+        300.22,
+        300.13
+      ],
+      "managed_samples": 1,
+      "cgroup_max_observed_mib": 12301,
+      "cgroup_oom_kill_counter_range": [
+        0,
+        0
+      ],
+      "first_token_events_between_idle_snapshots": 8,
+      "owned_terminal_responses": 8,
+      "exclusive_population_supported": true,
+      "idle_bracket_seconds": [
+        2.706,
+        2.126
+      ],
+      "capacity_artifact": "native/capacity/r2-c4.json",
+      "original_capacity_sha256": "bbe3adfb580fc6ed90a3292f644b367e51381aed7b0565a95d426bcb7ca7580e"
+    }
+  ],
+  "scope": "Direct device, engine and cgroup observations at five-second intervals during the stated run. GPU memory and power are device-wide sampled maxima, ordered by device index. The native source bindings link original capacity hashes to public projections. Peak watts are instantaneous samples; there is no energy-per-token estimate."
+}

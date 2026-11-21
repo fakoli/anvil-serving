@@ -1,0 +1,156 @@
+{
+  "cached_tokens_correction": "Original summary checked top-level usage keys only. The nested native usage field and matched per-completion engine logs independently report zero cached tokens for all 12 requests.",
+  "population": "Six within-server paired prompts, temperature 0, output cap 128; engine done lines joined to exact native completion IDs",
+  "rows": [
+    {
+      "accepted": 34,
+      "cache_hit_tokens": 0,
+      "draft_enabled": true,
+      "match": "exact unique engine completion id",
+      "ordinal": 1,
+      "prompt_id": "json-unique-tags",
+      "proposed": 52,
+      "response_reported_cached_tokens": 0,
+      "rounds": 33
+    },
+    {
+      "accepted": 0,
+      "cache_hit_tokens": 0,
+      "draft_enabled": false,
+      "match": "exact unique engine completion id",
+      "ordinal": 2,
+      "prompt_id": "json-unique-tags",
+      "proposed": 0,
+      "response_reported_cached_tokens": 0,
+      "rounds": 67
+    },
+    {
+      "accepted": 0,
+      "cache_hit_tokens": 0,
+      "draft_enabled": false,
+      "match": "exact unique engine completion id",
+      "ordinal": 3,
+      "prompt_id": "python-count-vowels",
+      "proposed": 0,
+      "response_reported_cached_tokens": 0,
+      "rounds": 42
+    },
+    {
+      "accepted": 30,
+      "cache_hit_tokens": 0,
+      "draft_enabled": true,
+      "match": "exact unique engine completion id",
+      "ordinal": 4,
+      "prompt_id": "python-count-vowels",
+      "proposed": 33,
+      "response_reported_cached_tokens": 0,
+      "rounds": 12
+    },
+    {
+      "accepted": 28,
+      "cache_hit_tokens": 0,
+      "draft_enabled": true,
+      "match": "exact unique engine completion id",
+      "ordinal": 5,
+      "prompt_id": "sql-group-total",
+      "proposed": 31,
+      "response_reported_cached_tokens": 0,
+      "rounds": 14
+    },
+    {
+      "accepted": 0,
+      "cache_hit_tokens": 0,
+      "draft_enabled": false,
+      "match": "exact unique engine completion id",
+      "ordinal": 6,
+      "prompt_id": "sql-group-total",
+      "proposed": 0,
+      "response_reported_cached_tokens": 0,
+      "rounds": 42
+    },
+    {
+      "accepted": 0,
+      "cache_hit_tokens": 0,
+      "draft_enabled": false,
+      "match": "exact unique engine completion id",
+      "ordinal": 7,
+      "prompt_id": "json-merge-config",
+      "proposed": 0,
+      "response_reported_cached_tokens": 0,
+      "rounds": 118
+    },
+    {
+      "accepted": 70,
+      "cache_hit_tokens": 0,
+      "draft_enabled": true,
+      "match": "exact unique engine completion id",
+      "ordinal": 8,
+      "prompt_id": "json-merge-config",
+      "proposed": 121,
+      "response_reported_cached_tokens": 0,
+      "rounds": 48
+    },
+    {
+      "accepted": 34,
+      "cache_hit_tokens": 0,
+      "draft_enabled": true,
+      "match": "exact unique engine completion id",
+      "ordinal": 9,
+      "prompt_id": "typescript-clamp",
+      "proposed": 43,
+      "response_reported_cached_tokens": 0,
+      "rounds": 20
+    },
+    {
+      "accepted": 0,
+      "cache_hit_tokens": 0,
+      "draft_enabled": false,
+      "match": "exact unique engine completion id",
+      "ordinal": 10,
+      "prompt_id": "typescript-clamp",
+      "proposed": 0,
+      "response_reported_cached_tokens": 0,
+      "rounds": 54
+    },
+    {
+      "accepted": 0,
+      "cache_hit_tokens": 0,
+      "draft_enabled": false,
+      "match": "exact unique engine completion id",
+      "ordinal": 11,
+      "prompt_id": "yaml-deploy-summary",
+      "proposed": 0,
+      "response_reported_cached_tokens": 0,
+      "rounds": 24
+    },
+    {
+      "accepted": 18,
+      "cache_hit_tokens": 0,
+      "draft_enabled": true,
+      "match": "exact unique engine completion id",
+      "ordinal": 12,
+      "prompt_id": "yaml-deploy-summary",
+      "proposed": 18,
+      "response_reported_cached_tokens": 0,
+      "rounds": 7
+    }
+  ],
+  "source_hashes": {
+    "native_paired_requests": "a73663559929b0472261efbc02f74ff9d38bd8c0f06a7c1cf1c1542656f50c20",
+    "original_pair_summary": "b51a2584b61c3b446b5b6202c8c20c0529efb0b54aa96d5a29a4ffeb2d6c8c32"
+  },
+  "totals": {
+    "disabled": {
+      "accepted": 0,
+      "cached_prompt_tokens": 0,
+      "proposed": 0,
+      "requests": 6
+    },
+    "enabled": {
+      "accepted": 214,
+      "cached_prompt_tokens": 0,
+      "proposed": 298,
+      "requests": 6
+    }
+  }
+}

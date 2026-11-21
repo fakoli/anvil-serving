@@ -1,0 +1,168 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "campaign": {
+    "id": "2026-11-21-sage-s21-flash-qualification",
+    "capability": "language-model serving",
+    "repository_revision": "f7fabbf1b88b38929d2d4ca97762234dbf1fca47",
+    "evidence_labels": [
+      "functional",
+      "capacity",
+      "limited-quality",
+      "external-prior"
+    ],
+    "decision_labels": [
+      "challenger",
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.aider-cancellation/v1",
+    "anvil-serving.aider-run/v1",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.context-suite-run/v1",
+    "jsonl-request-journal",
+    "multimodal-benchmark-evidence/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Entry point for the final evidence bundle."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "recipe-comparison.md",
+        "native/source-bindings.json"
+      ],
+      "reason": "Dated sources, public recipe comparisons and original-to-projection digests."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json"
+      ],
+      "reason": "Capacity request settings, long-context controls and independent grading fixtures."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.json",
+        "campaign-state.json",
+        "dispatch-packet.md"
+      ],
+      "reason": "Hashes of the individual pre-run plans plus the historical dispatch and its terminal campaign state."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "raw/checkpoint-comparison.json",
+        "raw/checkpoint-pull-verification.json",
+        "raw/sage-startup-identity.json"
+      ],
+      "reason": "Quant, tokenizer, template and startup identity records."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "native/capacity/glm-c1-excluded.journal.jsonl",
+        "native/capacity/glm-c1-excluded.json",
+        "native/capacity/glm-c4.journal.jsonl",
+        "native/capacity/glm-c4.json",
+        "native/capacity/glm-postrestore-c2.journal.jsonl",
+        "native/capacity/glm-postrestore-c2.json",
+        "native/capacity/r1-c1.journal.jsonl",
+        "native/capacity/r1-c1.json",
+        "native/capacity/r1-c4.journal.jsonl",
+        "native/capacity/r1-c4.json",
+        "native/capacity/r2-c1.journal.jsonl",
+        "native/capacity/r2-c1.json",
+        "native/capacity/r2-c4.journal.jsonl",
+        "native/capacity/r2-c4.json",
+        "native/capacity/r3-c4.journal.jsonl",
+        "native/capacity/r3-c4.json",
+        "native/capacity/r4-c2.journal.jsonl",
+        "native/capacity/r4-c2.json",
+        "native/strict/glm-c1-failed.journal.jsonl",
+        "native/strict/glm-c1-failed.json",
+        "native/strict/sage-c1-failed.journal.jsonl",
+        "native/strict/sage-c1-failed.json",
+        "native/image/glm.json",
+        "native/image/r1.json",
+        "native/image/r2.json",
+        "native/image/r4.json",
+        "native/suite/glm-postrestore/0-aider-go.json",
+        "native/suite/glm-postrestore/0-aider-python.json",
+        "native/suite/glm-postrestore/0-context.json",
+        "native/suite/glm/0-agentic.json",
+        "native/suite/glm/0-aider.json",
+        "native/suite/glm/0-context.json",
+        "native/suite/r1/0-agentic.json",
+        "native/suite/r1/0-aider-go.json",
+        "native/suite/r1/0-aider.json",
+        "native/suite/r1/0-context.json",
+        "native/suite/r2/0-agentic.json",
+        "native/suite/r2/0-aider-go.json",
+        "native/suite/r2/0-aider.json",
+        "native/suite/r2/0-context.json",
+        "native/suite/r3/0-context.json",
+        "native/suite/r4/0-agentic.json",
+        "native/suite/r4/0-context.json",
+        "native/accounting/mtp-paired-engine.json",
+        "native/validation.json",
+        "raw/r1-eligible-results.json",
+        "raw/historical-comparator-receipt.json",
+        "raw/sage-preflight.json",
+        "raw/sampled-resources.json"
+      ],
+      "reason": "Bounded native measurements and journals, independent grades, failed samples, gated exclusions and sampled device observations."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "coverage-and-gaps.md"
+      ],
+      "reason": "Failure causes, measurement eligibility and coverage boundaries."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Serving and router recovery with a separate account of generation-bound observer coverage."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Machine-readable results and decision limits."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Reader-facing outcome and publication scope."
+    }
+  ]
+}

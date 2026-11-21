@@ -1,0 +1,19 @@
+{
+  "schema_version": "checkpoint-support-file-comparison-public/v1",
+  "sources": {
+    "glm": "Mia-AiLab/GLM-5.3-Flash-EXL3-4bpw-TensorFold@76c0b5173166d2795dd48860f45d8224817f894c",
+    "sage": "Mia-AiLab/Sage-S2.1-Flash-EXL3-4bpw@e272f9573523b7dee7f1a5579c7b2997644d1c87"
+  },
+  "support_file_sha256": {
+    "config.json": {"glm": "c752509dbad366815c9e4b3fe8687fd3582aa6f54458967bb6c77dfe05c839e4", "sage": "91596a0eb464637f22fab3633d726d8cd6a4604d9e7771b63a9b6d49f9f37d3a", "equal": false},
+    "generation_config.json": {"glm": "230c30609ecbbb9e6583bedde8e7bdda0c6eb8fe5fad0eaeb3d1b293d751cb4f", "sage": "230c30609ecbbb9e6583bedde8e7bdda0c6eb8fe5fad0eaeb3d1b293d751cb4f", "equal": true},
+    "tokenizer.json": {"glm": "19e773648cb4e65de8660ea6365e10acca112d42a854923df93db4a6f333a82d", "sage": "19e773648cb4e65de8660ea6365e10acca112d42a854923df93db4a6f333a82d", "equal": true},
+    "chat_template.jinja": {"glm": "41cff9af7b3a86c96751b107a8444f245fbda0bd5320b636a5bb1f7f4ba1a5c3", "sage": "66a4b6d9bc6ee2eb11fe62472ae237adc6f8428fad4857138dd9806bbac2740e", "equal": false},
+    "processor_config.json": {"glm": "aae38374c94b08cc9b0547c6e64f05b951bd9735cea571c6988f5ed552bed3ed", "sage": "69c45ce38a05be308e167b9ee9d5de05b35854c93ef707ea835f7875e47b7253", "equal": false}
+  },
+  "sampled_config": {
+    "shared": {"model_type": "glm5_next_text", "num_hidden_layers": 45, "hidden_size": 4096, "num_attention_heads": 64, "n_routed_experts": 288, "num_experts_per_tok": 8, "num_nextn_predict_layers": 1, "vocab_size": 154880, "max_position_embeddings": 1048576, "architecture": ["Glm5NextForConditionalGeneration"]}
+  },
+  "stop_ids": {"glm": [154820, 154827, 154829], "sage": [154820, 154827, 154829]},
+  "interpretation": "Use the Sage checkpoint-native template. Byte-identical tokenizer, generation configuration, and stop IDs are compatibility leads only; different template and processor configuration prohibit transplanting GLM template or image assumptions."
+}

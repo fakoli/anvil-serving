@@ -1,0 +1,596 @@
+{
+  "bindings": [
+    {
+      "original_bytes": 4333,
+      "original_schema": null,
+      "original_sha256": "0fbc5de21f7ade0a618eb76e5b51d649184b633de339fe8e80e01d8b660a349d",
+      "private_locator_sha256": "1779d129a87630455b2471bde8d3cf838bced5facf95e904e47ce4343c8fce13",
+      "public_bytes": 4333,
+      "public_path": "accounting/mtp-paired-engine.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "f5ccb5aee8c4bcf8574877e55850e7b693edb71191a7f4abe32abc6e3cc80ab0"
+    },
+    {
+      "original_bytes": 10822,
+      "original_schema": "jsonl-request-journal",
+      "original_sha256": "200bff666bf335ec29a727ae08c937ad764b587fa2e851efce3807e236c4bbe4",
+      "private_locator_sha256": "5c11efbf4dd84433480f38b87e9018a309034632c550518e5377f3f49415c669",
+      "public_bytes": 10155,
+      "public_path": "capacity/glm-c1-excluded.journal.jsonl",
+      "public_sha256": "20087e2f39a1308ef7fed24a6df3c2eb83a89409627333cb407e90ea2f683f9b"
+    },
+    {
+      "original_bytes": 21855,
+      "original_schema": "anvil-serving.benchmark/v1",
+      "original_sha256": "2cfa58bb4c2b20b099ec9e60c6befa2ba9768d4746ee62cc5223099c25d5d76b",
+      "private_locator_sha256": "a105de07b087be662c4b551c8fed284497b01240342d11acff212fdbba8bdcc7",
+      "projection_exceptions": [
+        {
+          "additional_fields": {
+            "metric_population.aggregate_throughput_eligible": {
+              "producer_value": true,
+              "projected_value": false
+            },
+            "metrics.throughput_performance_eligible": {
+              "producer_value": true,
+              "projected_value": false
+            }
+          },
+          "field": "performance_eligible",
+          "producer_value": true,
+          "projected_value": false,
+          "reason": "Campaign-level invalidation: nine completed events for eight planned requests and observed concurrent traffic make this C1 result ineligible for performance comparison."
+        }
+      ],
+      "public_bytes": 22079,
+      "public_path": "capacity/glm-c1-excluded.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "dacefb895157f6d6d4bb0670ae6455013f99c09a265c509239ea8a83dfd6dd80"
+    },
+    {
+      "original_bytes": 10836,
+      "original_schema": "jsonl-request-journal",
+      "original_sha256": "661d319472a65d2c9fe2d03c00e3fa92f63026577a4bb6e44ad23ed5fc50be0b",
+      "private_locator_sha256": "0fd01b339581d98a360389ba56e1acb15d4c9e689b31924a3e40db85add2f2bc",
+      "public_bytes": 10169,
+      "public_path": "capacity/glm-c4.journal.jsonl",
+      "public_sha256": "31d128ede1c47e70e6d3d3a326ca1bc2ecee5f16b104dd694bb041e5c28cd10e"
+    },
+    {
+      "original_bytes": 21899,
+      "original_schema": "anvil-serving.benchmark/v1",
+      "original_sha256": "8ab035bf05b5f7f9367ec2fb615a5aef887037dfebf702c021e5eced6c16756d",
+      "private_locator_sha256": "81cc47f4a41777771ead79f0778a569a9d1a22b023d7ea322b3b3b3b6d8dc1e1",
+      "public_bytes": 21885,
+      "public_path": "capacity/glm-c4.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "dd07ca987685e1fe9a31f39ec7bc3d93856a99941b060a458021b44d1aad5966"
+    },
+    {
+      "original_bytes": 10829,
+      "original_schema": "jsonl-request-journal",
+      "original_sha256": "43a85244fee41193255f4da69394eb311dd8d26968ea9e328f8cab16a080dfc3",
+      "private_locator_sha256": "9f9488a4736203d3e1b2f113c0508a3c41cde5161d2fd84189ddbc8c5afce062",
+      "public_bytes": 10162,
+      "public_path": "capacity/glm-postrestore-c2.journal.jsonl",
+      "public_sha256": "2bd95783c89ae821cef881db60644fc8fe589a0935dc3d48ad435c8fef1c3d35"
+    },
+    {
+      "original_bytes": 21879,
+      "original_schema": "anvil-serving.benchmark/v1",
+      "original_sha256": "f052574b62f840477c5a68e6cce60db3848d77ef2a97f2851765f709ac7234b9",
+      "private_locator_sha256": "48bd661244259c088f188f9601c27c06cff97fa11412cc47a190b387f9bd425d",
+      "public_bytes": 21881,
+      "public_path": "capacity/glm-postrestore-c2.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "12932171d57140fcbf5aba5c0aab36fe67ca184bbe3840a1f1223c26775c6720"
+    },
+    {
+      "original_bytes": 10801,
+      "original_schema": "jsonl-request-journal",
+      "original_sha256": "4fb52e4199acf00b54dc2abf75ada34ff419b30cd15dec27a3a8ffc5341379dd",
+      "private_locator_sha256": "3d5972392e6a4577565b174ef8f0c2fa0cc91d51aefa597dee1eb53c12744b39",
+      "public_bytes": 10134,
+      "public_path": "capacity/r1-c1.journal.jsonl",
+      "public_sha256": "9c4cd45d3417d27731a6617bc370b7bf425a1bb0b2cc2f6a4eab35202148e5af"
+    },
+    {
+      "original_bytes": 21836,
+      "original_schema": "anvil-serving.benchmark/v1",
+      "original_sha256": "9e040f4a01b5aa958fe41415176aab11dda3848ccb3fcff65fa07261f6d9abfe",
+      "private_locator_sha256": "bb9a4472b4e4e73d659742f40cf98b0abaca6717262f8cea3ea42af88763d105",
+      "public_bytes": 21829,
+      "public_path": "capacity/r1-c1.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "677c29e4dc5409bd6098d2e231487faa70954e3e3f5756f4d988d52934f8e772"
+    },
+    {
+      "original_bytes": 10816,
+      "original_schema": "jsonl-request-journal",
+      "original_sha256": "6a60153e6b1dcf454d0b8fbf29a21bc5ffd12c3111e52b8900507de423491eb7",
+      "private_locator_sha256": "7430f6014bea8775cc6dbae1293db389987cf223330e06722c1a2bf28c852b71",
+      "public_bytes": 10149,
+      "public_path": "capacity/r1-c4.journal.jsonl",
+      "public_sha256": "baa43c8ad5d95e72b8e6dbdd69acc8c3d1970175669113575c8a98b20147d139"
+    },
+    {
+      "original_bytes": 21887,
+      "original_schema": "anvil-serving.benchmark/v1",
+      "original_sha256": "e58fc50835ac472fe399d6b7ecaa6c3db7a496ced0c5e7e82ed06309c9ca346c",
+      "private_locator_sha256": "c9dae7af010df1ad757677ef14171953a9584de62be20a74575762a2932a7140",
+      "public_bytes": 21876,
+      "public_path": "capacity/r1-c4.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "a26f9d998a0cfc45045268473278b630177ed8e2e711dd60cd58cefaff956011"
+    },
+    {
+      "original_bytes": 10809,
+      "original_schema": "jsonl-request-journal",
+      "original_sha256": "d3211ab599c062550c17d1ffe39ccf0df6c02c822a204acb343589dd0e6e9f97",
+      "private_locator_sha256": "0a9d3e523391ce7f78c857a96ada2074b3979de6525ba0fb616dcc8b8696bd68",
+      "public_bytes": 10142,
+      "public_path": "capacity/r2-c1.journal.jsonl",
+      "public_sha256": "a914e0db57874d36f4a4bca254ea6548383a23f1bfcc5e15b3746e8f1a9710f0"
+    },
+    {
+      "original_bytes": 21853,
+      "original_schema": "anvil-serving.benchmark/v1",
+      "original_sha256": "d0da9a2bc81441d11a03429cac3e8d8bef5894c95d052ebb3d7844b4fe41acfe",
+      "private_locator_sha256": "162ea82b6b80220e70a2534d05364ea79928d8fac286dc6681d64111381204ea",
+      "public_bytes": 21846,
+      "public_path": "capacity/r2-c1.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "52d5dd200e591dd7c205be0719f181ad942cd21744e116495ce4e92ed88577d7"
+    },
+    {
+      "original_bytes": 10807,
+      "original_schema": "jsonl-request-journal",
+      "original_sha256": "58bfa7dc3844681c84c53597ffb0086eb5f359b1304d900f3b389d0c578bb300",
+      "private_locator_sha256": "7df010b22057b3a9cb5d9664c1af6613601a20992403a341f540ad1a8bcc5bec",
+      "public_bytes": 10140,
+      "public_path": "capacity/r2-c4.journal.jsonl",
+      "public_sha256": "8e56eb53f445003261b9794b28e9f57176c183c07fe548deb86bb9cdaf8467c9"
+    },
+    {
+      "original_bytes": 21869,
+      "original_schema": "anvil-serving.benchmark/v1",
+      "original_sha256": "bbe3adfb580fc6ed90a3292f644b367e51381aed7b0565a95d426bcb7ca7580e",
+      "private_locator_sha256": "989724472df24aa3cda44bc1a06221da417e3d475484d2df67a3fc0e2314c5b4",
+      "public_bytes": 21858,
+      "public_path": "capacity/r2-c4.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "606492066807337b695fa62a70a6d0db47ba1118e6fd2cc9b56a1d64885307e3"
+    },
+    {
+      "original_bytes": 10825,
+      "original_schema": "jsonl-request-journal",
+      "original_sha256": "bfaf53c9812d3bd11965001283c5d4490799a76b2b60e6c749706fd6b6157fb7",
+      "private_locator_sha256": "680fee36784b0be381e1cd9431488cb4bd7517ca41db2a36111db0591e845236",
+      "public_bytes": 10158,
+      "public_path": "capacity/r3-c4.journal.jsonl",
+      "public_sha256": "4842ad99efd732e0a5344e7643ef981491faab4dd7c58ca4ffb20e703815d4c8"
+    },
+    {
+      "original_bytes": 21865,
+      "original_schema": "anvil-serving.benchmark/v1",
+      "original_sha256": "08b956a1db27019eec3aa050789ff21a254c52272f6611d33380c2464392b520",
+      "private_locator_sha256": "3884aea1572c9a23313d81fbb8df25be63654c3ac47c1e2adf8ba20bac50e4b7",
+      "public_bytes": 21854,
+      "public_path": "capacity/r3-c4.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "a32e3d79243444317732bad419cf1c22a0c770adf52600a2fcaa6cc8bee6a53b"
+    },
+    {
+      "original_bytes": 10829,
+      "original_schema": "jsonl-request-journal",
+      "original_sha256": "78acf69845a59d6c7af1c9d5c16487c1af24bf4a0d95f88569a968ab3d78e7a5",
+      "private_locator_sha256": "b44e9470b35f980709de01340d0ca4d7ef0ce82678c113dfd428b419ec2efd18",
+      "public_bytes": 10162,
+      "public_path": "capacity/r4-c2.journal.jsonl",
+      "public_sha256": "ada5c878be3cd662018b65e1bd5f3e2c908e78ec8a4062a8efe98e4030b1d655"
+    },
+    {
+      "original_bytes": 21903,
+      "original_schema": "anvil-serving.benchmark/v1",
+      "original_sha256": "c7a7a7a026ce63471b1ee7a9d2b4e280ac3149317aa61624bf30fe6a04db6ee1",
+      "private_locator_sha256": "98bf25d9a63691ceb9a026cff364381fc03da33c47e1e4132d4f6c85d89dfac2",
+      "public_bytes": 21880,
+      "public_path": "capacity/r4-c2.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "f670fdb909447b5de578b593639ff37d011519a092272dcd4eb8180780832bf1"
+    },
+    {
+      "original_bytes": 27009,
+      "original_schema": "multimodal-benchmark-evidence/v1",
+      "original_sha256": "befa06b2390838b475208f156dd279def411fcce3f7615e7cc17567e6b4ced02",
+      "private_locator_sha256": "d8054f689fac20490279a4e287819576f01f0a62dabdcad5794b3dd2de17c82a",
+      "public_bytes": 24921,
+      "public_path": "image/glm.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "6f144c224d6c736aafe5a0590fd8c1cf71f2b59890d9992f51ea566147d23560"
+    },
+    {
+      "original_bytes": 26959,
+      "original_schema": "multimodal-benchmark-evidence/v1",
+      "original_sha256": "bb88af002e31824bc35b9ca9ff6c08d64f58aed357e660660e6020fd5fe92b62",
+      "private_locator_sha256": "a652fa9af085ae282834cec782def47d29ca777485a57df741b532db4d5e2b2c",
+      "public_bytes": 24924,
+      "public_path": "image/r1.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "e573c3bfb97e221796f2a61f8ea3a44087e6538dd9d1dd6ca4871072d84973d6"
+    },
+    {
+      "original_bytes": 27305,
+      "original_schema": "multimodal-benchmark-evidence/v1",
+      "original_sha256": "754ca9701eca57be81fd78c587c8ff0df2208d5ad18823b61478eed7c44e5a23",
+      "private_locator_sha256": "733b539c59b099da635e20ec4e0445cd9da31c9f864dde49bcbfc2d3a418d1af",
+      "public_bytes": 24926,
+      "public_path": "image/r2.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "df2e1ade057e9adc41b4d48e60e26a8f586fa1f9fe3b2d68da02008d4e9f5418"
+    },
+    {
+      "original_bytes": 26863,
+      "original_schema": "multimodal-benchmark-evidence/v1",
+      "original_sha256": "e882ce79b8cc43a4f112d31018e8cd46e83c80f721cd239d45afa29e25402294",
+      "private_locator_sha256": "223a2afaef224db582ac5cf9b3bcdd1c21fd0469c141135375df19f434e4eab8",
+      "public_bytes": 24894,
+      "public_path": "image/r4.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "0ef993df9515c3b1355353f2b8b43ca6c711b9aec13516c5bb3cd2752f015cc0"
+    },
+    {
+      "original_bytes": 46980,
+      "original_schema": "jsonl-request-journal",
+      "original_sha256": "c09da9d0d3aec84f887919e7b8afcf7597057ca0a80b72fe05bc0f27e26c4a76",
+      "private_locator_sha256": "ce9b67917623ce0b831ee7bc84003a35b8126f736c4279de68d3ce42ee47696a",
+      "public_bytes": 43905,
+      "public_path": "strict/glm-c1-failed.journal.jsonl",
+      "public_sha256": "a5b7b857e54f455767bd09e2eac15974551b4fa40b23d5582ab537d999c6fa25"
+    },
+    {
+      "original_bytes": 68530,
+      "original_schema": "anvil-serving.benchmark/v1",
+      "original_sha256": "75decff04840b7293f58f2ed2d36d7cafb74ed1998330062eec6dbb11fcaffda",
+      "private_locator_sha256": "bcecdd19ebfe894e4d661f2b9a5688c31c68abdc5c6c8afd7187db455bd76245",
+      "public_bytes": 68725,
+      "public_path": "strict/glm-c1-failed.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "2db0e4532f3af4f0eff863320d9870c4f387968f5a07386b9daa3e23eb47765d"
+    },
+    {
+      "original_bytes": 39700,
+      "original_schema": "jsonl-request-journal",
+      "original_sha256": "12d9610e68659ef29b1bc4d5a4135dbe5ef87596ff85ac06913e36d3ff768dc5",
+      "private_locator_sha256": "59a1babfc72de69504e772a7e30c2c5741aee39c667b8c8084640368a288e43c",
+      "public_bytes": 37120,
+      "public_path": "strict/sage-c1-failed.journal.jsonl",
+      "public_sha256": "2ad038a5876bf05815342871d7763b5458912fd5eafc20c54d49be75d6d16c5f"
+    },
+    {
+      "original_bytes": 58741,
+      "original_schema": "anvil-serving.benchmark/v1",
+      "original_sha256": "f06ca2998e7c446da63101aa1a5e01da3c303bacd1e10d70529937b136bdcd1f",
+      "private_locator_sha256": "c37e84a0d038dc03122dfadd01317140bdbeff8a30c3fbe1d6a4efbaad8744e6",
+      "public_bytes": 58935,
+      "public_path": "strict/sage-c1-failed.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "3f1cdf4e8f4aa716c1afcadbb98e814ee70974c4d81b39e7e8d0c137e4b20939"
+    },
+    {
+      "original_bytes": 44180,
+      "original_schema": "anvil-serving.aider-run/v1",
+      "original_sha256": "9879bfc8ff723f1ea07685ed997ff86957c19afc928ebeb8eb464a2db6b97e79",
+      "private_locator_sha256": "1b205842f7a3ff7fb69b7afec88fb5171c9dea77c7c803f0e26088d859920775",
+      "public_bytes": 8468,
+      "public_path": "suite/glm-postrestore/0-aider-go.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "39069d1cf7655cf5ad57d2784bc85f4856a9842e6fe2348d63aef36c15e7e5a3"
+    },
+    {
+      "original_bytes": 16850,
+      "original_schema": "anvil-serving.aider-run/v1",
+      "original_sha256": "5c9388673af9dca84366d9cb16f51da9bf46944adc8813973a401c195329c5b3",
+      "private_locator_sha256": "691e6ce7c97490c7aec661941e21d1afdd3bd85c2f4125275a107146b8ea1cc4",
+      "public_bytes": 7655,
+      "public_path": "suite/glm-postrestore/0-aider-python.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "0c390c1a6e102f62a8210c2ce8d0700c6b16b48566705feedc07847110200293"
+    },
+    {
+      "original_bytes": 10344,
+      "original_schema": "anvil-serving.context-suite-run/v1",
+      "original_sha256": "e403a8e391f7bcb3cc9cecdfae88a9bf446e62535a08fd91533fbc3b796ace7e",
+      "private_locator_sha256": "537df911e0d2585321f72a8e2a339bac9a06a8a9e5c91b68999bcb69b8c40487",
+      "public_bytes": 11160,
+      "public_path": "suite/glm-postrestore/0-context.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "847d5360963787a6d833beda6d449110fbeb6b07345338da66617016b2b9e0fb"
+    },
+    {
+      "original_bytes": 13470,
+      "original_schema": "anvil-serving.agentic-suite-run/v1",
+      "original_sha256": "feb683a921743e86b119821322f72406bd00c1117ba5d3ddcc3cf0cd5a81347a",
+      "private_locator_sha256": "2639f17bcfc68009f952ca5aa79ecb10fbf70d65dcfa14a2d86b81533a8cac3a",
+      "public_bytes": 13054,
+      "public_path": "suite/glm/0-agentic.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "8f93f2df98a95423f16e680cdb29cea69acd795aea2712b51567ad7ebe1d9275"
+    },
+    {
+      "original_bytes": 836,
+      "original_schema": "anvil-serving.aider-cancellation/v1",
+      "original_sha256": "2ec31702d6d09bb766a8b36ee4ce41b2c8b3ffdbafbf970d978605d4ded83130",
+      "private_locator_sha256": "7af79e8a49efca69941facd2049edf95c35d17c9501b77d5a6ca8850129bb9a6",
+      "public_bytes": 844,
+      "public_path": "suite/glm/0-aider.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "dee3f8a1bd5a213a5c5de067a75cb160a972d65bdb840dce7a442bcffcc80146"
+    },
+    {
+      "original_bytes": 26930,
+      "original_schema": "anvil-serving.context-suite-run/v1",
+      "original_sha256": "5a2207358ed75bf32f2e4f901f06f2b5e2fe8f969c67b8dfca6093601bf4c8e5",
+      "private_locator_sha256": "bc286666734fb236013a78c9dc9655c03a41de1faa1a67534aa193a70d52a6c8",
+      "public_bytes": 28278,
+      "public_path": "suite/glm/0-context.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "79e4a5b4f745b407a79caaab551dde549ab12e631a1bd21bb1db4b648923bda8"
+    },
+    {
+      "original_bytes": 13447,
+      "original_schema": "anvil-serving.agentic-suite-run/v1",
+      "original_sha256": "35c2926215e7329a4b06f134e39a08ecf74163a0f6aa89d7cd1b687ffad81584",
+      "private_locator_sha256": "4fbcf984963cb57faf0e5a4ba5b5ff2ca69e59aa8ec2645e85a843ceaccee7ab",
+      "public_bytes": 13047,
+      "public_path": "suite/r1/0-agentic.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "6180f818f8d43620775d3722c3bce7446d8932e927329dc335b3390d44e2ec1e"
+    },
+    {
+      "original_bytes": 53489,
+      "original_schema": "anvil-serving.aider-run/v1",
+      "original_sha256": "d4114ce9e797d3e9042636ec6179bc9a57a32817945317eb105c7549b923f00f",
+      "private_locator_sha256": "080dc0ac04ab64364566cdd16e7fa9350ed10cebad919da25d7dd3e059e10a1c",
+      "public_bytes": 8449,
+      "public_path": "suite/r1/0-aider-go.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "69e656e047e26dabfc7ef7a183e393d05b06984f2c3f8ebb56dc115ff6588298"
+    },
+    {
+      "original_bytes": 16605,
+      "original_schema": "anvil-serving.aider-run/v1",
+      "original_sha256": "ce74ba2255c678e7afc981cce19c3d792331866ee48d56ce039c684edd585bdf",
+      "private_locator_sha256": "bcfd061639609ea3a1850b9b89f29c68e087f506d69529a80978e7913f98202d",
+      "public_bytes": 7635,
+      "public_path": "suite/r1/0-aider.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "78c983d1088dafe83a2afe88568dc9a70e62776100f8bdde283402578f034cd6"
+    },
+    {
+      "original_bytes": 29410,
+      "original_schema": "anvil-serving.context-suite-run/v1",
+      "original_sha256": "54c96d7e43f9219ea2a5cc87d0faf64e20832152683cf2bd8b91099e886ec809",
+      "private_locator_sha256": "68304e3bab439a71480d394eeb16fa0b0ff284398e34fa9df7327078902e79fc",
+      "public_bytes": 28396,
+      "public_path": "suite/r1/0-context.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "3a2fb7615ad55686682176f776a2ad5eeaa02da5570eaaf31d9c932beb537c87"
+    },
+    {
+      "original_bytes": 13409,
+      "original_schema": "anvil-serving.agentic-suite-run/v1",
+      "original_sha256": "2d5ab09e8ef752fb8721ffa1918d8bde73477e5dd561ec96e55cddd6ba9769cf",
+      "private_locator_sha256": "f64b8e6a9884f811f8f0ba28b02a532ee961db7bc0eed85a69ff25613e9914eb",
+      "public_bytes": 13055,
+      "public_path": "suite/r2/0-agentic.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "8b19d466c364427b2a9d4a39c4b659e9ac4be7a1079782191f1e98139da11fcb"
+    },
+    {
+      "original_bytes": 48447,
+      "original_schema": "anvil-serving.aider-run/v1",
+      "original_sha256": "2197a7be0d80352baf329fdcafc67ccb435d84fb4e3b252012d8d5fa953ffaca",
+      "private_locator_sha256": "d1debce781835783c77068057142840112e864e200adfcbd0509d3f21dc14110",
+      "public_bytes": 8454,
+      "public_path": "suite/r2/0-aider-go.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "313649048115c614314340a936d14d39a6f436b239f13310f74880459e7fb365"
+    },
+    {
+      "original_bytes": 16765,
+      "original_schema": "anvil-serving.aider-run/v1",
+      "original_sha256": "aab4dc17a2d6ca40d2f9b9ba8dcfcdb7c38efae8d950b44c04d3e9b0495c77b4",
+      "private_locator_sha256": "40ddbfb4bc9ab7f8877b5b06cb5fb8bb7c7f50e5fd006ab2a825ce7d29f6ecb0",
+      "public_bytes": 7642,
+      "public_path": "suite/r2/0-aider.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "3bb9a30079df38f7be5797598adbf478a6fbeae5837ca19f9ac5ead394bcf49c"
+    },
+    {
+      "original_bytes": 29482,
+      "original_schema": "anvil-serving.context-suite-run/v1",
+      "original_sha256": "c3783a00f3e6e4bad65e9ceec48d14c37ea947a5f1a06ea80e27807cc5d4e390",
+      "private_locator_sha256": "e2576a957996629f605ce5104369582776f3652f4c5c6926cd3aa525d82d897f",
+      "public_bytes": 28384,
+      "public_path": "suite/r2/0-context.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "9134af37ece2c3ce8df0a906897d79c54e4c03f33025d95d33ec5fc0f6adb726"
+    },
+    {
+      "original_bytes": 10343,
+      "original_schema": "anvil-serving.context-suite-run/v1",
+      "original_sha256": "3cda851a3e809ab28baf02edcdb6f2e61163dd21a05e85d225e1dcbdefe2dd1d",
+      "private_locator_sha256": "14224376d255a65667dce006cd932c47ddf7b677c65cc48985cfd9176ee1023f",
+      "public_bytes": 11159,
+      "public_path": "suite/r3/0-context.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "e885cd6cdea55e01319ed6f5bf7e5c90a42624a4b1cc3a62242c1e43b8ffcfdd"
+    },
+    {
+      "original_bytes": 13154,
+      "original_schema": "anvil-serving.agentic-suite-run/v1",
+      "original_sha256": "8ab3d66c5712ccc6bad6adb8ad866309e1ab603237626325792673b4800125e3",
+      "private_locator_sha256": "4b883920ae8d436fe0038731f146b02015e38e67a61ba4c674a269abe18296f7",
+      "public_bytes": 13053,
+      "public_path": "suite/r4/0-agentic.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "db410f6cbf81721fe00f29276bd102353484de23e8c1f71224083da27965126a"
+    },
+    {
+      "original_bytes": 10345,
+      "original_schema": "anvil-serving.context-suite-run/v1",
+      "original_sha256": "7d46b2ca87748a109a4254ffa0c5e466d6ccfc043e26b358382c9639e7e8a39f",
+      "private_locator_sha256": "5e450879118ffc1c633cbbcf61c6a2e30dd8d4b5a4763a6d740af9d5945cabe7",
+      "public_bytes": 11161,
+      "public_path": "suite/r4/0-context.json",
+      "public_projection": {
+        "attachment_content": "not included",
+        "original_hash_scope": "the original digest covers the complete private source capture, including any retained private attachment references",
+        "path_labels": "public-source labels are non-retrievable redaction placeholders"
+      },
+      "public_sha256": "60d4ad8b8de0e54bbde5d674117379b6b6d5e51dd8b44ea92149ae286b71633b"
+    }
+  ],
+  "redaction": {
+    "attachments": "attachment content is not published; any public-source path is a non-retrievable redaction label, not an exported attachment",
+    "endpoint_projection": "http://127.0.0.1:8000/v1 is a synthetic schema-preserving loopback placeholder, never a captured endpoint",
+    "free_text": "generated messages, prompts, thinking, command lines, and secret-like strings are replaced by digest/byte-count markers",
+    "hash_scope": "original_sha256 and original_bytes bind the complete private source artifact only; public_sha256 and public_bytes bind the separately redacted public projection",
+    "network_and_host": "private endpoints, host identifiers, paths, UUIDs, and client identifiers are redacted or genericized",
+    "original_locators": "private_locator_sha256 binds each original absolute locator without disclosing it",
+    "request_journal_projection": "capacity request_journal path, sha256, and bytes are deliberately rebound to the redacted sibling journal; workload measurement numbers are not changed"
+  },
+  "schema": "anvil-serving.public-native-source-bindings/v1",
+  "unavailable_optional_sources": [
+    "image/r3.json"
+  ]
+}

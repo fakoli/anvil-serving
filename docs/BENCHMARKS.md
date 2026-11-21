@@ -1,5 +1,21 @@
 # Benchmark results
 
+## 2026-11-21 — Sage S2.1 Flash TensorFold challenger
+
+The [Sage TensorFold benchmark](findings/2026-11-21-sage-s21-flash-qualification.md)
+retains two practical best-Sage lanes: R2 native MTP, unsharded KV, 64K/C4,
+with 115.09 aggregate output tok/s across eight natural-output requests; and
+R4 native MTP, 327K/C2, with 103.77 aggregate output tok/s across eight C2
+requests plus four single-request retrievals through 259,774 actual input
+tokens. Matched GLM C2 had lower visible latency (3.603s vs 4.140s) while Sage
+had higher aggregate output (103.77 vs 91.85 tok/s); non-fixed output lengths
+and small n make this descriptive, not a broad speed ranking. The matched fresh
+GLM C4 reference recorded 110.40 tok/s.
+R2 coding was Python 1/1 and Go 0/1; `challenger`, `no-promotion` remains
+explicit. Strict C1 failed 20/20 per arm, and contaminated GLM natural C1 is
+excluded. [Dossier](benchmarks/models/sage-s21-flash.md)
+· [evidence](findings/2026-11-21-sage-s21-flash-qualification-evidence/README.md).
+
 ## 2026-11-16 — bounded parallel media capacity
 
 [Independent image workers](findings/2026-11-16-media-parallel.md) passed paired

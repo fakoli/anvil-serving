@@ -1,0 +1,17 @@
+{
+  "schema_version": "model-pull-verification-public/v1",
+  "status": "verified",
+  "source": {
+    "repo_id": "Mia-AiLab/Sage-S2.1-Flash-EXL3-4bpw",
+    "revision": "e272f9573523b7dee7f1a5579c7b2997644d1c87"
+  },
+  "verification": {
+    "completeness": "all_selected_remote_files",
+    "verified_file_count": 94,
+    "verified_bytes": 175723101149,
+    "weight_shards": 83,
+    "weight_map_entries": 150226,
+    "all_verified": true
+  },
+  "redactions": ["local cache path", "downloader path and file identity", "transport configuration", "operator recovery and rollback details"]
+}

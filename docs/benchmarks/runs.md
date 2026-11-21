@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-11-21 Sage S2.1 Flash TensorFold qualification
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Sage S2.1 Flash EXL3 4-bit; TensorFold TP2, FP8 KV, checkpoint-native template; R1 64K/C4 no-draft, R2 64K/C4 native MTP, R3 327K/C4 no-draft, R4 327K/C2 native MTP | 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition; direct native bounded cells | Startup 147.6s; preflight 5/5/tools 20/20; agentic 6/6 and bounded context 12/12; image 12/12. Best concurrent Sage lane: R2 8/8 C4, 115.09 aggregate output tok/s. Best long Sage lane: R4 8/8 C2, 103.77 aggregate output tok/s and 4/4 single-request retrievals through 259,774 actual input tokens. Matched GLM C2 is 8/8: lower visible latency (3.603s vs 4.140s), while Sage has higher aggregate output (103.77 vs 91.85). Both strict C1 arms 0/20; no strict speed population. `challenger`, `no-promotion`; no simultaneous full-window capacity; serving/router restored and the historical monitoring gap is retained separately. | [Dossier](models/sage-s21-flash.md) · [Finding](../findings/2026-11-21-sage-s21-flash-qualification.md) · [Evidence](../findings/2026-11-21-sage-s21-flash-qualification-evidence/README.md) |
+
 ## 2026-11-16 bounded media worker capacity
 
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |
