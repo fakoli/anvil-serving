@@ -10,6 +10,14 @@ sequential C1 request time. Do not transpose that result to concurrent serving: 
 separate matched C4 natural-output population has near-tied median E2E and
 lower AZ aggregate output. Use the [dated finding](../findings/2026-11-21-glm-derivative-survey.md), [AZ327 C4 receipt](../findings/2026-11-21-glm-derivative-survey-evidence/raw/az327-natural-c4.json), and [Mia C4 receipt](../findings/2026-11-21-glm-derivative-survey-evidence/raw/mia-natural-c4.json) together.
 
+For an individual coding/reasoning workload, the bounded recommendation is the
+corrected AZ327-Focus EXL3 TP2 recipe with the Mia-compatible image template;
+the prior AZ64 native-template image failure belongs to that historical profile,
+not AZ327. This does not select a live default or rank shared C4 service,
+long-context, or broad vision workloads. A dated human selection and the
+currently routed model are separate facts; this comparison does not assert the
+currently routed state.
+
 **September 25 secondary update:** The [Swift-1.5 NInfer RTX 5090
 profile](models/swift15-qwen38-27b.md) is deployed at 262,144 configured
 tokens/C4. Routed retrieval passed 18/18 through 257,898 actual prompt tokens;

@@ -145,6 +145,13 @@ qualification baseline and the budget for the requested model outcome.
 - Compare quantized profiles only after every hard gate passes for the exact
   frozen profile. A failed profile returns to configuration search; it does
   not automatically reject the checkpoint or engine.
+- When a matched control isolates a configuration-specific defect, rate the
+  corrected profile as P0 before unrelated candidate work; a partially matched
+  remedy is P1, and an unverified theory is P2. Retest a P0 profile against the
+  same frozen workload and control, retaining the exact changed recipe/template
+  field. A workload recommendation must cite that matched comparison and its
+  limits; do not transfer the old profile's defect to the corrected profile or
+  claim a shared-incumbent/routing change from the retest alone.
 - Compare speculation to an otherwise identical no-speculation control. Keep
   model, revision, image, patch, TP, context, concurrency, KV dtype, memory
   fraction, backends, batching, graph capture, transport, parsers, and offload
