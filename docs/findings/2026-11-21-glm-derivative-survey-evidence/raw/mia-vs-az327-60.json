@@ -1,0 +1,33 @@
+{
+  "both_correct": 46,
+  "gains": [
+    "bbh-salient_translation_error_detection-75",
+    "mmlupro-12095",
+    "mmlupro-4834"
+  ],
+  "left": "mia_glm",
+  "left_metrics": {
+    "completion_tokens": 86651,
+    "correct": 49,
+    "correct_per_min": 6.034079061914977,
+    "median_joint_correct_s": 1.2969646755373105,
+    "n": 60,
+    "wall_s": 487.23259503778536
+  },
+  "losses": [
+    "bbh-causal_judgement-33",
+    "mmlupro-2618",
+    "mmlupro-6249"
+  ],
+  "mcnemar_exact_two_sided_p": 1,
+  "n": 60,
+  "right": "az_focus",
+  "right_metrics": {
+    "completion_tokens": 36662,
+    "correct": 49,
+    "correct_per_min": 13.662036565839601,
+    "median_joint_correct_s": 0.9697076890151948,
+    "n": 60,
+    "wall_s": 215.19485662563238
+  }
+}

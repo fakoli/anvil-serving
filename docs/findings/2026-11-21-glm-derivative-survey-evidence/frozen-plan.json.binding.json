@@ -1,0 +1,33 @@
+{
+  "original_bytes": 1859,
+  "original_sha256": "ef2e70149b5d2668db5c4e603fe328b60043b4cbe8e234b1220f9ad92166b4df",
+  "public_bytes": 2145,
+  "public_path": "frozen-plan.json",
+  "public_sha256": "803abd830011b1f0c251dfd298fae7f51c2e7d190c7316900786e23bd7a4223e",
+  "redactions": [
+    "api_key",
+    "argv",
+    "authorization",
+    "base_url",
+    "command",
+    "container",
+    "container_id",
+    "credential",
+    "credentials",
+    "endpoint",
+    "env",
+    "environment",
+    "gpu_uuid",
+    "gpu_uuids",
+    "host",
+    "hostname",
+    "path",
+    "paths",
+    "scope",
+    "scopes",
+    "token",
+    "worker"
+  ],
+  "schema": "anvil-serving.private-publication-binding/v1",
+  "synthetic_endpoint": "http://127.0.0.1:8000/v1"
+}

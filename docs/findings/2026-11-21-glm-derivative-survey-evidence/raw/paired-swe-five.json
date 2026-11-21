@@ -1,0 +1,131 @@
+{
+  "schema": "anvil-serving.paired-swe-benchmark-projection/v1",
+  "source_schema": "anvil-serving.swe-run/v1",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "dataset_revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+  "split": "test",
+  "profile": "scout",
+  "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+  "task_selection_sha256": "622934396fb97d950f803dfbb0791f6a398a5a6fe0fd94cc27b329f1a953cac4",
+  "prompt_contract": "legacy/v1",
+  "request_controls": {
+    "reasoning_effort": "high",
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default"
+  },
+  "task_container_network": "none",
+  "agent": {
+    "name": "mini-swe-agent",
+    "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+  },
+  "grader": {
+    "name": "swe-bench",
+    "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+  },
+  "arms": {
+    "az_focus": {
+      "source_sha256": "1b31ca0796230927a8b1ed2ee23ae68fa9a76fde89aaa33289d8363c428aac1b",
+      "official_grader_complete": true,
+      "score": {
+        "attempted": 5,
+        "graded": 5,
+        "resolve_rate": 0.8,
+        "resolved": 4
+      }
+    },
+    "mia": {
+      "source_sha256": "8581ec7dee4cd419233db97ac3ddb926aae8ffe7d610b064890fc384aa722d25",
+      "official_grader_complete": true,
+      "score": {
+        "attempted": 5,
+        "graded": 5,
+        "resolve_rate": 0.6,
+        "resolved": 3
+      }
+    }
+  },
+  "instances": [
+    {
+      "instance_id": "sphinx-doc__sphinx-9658",
+      "task_image_digest": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+      "az_focus": {
+        "resolved": true,
+        "grader_report_sha256": "f3a2169c21e0f8d65714716d54c64440e7d07cb24cb229b68a5860f3b11bb6c5",
+        "prediction_sha256": "ceb49033cd09b8740ef43aa7e25de7989b2611f61cf80bd38565fb12f70c1925"
+      },
+      "mia": {
+        "resolved": false,
+        "grader_report_sha256": "bb99bc8475b3f8b932600e7c09bd68d35db422f9f20098c9a78763631e74182d",
+        "prediction_sha256": "568c44aecf0e98a3ef38c0f10e9f15b9659029ddcc8dd1f19bcde923319e04f1"
+      }
+    },
+    {
+      "instance_id": "sympy__sympy-12096",
+      "task_image_digest": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe",
+      "az_focus": {
+        "resolved": true,
+        "grader_report_sha256": "f3a2169c21e0f8d65714716d54c64440e7d07cb24cb229b68a5860f3b11bb6c5",
+        "prediction_sha256": "f2b8322c3642f3d8eb89540c32d406249ff6f2162abbd6b8892dee7bcf3b68c4"
+      },
+      "mia": {
+        "resolved": true,
+        "grader_report_sha256": "bb99bc8475b3f8b932600e7c09bd68d35db422f9f20098c9a78763631e74182d",
+        "prediction_sha256": "cafa501b4acdfb8716b42473b7f413cd87f773e11a353dbb76e0decbcdff86b8"
+      }
+    },
+    {
+      "instance_id": "django__django-13512",
+      "task_image_digest": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+      "az_focus": {
+        "resolved": false,
+        "grader_report_sha256": "f3a2169c21e0f8d65714716d54c64440e7d07cb24cb229b68a5860f3b11bb6c5",
+        "prediction_sha256": "56293f34cabdd84bb662d630186316539dfef307584d4a82beca3dc638b7321c"
+      },
+      "mia": {
+        "resolved": true,
+        "grader_report_sha256": "bb99bc8475b3f8b932600e7c09bd68d35db422f9f20098c9a78763631e74182d",
+        "prediction_sha256": "2253219e0f13c9a707d3be968a4cc3a4d38912b47152f6845a52c6776c983c2e"
+      }
+    },
+    {
+      "instance_id": "pydata__xarray-4356",
+      "task_image_digest": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+      "az_focus": {
+        "resolved": true,
+        "grader_report_sha256": "f3a2169c21e0f8d65714716d54c64440e7d07cb24cb229b68a5860f3b11bb6c5",
+        "prediction_sha256": "c3d6df48d74dbdf20db8d90b931683d2ec947542b0998c95c0ce4952116784cd"
+      },
+      "mia": {
+        "resolved": true,
+        "grader_report_sha256": "bb99bc8475b3f8b932600e7c09bd68d35db422f9f20098c9a78763631e74182d",
+        "prediction_sha256": "6b08bd3072530cff626bb9c7a3bb5fd84f88fef3290bee822640b0b40fe91d44"
+      }
+    },
+    {
+      "instance_id": "pylint-dev__pylint-8898",
+      "task_image_digest": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+      "az_focus": {
+        "resolved": true,
+        "grader_report_sha256": "f3a2169c21e0f8d65714716d54c64440e7d07cb24cb229b68a5860f3b11bb6c5",
+        "prediction_sha256": "510f10ede6ca983c964d182f8ed6a60a12e9f4204183951f6f1937c31353af99"
+      },
+      "mia": {
+        "resolved": false,
+        "grader_report_sha256": "bb99bc8475b3f8b932600e7c09bd68d35db422f9f20098c9a78763631e74182d",
+        "prediction_sha256": "7a1c2c21ea3d8d2837651b6193ed863eb27d3bbd42b2193e8758b2da037916a8"
+      }
+    }
+  ],
+  "projection": "The model patches, task conversations, network addresses and private runtime identifiers are omitted. Each graded decision links to its native prediction, grader report and task image by digest."
+}

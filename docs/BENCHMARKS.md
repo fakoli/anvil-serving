@@ -1,5 +1,18 @@
 # Benchmark results
 
+## 2026-11-21 — GLM derivative matched 327K comparison
+
+The [final matched 327K local comparison](findings/2026-11-21-glm-derivative-survey.md)
+found equal literal-parser accuracy (49/60) for Mia and AZ327-Focus, while
+AZ327-Focus had summed sequential C1 request time of 215.195 s versus 487.233 s
+(55.8% less by that measure). This is not a general performance ranking:
+the matched C4 natural-output receipts have near-tied median E2E latency and
+lower AZ aggregate output ([AZ327 raw](findings/2026-11-21-glm-derivative-survey-evidence/raw/az327-natural-c4.json), [Mia raw](findings/2026-11-21-glm-derivative-survey-evidence/raw/mia-natural-c4.json)). AZ327 additionally passed bounded ~128K retrieval, 20/20 tools, and 12/12 image cases using Mia's exact template. The distinct AZ64 native image template remains 0/12. `no-promotion`.
+
+The paired five-image official SWE-Bench Verified scout resolved 4/5 for AZ327 and 3/5 for Mia under matched controls. It is separate from the publisher subset and not a full-suite score. [Per-case evidence](findings/2026-11-21-glm-derivative-survey-evidence/raw/paired-swe-five.json).
+
+Bounded AZ327 Aider/context/tools and Swift light oracle scouts are recorded separately. Swift/Mia also has a matched eight-request seed-482204 natural C4 cohort, but its lower Swift output rate and much higher first-visible time do not support broad superiority, capacity, or replacement conclusions. [Aggregates](findings/2026-11-21-glm-derivative-survey-evidence/capability-scouts-summary.json) · [C4 graph](findings/2026-11-21-glm-derivative-survey-evidence/graphs/paired-c4-matrix.svg).
+
 ## 2026-11-21 — Sage S2.1 Flash TensorFold challenger
 
 The [Sage TensorFold benchmark](findings/2026-11-21-sage-s21-flash-qualification.md)

@@ -1,5 +1,9 @@
 # Findings index
 
+**2026-11-21 GLM derivative survey:** a [final matched 327K local 60-case comparison](2026-11-21-glm-derivative-survey.md) gave Mia and AZ327-Focus the same literal-parser score (49/60 each), while AZ327-Focus used 55.8% less summed sequential C1 request time (215.195 s versus 487.233 s). All 60 responses were independently reexecuted. The separate matched 327K/C4 summary has near-tied median end-to-end latency and lower AZ aggregate output, so no broad concurrent-speed claim follows. AZ327 image cases passed 12/12 using Mia's exact template; the distinct AZ64 native-template profile remains 0/12. A separate one-card Qwen receipt received 8/8 responses but ended 0/8 performance-eligible on its opening canary. `no-promotion`. [Evidence index](2026-11-21-glm-derivative-survey-evidence/README.md).
+
+The paired official-image SWE-Bench Verified scout resolved 4/5 for AZ327 and 3/5 for Mia under matched controls. It is neither the publisher subset nor a full-suite score. [Per-case evidence](2026-11-21-glm-derivative-survey-evidence/raw/paired-swe-five.json).
+
 **2026-11-21 Sage S2.1 Flash TensorFold qualification:** [four bounded profiles](2026-11-21-sage-s21-flash-qualification.md) establish 64K/C4 native MTP as the best concurrent Sage lane (8/8, 115.09 aggregate output tok/s) and 327K/C2 native MTP as the best long-context lane (8/8 plus 4/4 single-request retrievals through 259,774 tokens). Startup/preflight, agentic/context, and image evidence are retained; strict C1 failed 20/20 per arm. The matched two-stream and long-context GLM controls completed after restoration. Authenticated inference passed. The pre-existing monitoring gap remains. `challenger`, `no-promotion`.
 
 **2026-11-16 media capacity:** [parallel image workers](2026-11-16-media-parallel.md)
@@ -156,6 +160,18 @@ backing a companion `.md` narrative. For current conclusions, enter through the
 [model dossiers](../benchmarks/models/index.md) or
 [run catalog](../benchmarks/runs.md). This page remains the complete
 chronological evidence index. Newest first.
+
+## 2026-11-21 — GLM derivative matched 327K comparison
+
+[Finding](2026-11-21-glm-derivative-survey.md) · [evidence index](2026-11-21-glm-derivative-survey-evidence/README.md) · [AZ327 C4 raw](2026-11-21-glm-derivative-survey-evidence/raw/az327-natural-c4.json) · [Mia C4 raw](2026-11-21-glm-derivative-survey-evidence/raw/mia-natural-c4.json).
+
+Mia and final AZ327-Focus tied at 49/60 under the literal publisher parser;
+AZ327-Focus had independently reexecuted summed sequential C1 request time of
+215.195 s versus 487.233 s. This does not establish a concurrent-speed or
+quality lead: the matched C4 natural-output population has near-tied median
+E2E latency and lower AZ aggregate output. AZ327 passed bounded ~128K retrieval,
+20/20 tools, and 12/12 image cases using Mia's exact template; distinct AZ64
+native-template image attempts remain 0/12. `no-promotion`.
 
 ## 2026-10-06 — Apple M4 Max English voice qualification
 

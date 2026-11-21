@@ -1,0 +1,9 @@
+{
+  "schema": "anvil-serving.compact-scout-summary/v1",
+  "arm": "tev-compact-layer-split",
+  "weight_size_gib": 146.01,
+  "configured_text_slots": {"count": 4, "tokens_each": 24576},
+  "checks": {"smoke": "pass", "structured_json": "pass", "tools": "20/20", "native_agentic": "3/3", "native_agentic_tasks": [{"id": "structured-edit", "oracle_revision": "8"}, {"id": "tool-sequence", "oracle_revision": "8"}, {"id": "dependent-result", "oracle_revision": "8"}], "go_alphametics_second_attempt": "1/1"},
+  "oracle_boundary": "One historical oracle image matched an earlier Mia 0/1 case; not a comparative control.",
+  "non_claims": ["visual accuracy", "speed", "capacity", "replacement"]
+}

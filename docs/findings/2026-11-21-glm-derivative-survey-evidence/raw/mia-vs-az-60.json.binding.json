@@ -1,0 +1,33 @@
+{
+  "original_bytes": 741,
+  "original_sha256": "cf45bfd52e8d20576cc829574a587ba56bc27e72ae1190b438794d41d41b1f60",
+  "public_bytes": 741,
+  "public_path": "mia-vs-az-60.json",
+  "public_sha256": "c8b7f2afe8dc001e48548cb20812f418f2281e7acb505a81606012da6609f381",
+  "redactions": [
+    "api_key",
+    "argv",
+    "authorization",
+    "base_url",
+    "command",
+    "container",
+    "container_id",
+    "credential",
+    "credentials",
+    "endpoint",
+    "env",
+    "environment",
+    "gpu_uuid",
+    "gpu_uuids",
+    "host",
+    "hostname",
+    "path",
+    "paths",
+    "scope",
+    "scopes",
+    "token",
+    "worker"
+  ],
+  "schema": "anvil-serving.private-publication-binding/v1",
+  "synthetic_endpoint": "http://127.0.0.1:8000/v1"
+}

@@ -1,0 +1,39 @@
+{
+  "schema": "anvil-serving.public-configuration-reconstruction/v1",
+  "boundary": "Public-safe immutable identity and serving controls. Private paths, ports, GPU identifiers, endpoints, and unredacted commands are excluded.",
+  "profiles": [
+    {
+      "arm": "az-focus-exl3-tp2",
+      "model": {"repository": "AxonZeta/GLM-5.3-Flash-AZ-Focus-EXL3", "revision": "d6922a95301c2ec274d96fb8ddb81f32f7b7f9be", "url": "https://huggingface.co/AxonZeta/GLM-5.3-Flash-AZ-Focus-EXL3/tree/d6922a95301c2ec274d96fb8ddb81f32f7b7f9be"},
+      "runtime": {"engine": "TensorFold", "engine_revision": "f350cd3ea253a042e205746928271f9d8f71a82d", "image_digest": "sha256:2824d665f9334db0fe9868706cd26dc7bd2604974625a2602c74c78cf90b5886"},
+      "quantization": "EXL3; FP8 KV cache; DFlash2 drafter revision bf582e4eacc1810f76656d1811693ff6c6737d2a",
+      "controls": {"tensor_parallel": 2, "configured_context_tokens": 327680, "parallel_requests": 4, "thinking": true, "reasoning_effort": "high", "vision": true, "vision_max_images": 8},
+      "template": {"identity": "Mia-compatible template baked at /opt/tensorfold/chat_template.jinja", "sha256": null, "verification_status": "template content hash was not retained; identity is path-plus-pinned-runtime only"}
+    },
+    {
+      "arm": "qwen-fp4-local-tp1",
+      "model": {"repository": "nvidia/Qwen3.8-Flash-Next-FP4-Local", "revision": "b9ce18a6887e18c089fdea8509a33e63429a3300", "url": "https://huggingface.co/nvidia/Qwen3.8-Flash-Next-FP4-Local/tree/b9ce18a6887e18c089fdea8509a33e63429a3300"},
+      "runtime": {"engine": "vLLM LIL release-10152026", "engine_revision": "6a833b698f0b41a9c12922343553eee419b9f465", "image_digest": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29"},
+      "quantization": "NVIDIA FP4-Local QAD v1.0: NVFP4 routed experts and PLE, MXFP8 attention, FP8 KV, MTP3, host PLE offload",
+      "controls": {"tensor_parallel": 1, "decode_context_parallel": 1, "configured_context_tokens": 262144, "max_num_seqs": 16, "max_num_batched_tokens": 6019, "prefix_caching": true, "chunked_prefill": true, "reasoning_parser": "qwen3", "tool_call_parser": "qwen3_xml", "kv_cache_dtype": "fp8", "host_embedding_table_offload_gib": 26.82},
+      "template": {"identity": "runtime/default; no explicit chat-template override", "sha256": null, "verification_status": "exact resolved template bytes were not retained"}
+    },
+    {
+      "arm": "swift-light-iq4xs-layer-split",
+      "model": {"repository": "ukisai/Swift-1.5-GLM-5.3-Flash-GGUF", "revision": "466c14d9f77c1702f3fb6372cfdb4becca91125c", "url": "https://huggingface.co/ukisai/Swift-1.5-GLM-5.3-Flash-GGUF/tree/466c14d9f77c1702f3fb6372cfdb4becca91125c", "gguf_sha256": ["fc545e65b4b69ff07c45906b6e9c460d1a4b5750366826e0479caf454d186a29", "e7fdddb810f8d3950679d131eb75177ab391becab99fdfea3e09cd544a296337", "313bb9d33a964cc935d0aa219a4217d94a2f1c7fa9ca348797f7f6ffbf47ca65", "51fe41d25a622f7b66b8d58e4e1f8a56acafc479e957d89be1313c4608e6ff12"], "projector_sha256": "9277fae4da3047f244a3033ba510463338527f4e2bd7d173f1c8f2ab2b1d2022"},
+      "runtime": {"engine": "llama.cpp", "engine_revision": null, "engine_revision_status": "not retained; image digest is the executable provenance", "image_digest": "sha256:82132ef8c5bcdf69658d03e7812b47fd4f39102bbc4a8079c0fa1f1f2b13d663"},
+      "quantization": "GGUF IQ4_XS with BF16 projector",
+      "controls": {"gpu_layer_split": true, "slots": 4, "context_tokens_per_slot": 24576, "context_argument_tokens": 98304, "flash_attention": true, "fit_target_mib_per_gpu": 2048, "temperature": 1.0, "top_p": 0.95},
+      "template": {"identity": "llama.cpp --jinja", "sha256": null, "verification_status": "resolved Jinja template bytes were not retained"}
+    },
+    {
+      "arm": "tev-compact-layer-split",
+      "model": {"repository": "Merlinoz11/Tev-320B-GGUF", "revision": "c0dc281ca9c149d2dd7d34950b953971dada013f", "url": "https://huggingface.co/Merlinoz11/Tev-320B-GGUF/tree/c0dc281ca9c149d2dd7d34950b953971dada013f", "gguf_sha256": "c0876e9cf15dc3bcc02b5e45214b5e9f4b9040ddacb5535fcb2711dd877780a2"},
+      "runtime": {"engine": "llama.cpp", "engine_revision": null, "engine_revision_status": "not retained; image digest is the executable provenance", "image_digest": "sha256:82132ef8c5bcdf69658d03e7812b47fd4f39102bbc4a8079c0fa1f1f2b13d663"},
+      "quantization": "GGUF mixed Q3_K/Q4_K/Q6_K experts, approximately 3.91 bits per weight",
+      "controls": {"gpu_layer_split": true, "slots": 4, "context_tokens_per_slot": 24576, "context_argument_tokens": 98304, "flash_attention": true, "fit_target_mib_per_gpu": 2048, "temperature": 1.0, "top_p": 0.95},
+      "template": {"identity": "llama.cpp --jinja", "sha256": null, "verification_status": "resolved Jinja template bytes were not retained"}
+    }
+  ],
+  "private_source_receipts": ["azfocus/327k-vs-mia-config.json", "qad/qwen38-fp4-local-tp1.recipe.toml", "swift/serve-recipes.swift-60g.toml", "swift/launch-files.json", "tev/serve-recipes.tev-60g.toml", "tev/pull-xet.json"]
+}

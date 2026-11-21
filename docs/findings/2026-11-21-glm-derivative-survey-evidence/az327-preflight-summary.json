@@ -1,0 +1,15 @@
+{
+  "schema": "anvil-serving.preflight-summary/v1",
+  "profile": "az327-focus-exl3-tp2",
+  "result": "all-pass",
+  "checks": {
+    "short_coding_smoke": "pass",
+    "structured_json": "pass",
+    "retrieval_approximately_128k_context": "pass",
+    "shared_prefix_tool_batch": {
+      "passed": 20,
+      "attempted": 20
+    }
+  },
+  "boundary": "Derived summary only; endpoint, prompts, completions, reasoning traces, and tool arguments are omitted."
+}

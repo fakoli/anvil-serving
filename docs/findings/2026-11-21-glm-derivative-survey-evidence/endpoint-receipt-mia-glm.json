@@ -1,0 +1,13 @@
+{
+  "direct_endpoints": {
+    "mia_glm": {
+      "base_url": "http://127.0.0.1:8000/v1",
+      "model": "mia-glm-exl3-tp2"
+    }
+  },
+  "handoff": "QAD fully unloaded; direct GLM smoke and JSON passed; inference slot delegated for the Mia pilot.",
+  "observed_utc": "2026-11-21T13:21:51Z",
+  "receipt_source": "direct live-operations handoff",
+  "schema": "az-paired-endpoint-receipt/v1",
+  "status": "authorized"
+}

@@ -1,0 +1,13 @@
+{
+  "schema": "anvil-serving.clean-c4-summary/v1",
+  "arm": "swift-light-iq4xs-layer-split",
+  "seed": 482204,
+  "requests": 8,
+  "performance_eligible": "8/8",
+  "prefix_cache_hit_rate": 0.0017,
+  "first_visible_seconds": 21.419,
+  "end_to_end_seconds": 23.065,
+  "aggregate_output_tokens_per_second": 46.377,
+  "matched_mia_cohort": {"requests": 8, "performance_eligible": "8/8", "prefix_cache_hit_rate": 0.0, "first_visible_seconds": 5.408, "end_to_end_seconds": 6.489, "aggregate_output_tokens_per_second": 118.029},
+  "boundary": "This is a separate matched seed-482204 C4 observation; n=8 does not establish broad speed, capacity, or deployment behavior."
+}
