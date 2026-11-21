@@ -1,4 +1,4 @@
-# GLM-5.3-Flash derivative survey: matched fixed-set result
+# AZ-Focus and Mia GLM-5.3-Flash derivatives: matched fixed-set result
 
 **Date:** 2026-11-21
 **Status:** completed focused local measurement; `no-promotion`; restored serving with the pre-existing monitoring-registration gap retained.

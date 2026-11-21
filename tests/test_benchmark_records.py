@@ -105,6 +105,11 @@ def test_hardware_labels_are_canonical():
 def test_repository_findings_build_and_discover():
     index = records.build_index(REPO / "docs" / "findings")
     assert index["counts"]["records"] > 100
+    derivative_record = {record["id"]: record for record in index["records"]}[
+        "2026-11-21-glm-derivative-survey"
+    ]
+    assert derivative_record["title"] == "AZ-Focus and Mia GLM-5.3-Flash derivatives: matched fixed-set result"
+    assert derivative_record["links"]["finding"] == "2026-11-21-glm-derivative-survey.md"
     for record in index["records"]:
         assert set(records.CORE_FIELDS) - {"decision", "context_tokens", "concurrency"} <= set(record["subject"])
     # Campaign summaries have no quality block; discovery must not crash on them.

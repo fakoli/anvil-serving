@@ -144,6 +144,11 @@ metrics, failure details, decision, promotion boundary, raw artifact links, and
 current-doc impact. Link the common `artifact-manifest.json`, evidence index,
 and raw JSON rather than copying raw results into prose.
 
+For a finding that compares candidates, name the compared candidates in its H1
+title. Generated result cards, latest-result landing cards, and the canonical
+record index use that title; a generic campaign label alone is not sufficient
+for public discovery.
+
 ## Run-catalog row template
 
 ```markdown
