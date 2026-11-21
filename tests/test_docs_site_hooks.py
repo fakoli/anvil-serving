@@ -4,6 +4,7 @@ import importlib.util
 import json
 import shlex
 from pathlib import Path
+from types import SimpleNamespace
 
 from anvil_serving.product_families import PRODUCT_FAMILIES
 
@@ -70,3 +71,44 @@ def test_record_views_escape_values_and_show_unrecorded_fields():
     latest = hook.render_latest(5, href)
     assert latest.count('class="av-card"') == 1 and "A &lt;b&gt;result&lt;/b&gt;" in latest
     assert hook.render_table(href).count("<tr>") == 3
+
+
+def test_latest_markers_render_the_current_policy_on_both_landing_pages():
+    """Both real marker entry points use the six-newest-finding policy."""
+    hook = _hook("mkdocs_benchmark_records")
+    def record(day: int) -> dict:
+        identifier = f"2040-01-{day:02d}-finding"
+        return {
+            "id": identifier,
+            "date": f"2040-01-{day:02d}",
+            "title": f"Finding {day}",
+            "categories": ["quality"],
+            "decision": {"labels": ["no-promotion"]},
+            "subject": {"hardware": "RTX PRO 6000"},
+            "links": {"finding": f"{identifier}.md", "evidence_index": None},
+        }
+
+    class Files:
+        def get_file_from_path(self, path):
+            return SimpleNamespace(url_relative_to=lambda _page: f"generated/{path.removesuffix('.md')}/")
+
+    hook._index = {"not_recorded": "not recorded", "records": [record(day) for day in range(8, 0, -1)]}
+    files = Files()
+    expected_target = "generated/findings/2040-01-08-finding/"
+
+    for source, source_uri in (
+        (REPO / "docs" / "index.md", "index.md"),
+        (REPO / "docs" / "benchmarks" / "index.md", "benchmarks/index.md"),
+    ):
+        rendered = hook.on_page_markdown(
+            source.read_text(encoding="utf-8"),
+            SimpleNamespace(file=SimpleNamespace(src_uri=source_uri)),
+            {},
+            files,
+        )
+
+        assert "<!-- benchmark-records:latest:6 -->" not in rendered
+        assert rendered.count(">Finding ") == 6
+        assert "Finding 8" in rendered and "Finding 3" in rendered
+        assert "Finding 2" not in rendered and "Finding 1" not in rendered
+        assert f'href="{expected_target}"' in rendered
