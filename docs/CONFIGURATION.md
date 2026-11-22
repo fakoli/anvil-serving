@@ -619,10 +619,12 @@ available. Missing values remain blockers rather than runtime defaults.
 
 Gateway media credentials are environment-variable references and carry
 explicit scopes such as `media:read`, `media:submit`, and `media:cancel`.
-Lifecycle approval uses the existing operator confirmation contract; a media
-credential never inherits controller-wide authority. Artifact storage and job
-state paths belong in the private operator home and are not exposed by workflow
-discovery.
+`media:approve-start` is a separate, opt-in delegation scope for one trusted
+adapter that has already recorded the submitting user's human confirmation;
+it accepts only a persisted job ID and approval transaction ID. It does not
+grant controller-wide authority, cross-principal access, or any caller-selected
+worker, manifest, or service. Artifact storage and job state paths belong in
+the private operator home and are not exposed by workflow discovery.
 
 Install or reconcile the packaged Hermes skill and its media-only MCP catalog
 with `anvil-serving harness sync hermes-media --dry-run`, then apply the exact
@@ -667,13 +669,16 @@ resource owner executes only declared `serves_status`, `serves_manage`, and
 layout preserves single-writer, host-local SQLite state while keeping lifecycle
 mutation at the declared resource owner.
 
-The gateway cannot apply the action. An operator must invoke the typed
-controller tool with `dry_run=false`, `confirm=true`, and
-`human_approved=true`; the caller then retries the same workflow and
-idempotency key after the worker becomes ready. The gateway submits that one
-durable job once and its reconciliation loop captures completed output into the
-opaque artifact store. Missing controller configuration fails the reserved job
-closed without contacting the backend.
+The gateway normally cannot apply the action. A trusted adapter with the
+separate `media:approve-start` scope may delegate one prior human confirmation
+by calling `media_job_approve_start` with the exact persisted job and
+transaction IDs. The gateway derives the controller-only arguments from that
+stored approval and sends `dry_run=false`, `confirm=true`, and
+`human_approved=true` to the typed controller tool. Repeated calls retain the
+same lifecycle transaction. The gateway submits that one durable job once and
+its reconciliation loop captures completed output into the opaque artifact
+store. Missing controller configuration fails closed without contacting the
+backend.
 
 ## Reference files
 

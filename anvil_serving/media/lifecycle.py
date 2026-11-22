@@ -17,7 +17,8 @@ from .jobs import MediaJobStore
 
 ManageOperation = Callable[[Mapping[str, Any]], Mapping[str, Any]]
 StatusOperation = Callable[[Mapping[str, Any]], Mapping[str, Any]]
-PHASE_LEASE_SECONDS = 900
+PREPARE_PHASE_LEASE_SECONDS = 1835
+RELEASE_PHASE_LEASE_SECONDS = 900
 
 
 @dataclass(frozen=True)
@@ -138,7 +139,7 @@ class MediaWorkerLifecycle:
             approved = bool(confirm and human_approved)
             recovering_approval = False
             if approved:
-                recovering_approval = _require_persisted_approval(
+                recovering_approval = require_persisted_approval(
                     job,
                     transaction_id=transaction_id,
                     principal=principal,
@@ -176,7 +177,7 @@ class MediaWorkerLifecycle:
                     if isinstance(approval, Mapping)
                     else ""
                 )
-                _require_persisted_approval(
+                require_persisted_approval(
                     job,
                     transaction_id=approved_transaction_id,
                     principal=principal,
@@ -669,7 +670,7 @@ class MediaWorkerLifecycle:
         new_transaction_id = transaction_id or secrets.token_urlsafe(18)
         now = utc_now().isoformat()
         lease_expires_at = (
-            utc_now() + dt.timedelta(seconds=PHASE_LEASE_SECONDS)
+            utc_now() + dt.timedelta(seconds=PREPARE_PHASE_LEASE_SECONDS)
         ).isoformat()
         pending = {"applied": False, "phase": "preparing"}
         with self._connect() as db:
@@ -975,7 +976,7 @@ class MediaWorkerLifecycle:
     def _claim_release(self, transaction_id: str) -> bool:
         now = utc_now().isoformat()
         lease_expires_at = (
-            utc_now() + dt.timedelta(seconds=PHASE_LEASE_SECONDS)
+            utc_now() + dt.timedelta(seconds=RELEASE_PHASE_LEASE_SECONDS)
         ).isoformat()
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -1123,7 +1124,7 @@ def _approval_request(
     }
 
 
-def _require_persisted_approval(
+def require_persisted_approval(
     job,
     *,
     transaction_id: str,
@@ -1217,4 +1218,4 @@ def _json(value: Mapping[str, Any]) -> str:
     return json.dumps(dict(value), sort_keys=True, separators=(",", ":"), allow_nan=False)
 
 
-__all__ = ["MediaLifecycleReceipt", "MediaWorkerLifecycle"]
+__all__ = ["MediaLifecycleReceipt", "MediaWorkerLifecycle", "require_persisted_approval"]

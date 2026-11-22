@@ -184,6 +184,7 @@ def remote_controller_request(
     token: str,
     *,
     timeout: int = 30,
+    idempotency_key: str | None = None,
     opener: Callable[..., Any] | None = None,
     max_response_bytes: int = MAX_REMOTE_CONTROLLER_RESPONSE_BYTES,
 ) -> dict:
@@ -225,7 +226,7 @@ def remote_controller_request(
         and isinstance(arguments, Mapping)
         and is_confirmed_mutation(arguments)
     )
-    if confirmed_mutation and forwarded_operation is not None:
+    if confirmed_mutation and idempotency_key is None and forwarded_operation is not None:
         existing_context = params.get("context")
         if (
             existing_context is not None
@@ -247,13 +248,16 @@ def remote_controller_request(
         "Mcp-Method": method,
         **controller_auth_headers(token),
     }
-    if confirmed_mutation and forwarded_operation is not None:
-        headers["X-Anvil-Idempotency-Key"] = _child_operation_key(
-            forwarded_operation,
-            controller_url,
-            method,
-            params,
-        )
+    if confirmed_mutation:
+        if idempotency_key is not None:
+            headers["X-Anvil-Idempotency-Key"] = idempotency_key
+        elif forwarded_operation is not None:
+            headers["X-Anvil-Idempotency-Key"] = _child_operation_key(
+                forwarded_operation,
+                controller_url,
+                method,
+                params,
+            )
     if method == "tools/call" and isinstance(params, dict):
         name = params.get("name")
         if isinstance(name, str):

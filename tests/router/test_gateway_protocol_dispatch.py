@@ -121,6 +121,82 @@ def test_gateway_dispatches_scoped_mcp_a2a_and_agent_card(tmp_path):
         assert card["skills"][0]["id"] == "anvil.media.image.generate"
 
 
+def test_gateway_approves_only_the_persisted_cold_start(tmp_path):
+    caller = {"principal": "hermes", "scopes": ["media:approve-start"]}
+    with gateway_server(tmp_path, caller=caller) as (address, tasks):
+        job, _ = tasks.operations.jobs.create(
+            principal="hermes",
+            workflow_id="image.test",
+            workflow_version="v1",
+            input_digest="a" * 64,
+            idempotency_key="approve-start",
+        )
+        transaction_id = "preview-transaction"
+        approval = {
+            "schema": "anvil-serving.media-lifecycle-approval/v1",
+            "transactionId": transaction_id,
+            "service": "media-worker",
+            "action": "prepare",
+            "humanRequired": True,
+            "approved": False,
+            "operatorAction": {"tool": "media_worker_prepare", "arguments": {
+                "job_id": job.id,
+                "principal": "hermes",
+                "service": "media-worker",
+                "manifest": "serves.comfyui.toml",
+                "transaction_id": transaction_id,
+                "dry_run": False,
+                "confirm": True,
+                "human_approved": True,
+            }},
+        }
+        tasks.operations.jobs.transition(
+            job.id, JobState.AWAITING_APPROVAL, principal="hermes", approval=approval
+        )
+        observed = []
+
+        def approve(arguments):
+            observed.append(arguments)
+            tasks.operations.jobs.transition(
+                job.id,
+                JobState.PREPARING,
+                principal="hermes",
+                approval={**approval, "approved": True},
+            )
+            return {
+                "transactionId": transaction_id,
+                "service": "media-worker",
+                "action": "prepare",
+                "humanRequired": False,
+                "manifest": "serves.comfyui.toml",
+                "controllerReceipt": {"private": "must-not-leak"},
+            }
+
+        tasks.operations._lifecycle_approval = approve
+        status, _, raw = request(address, "POST", "/mcp", body=mcp_request())
+        names = {tool["name"] for tool in json.loads(raw)["result"]["tools"]}
+        assert status == 200 and names == {"media_job_approve_start"}
+        body = mcp_request()
+        body["method"] = "tools/call"
+        body["params"].update(name="media_job_approve_start", arguments={
+            "job_id": job.id,
+            "approval_transaction_id": transaction_id,
+        })
+        status, _, raw = request(address, "POST", "/mcp", body=body)
+
+    envelope = json.loads(raw)["result"]["structuredContent"]
+    assert status == 200 and envelope == {
+        "ok": True,
+        "data": {
+            "job_id": job.id,
+            "approval_transaction_id": transaction_id,
+            "state": "preparing",
+        },
+    }
+    assert observed == [approval["operatorAction"]["arguments"]]
+    assert "controllerReceipt" not in json.dumps(envelope)
+
+
 def test_protocol_get_rejects_framed_body_without_resetting_error(tmp_path):
     with gateway_server(tmp_path) as (address, _tasks):
         for _ in range(10):
@@ -428,15 +504,22 @@ media_public_origin = "https://gateway.example.test"
         load_server_config(str(path))
 
 
-def test_media_lifecycle_preview_uses_bounded_controller_tool_call(monkeypatch):
+def test_media_lifecycle_preview_and_approval_use_bounded_controller_tool_calls(monkeypatch):
     import anvil_serving.router.serve as router_serve
 
     observed = {}
 
-    def remote(controller_url, request, token):
+    def remote(controller_url, request, token, **kwargs):
         observed.update(
-            {"controller_url": controller_url, "request": request, "token": token}
+            {
+                "controller_url": controller_url,
+                "request": request,
+                "token": token,
+                "timeout": kwargs.get("timeout"),
+                "idempotency_key": kwargs.get("idempotency_key"),
+            }
         )
+        arguments = request["params"]["arguments"]
         return {
             "jsonrpc": "2.0",
             "id": request["id"],
@@ -444,10 +527,10 @@ def test_media_lifecycle_preview_uses_bounded_controller_tool_call(monkeypatch):
                 "structuredContent": {
                     "ok": True,
                     "data": {
-                        "transactionId": "preview-transaction",
-                        "service": "media-worker",
+                        "transactionId": arguments.get("transaction_id", "preview-transaction"),
+                        "service": arguments["service"],
                         "action": "prepare",
-                        "humanRequired": True,
+                        "humanRequired": request["id"] == "media-lifecycle-preview",
                         "manifest": "serves.comfyui.toml",
                     },
                 }
@@ -477,6 +560,41 @@ def test_media_lifecycle_preview_uses_bounded_controller_tool_call(monkeypatch):
     assert request["params"]["_meta"][
         "io.modelcontextprotocol/protocolVersion"
     ] == mcp.PROTOCOL_VERSION
+
+    approval = router_serve._media_lifecycle_approval(
+        "http://127.0.0.1:8765",
+        "controller-secret",
+    )
+    receipt = approval(
+        {
+            "job_id": "job_0123456789abcdef",
+            "principal": "hermes",
+            "service": "media-worker",
+            "manifest": "serves.comfyui.toml",
+            "transaction_id": "preview-transaction",
+            "dry_run": False,
+            "confirm": True,
+            "human_approved": True,
+        }
+    )
+    assert receipt["humanRequired"] is False
+    assert observed["timeout"] == 1835
+    assert observed["idempotency_key"].startswith("media-approve-")
+    assert observed["request"]["params"]["context"] == {
+        "topology": "media-gateway",
+        "execution_host": "gateway",
+        "execution_runtime": "mcp",
+    }
+    assert observed["request"]["params"]["arguments"] == {
+        "job_id": "job_0123456789abcdef",
+        "principal": "hermes",
+        "service": "media-worker",
+        "manifest": "serves.comfyui.toml",
+        "transaction_id": "preview-transaction",
+        "dry_run": False,
+        "confirm": True,
+        "human_approved": True,
+    }
 
 
 def test_media_controller_url_and_token_are_an_atomic_configuration(tmp_path):
