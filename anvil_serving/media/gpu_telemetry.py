@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from dataclasses import dataclass
 import ctypes
 import os
 import re
@@ -44,6 +45,29 @@ def _helper_command(fd):
     return [sys.executable, "-m", __name__, str(fd), str(os.getpid())]
 
 
+class GpuTelemetryDeferred(MediaError):
+    """An otherwise healthy read was superseded, or its I/O turn was busy."""
+
+    def __init__(self):
+        super().__init__("gpu_telemetry_deferred", "physical GPU telemetry must be retried", status=503)
+
+
+class GpuTelemetryContained(MediaError):
+    """A sample met containment; the caller must prove any benign transition."""
+
+    def __init__(self):
+        super().__init__("gpu_telemetry_unavailable", "physical GPU telemetry unavailable", status=503)
+
+
+@dataclass(frozen=True)
+class _Evidence:
+    epoch: int
+    process: subprocess.Popen | None = None
+    started: float | None = None
+    breached: bool = False
+    contained: bool = False
+
+
 class NvmlSampler:
     """One in-flight read; failure poisons the prestarted helper until a new pool run."""
 
@@ -56,19 +80,24 @@ class NvmlSampler:
             raise ValueError("invalid physical GPU reserve")
         self._uuid = device_uuid.lower().encode("ascii")
         self._reserve = reserve_mib
-        self._reserve_breached = False
         self._timeout = timeout
-        self._lock = threading.Lock()
+        self._lock = threading.Lock()  # Process/socket ownership and provider I/O.
         self._process = None
         self._socket = None
         self._closed = False
         self._frozen = threading.Event()
-        self.epoch = 0
+        # The I/O owner is the sole writer. One immutable reference publishes
+        # all evidence at once; readers never block the telemetry deadline.
+        self._evidence = _Evidence(0)
+
+    @property
+    def epoch(self):
+        return self._evidence.epoch
 
     def start(self):
         """Called by the driver before spawning renderers, never on a request."""
         with self._lock:
-            if self._reserve_breached:
+            if self._evidence.breached:
                 raise _reserve_breached()
             if self._closed or self._socket is not None:
                 raise _unavailable()
@@ -84,20 +113,21 @@ class NvmlSampler:
         local, child = socket.socketpair()
         try:
             with child:
-                self._process = subprocess.Popen(
+                process = subprocess.Popen(
                     _helper_command(child.fileno()), pass_fds=(child.fileno(),),
                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 )
         except BaseException:
             local.close()
             raise
-        self._socket = local
+        self._socket, self._process = local, process
 
-    def _discard(self):
-        self.epoch += 1
-        if self._socket is not None:
-            self._socket.close()
-            self._socket = None
+    def _discard(self, *, contained=False):
+        previous = self._evidence
+        self._evidence = _Evidence(previous.epoch + 1, breached=previous.breached, contained=contained)
+        sock, self._socket = self._socket, None
+        if sock is not None:
+            sock.close()
         if self._process is not None:
             if self._process.poll() is None:
                 try:
@@ -114,24 +144,28 @@ class NvmlSampler:
         self._frozen.set()
         try:
             with self._lock:
-                self._discard()
+                self._discard(contained=True)
                 yield
         finally:
             self._frozen.clear()
 
     @contextmanager
-    def validate(self, epoch):
-        """An admission may hold this through a DB update, never waiting for a sample."""
-        if not self._lock.acquire(blocking=False):
+    def validate(self, epoch=None):
+        """Check one point-in-time publication without holding a lock over caller work."""
+        evidence = self._evidence
+        if evidence.breached:
+            raise _reserve_breached()
+        if (self._frozen.is_set() or self._closed or evidence.started is None
+                or evidence.process is None or evidence.process.poll() is not None
+                or time.monotonic() - evidence.started >= self._timeout):
             raise _unavailable()
-        try:
-            if self._reserve_breached:
-                raise _reserve_breached()
-            if self._frozen.is_set() or self._closed or self._socket is None or epoch != self.epoch:
-                raise _unavailable()
-            yield
-        finally:
-            self._lock.release()
+        # A concurrent publication superseded the observed evidence while
+        # checking it. Never let an old high observation override a new low.
+        if self._evidence is not evidence or (epoch is not None and epoch != evidence.epoch):
+            raise GpuTelemetryDeferred()
+        if self._frozen.is_set():
+            raise _unavailable()
+        yield
 
     def close(self):
         self._frozen.set()
@@ -146,10 +180,15 @@ class NvmlSampler:
                 self._process = None
 
     def sample(self):
-        return self.sample_with_revision()[1]
+        try:
+            return self.sample_with_revision()[1]
+        except GpuTelemetryDeferred:
+            # The driver cannot defer a physical check beyond its deadline.
+            raise _unavailable() from None
 
     def sample_with_revision(self):
-        deadline = time.monotonic() + self._timeout
+        started = time.monotonic()
+        deadline = started + self._timeout
 
         def remaining():
             t = deadline - time.monotonic()
@@ -157,15 +196,28 @@ class NvmlSampler:
                 raise TimeoutError
             return t
 
-        if self._frozen.is_set() or not self._lock.acquire(timeout=self._timeout):
-            raise _unavailable()
+        if self._evidence.breached:
+            raise _reserve_breached()
+        if self._frozen.is_set():
+            raise GpuTelemetryContained()
+        if not self._lock.acquire(timeout=self._timeout):
+            raise GpuTelemetryDeferred()
         try:
-            if self._reserve_breached:
+            if self._evidence.breached:
                 raise _reserve_breached()
-            remaining()
-            if self._frozen.is_set() or self._closed or self._socket is None:
+            if self._closed:
                 raise _unavailable()
-            self._socket.settimeout(remaining())
+            if self._frozen.is_set() or (self._socket is None and self._evidence.contained):
+                raise GpuTelemetryContained()
+            if self._socket is None:
+                raise _unavailable()
+            try:
+                before_io = remaining()
+            except TimeoutError:
+                # If contention exhausted the turn before any byte was sent,
+                # there is no partial response to drain or helper to discard.
+                raise GpuTelemetryDeferred() from None
+            self._socket.settimeout(before_io)
             self._socket.sendall(_QUERY)
             result = bytearray()
             while len(result) < _RESPONSE.size:
@@ -182,9 +234,15 @@ class NvmlSampler:
             # Publish every valid reading before releasing the provider lock.
             # Observing a breach anywhere fences admitting or submitting work
             # even before the drive thread can acquire the pool lock.
-            self.epoch += 1
-            self._reserve_breached = reading[1] < self._reserve
-            return self.epoch, reading
+            remaining()
+            breached = reading[1] < self._reserve
+            epoch = self._evidence.epoch + 1
+            if self._frozen.is_set() and not breached:
+                raise GpuTelemetryContained()
+            self._evidence = _Evidence(epoch, self._process, started, breached)
+            if breached and self._frozen.is_set():
+                raise _reserve_breached()
+            return epoch, reading
         except (OSError, EOFError, ValueError):
             self._discard()
             raise _unavailable() from None

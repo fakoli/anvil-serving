@@ -388,7 +388,7 @@ def test_prepared_before_fault_cannot_submit_but_known_replay_survives(pool, mon
     second = prepare(pool, 2)
     pool.fault = "gpu_telemetry_unavailable"
     assert pool.submit(first["lease"], payload(1)) == posted
-    with pytest.raises(MediaError, match="worker pool is quarantined"):
+    with pytest.raises(worker_runtime.WorkerRuntimeRefused, match="worker_budget_unknown"):
         pool.submit(second["lease"], payload(2))
     assert [c["client"].posts for c in pool.children] == [1, 0]
 
@@ -420,7 +420,12 @@ def test_opt_in_provider_never_waits_under_pool_lock_or_admits_stale_sample(pool
 
 
 def test_provider_epoch_change_invalidates_prepared_decision(pool):
-    telemetry = SimpleNamespace(epoch=0, validate=lambda _: nullcontext(), sample=lambda: (32607, 30000),
+    def validate(expected):
+        if expected is not None and expected != telemetry.epoch:
+            raise MediaError("gpu_telemetry_unavailable", "physical GPU telemetry unavailable", status=503)
+        return nullcontext()
+
+    telemetry = SimpleNamespace(epoch=0, validate=validate, sample=lambda: (32607, 30000),
                                  sample_with_revision=lambda: (0, (32607, 30000)))
     pool._nvml = telemetry
     first = prepare(pool, 1)
@@ -433,7 +438,7 @@ def test_provider_epoch_change_invalidates_prepared_decision(pool):
         return original()
 
     next_child.queue = provider_lost_between_sample_and_decision
-    with pytest.raises(MediaError, match="GPU telemetry sample is stale"):
+    with pytest.raises(MediaError, match="physical GPU telemetry unavailable"):
         prepare(pool, 2)
     assert not any(row["phase"] == "prepared" for row in pool._active())
 

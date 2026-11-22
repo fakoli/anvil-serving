@@ -166,12 +166,13 @@ def test_admission_validation_does_not_wait_for_busy_provider(monkeypatch):
     helper = sampler(monkeypatch, HELPER.format(
         reply=f"s.sendall(struct.pack('!40sQQ', b'{UUID}', 32<<30, n<<20))"))
     try:
-        epoch = helper.epoch
-        with helper._lock, pytest.raises(MediaError):
+        with pytest.raises(MediaError):
+            with helper.validate(helper.epoch):
+                pytest.fail("admission requires a successful reading")
+        epoch, _ = helper.sample_with_revision()
+        with helper._lock:
             with helper.validate(epoch):
-                pytest.fail("admission must not wait on provider lock")
-        with helper.validate(epoch):
-            pass
+                pass  # Valid published state need not wait on provider I/O.
         with helper.contain():
             pass
         with pytest.raises(MediaError):
