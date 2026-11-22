@@ -23,11 +23,13 @@ from .comfyui import MAX_UPLOAD_BYTES, ComfyUIClient, _base_url
 from .contracts import JobState, MediaArtifact, RenderedWorkflow, TERMINAL_STATES, SUBMISSION_RECOVERY_GRACE_SECONDS, utc_now
 from .errors import MediaError, MediaSubmissionRefused
 from .jobs import MAX_IDEMPOTENCY_KEY, MediaJobStore
+from .lifecycle import require_persisted_approval
 from .planning import CATEGORIES, compile_brief
 from .workflows import WorkflowRegistry, canonical_digest, render_request
 
 
 LifecyclePreview = Callable[[str, str, str], Mapping[str, Any]]
+LifecycleApproval = Callable[[Mapping[str, Any]], Mapping[str, Any]]
 
 
 def _contract_value(value):
@@ -67,12 +69,14 @@ class MediaOperations:
         artifacts: ArtifactStore,
         *,
         lifecycle_preview: LifecyclePreview | None = None,
+        lifecycle_approval: LifecycleApproval | None = None,
         background_dispatch: bool = False,
     ) -> None:
         self.registry = registry
         self.jobs = jobs
         self.artifacts = artifacts
         self._lifecycle_preview = lifecycle_preview
+        self._lifecycle_approval = lifecycle_approval
         self.background_dispatch = background_dispatch
         self._submit_lock = threading.RLock()
         self._dispatch_lock = threading.Lock()
@@ -83,6 +87,67 @@ class MediaOperations:
             raise MediaError("invalid_admission_policy", "media queue configuration is invalid") from exc
         if not 1 <= self.queue_depth <= 1024 or not 1 <= self.execution_slots <= min(16, self.queue_depth):
             raise MediaError("invalid_admission_policy", "media queue configuration is invalid")
+
+    def approve_start(
+        self,
+        job_id: str,
+        *,
+        principal: str,
+        transaction_id: str,
+    ) -> dict[str, Any]:
+        """Delegate one exact pending lifecycle confirmation without exposing its receipt."""
+
+        job = self.jobs.get(job_id, principal=principal)
+        arguments = _pending_lifecycle_approval_arguments(
+            job,
+            transaction_id=transaction_id,
+            principal=principal,
+        )
+        if self._lifecycle_approval is None:
+            raise MediaError(
+                "media_lifecycle_unconfigured",
+                "the media lifecycle controller is unavailable",
+                status=503,
+            )
+        receipt = self._lifecycle_approval(arguments)
+        receipt_transaction_id = (
+            receipt.get("transactionId") if isinstance(receipt, Mapping) else None
+        )
+        if (
+            not isinstance(receipt, Mapping)
+            or not isinstance(receipt_transaction_id, str)
+            or not receipt_transaction_id
+            or receipt.get("service") != arguments["service"]
+            or receipt.get("action") != "prepare"
+            or receipt.get("humanRequired") is not False
+            or receipt.get("manifest") != arguments["manifest"]
+        ):
+            raise MediaError(
+                "media_lifecycle_approval_invalid",
+                "controller returned an invalid media worker approval",
+                status=502,
+            )
+        current = self.jobs.get(job_id, principal=principal)
+        current_approval = current.approval
+        if (
+            current.state == JobState.AWAITING_APPROVAL
+            or not isinstance(current_approval, Mapping)
+            or current_approval.get("transactionId") != receipt_transaction_id
+            or current_approval.get("service") != arguments["service"]
+            or current_approval.get("action") != "prepare"
+            or current_approval.get("humanRequired") is not True
+            or current_approval.get("approved") is not True
+        ):
+            raise MediaError(
+                "media_lifecycle_approval_invalid",
+                "controller approval did not advance the persisted job",
+                status=502,
+            )
+        return {
+            "job_id": current.id,
+            "approval_transaction_id": transaction_id,
+            "state": current.state.value,
+        }
 
     def capabilities(self) -> dict[str, Any]:
         workflows = self.registry.list()
@@ -841,6 +906,46 @@ def _approval_request(
             },
         },
     }
+
+
+def _pending_lifecycle_approval_arguments(
+    job,
+    *,
+    transaction_id: str,
+    principal: str,
+) -> dict[str, Any]:
+    approval = job.approval
+    operator_action = (
+        approval.get("operatorAction") if isinstance(approval, Mapping) else None
+    )
+    arguments = (
+        operator_action.get("arguments")
+        if isinstance(operator_action, Mapping)
+        else None
+    )
+    service = arguments.get("service") if isinstance(arguments, Mapping) else None
+    manifest = arguments.get("manifest") if isinstance(arguments, Mapping) else None
+    if (
+        not isinstance(arguments, Mapping)
+        or not isinstance(service, str)
+        or not service
+        or len(service) > 128
+        or not isinstance(manifest, str)
+        or len(manifest) > 128
+    ):
+        raise MediaError(
+            "media_lifecycle_approval_mismatch",
+            "media worker approval does not match the pending job",
+            status=409,
+        )
+    require_persisted_approval(
+        job,
+        transaction_id=transaction_id,
+        principal=principal,
+        service=service,
+        manifest=manifest,
+    )
+    return dict(arguments)
 
 
 __all__ = ["MediaOperations", "parameters_from_json", "stable_request_key"]

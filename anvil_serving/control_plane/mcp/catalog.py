@@ -162,7 +162,11 @@ def list_tools(
             granted_scopes is None
             or spec.get("requiredScope") is None
             or spec.get("requiredScope") in granted_scopes
-            or (spec.get("audience") == "media" and "operator:media" in granted_scopes)
+            or (
+                spec.get("audience") == "media"
+                and spec.get("requiredScope") != "media:approve-start"
+                and "operator:media" in granted_scopes
+            )
         )
     ]
 

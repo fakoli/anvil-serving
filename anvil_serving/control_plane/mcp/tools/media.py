@@ -30,7 +30,6 @@ _SERVICE_OVERRIDE: contextvars.ContextVar[
     tuple[MediaOperations, ComfyUIClient | None, str, ArtifactDownloadLinks | None] | None
 ] = contextvars.ContextVar("anvil_media_service_override", default=None)
 
-
 @contextmanager
 def service_context(
     operations: MediaOperations, backend: ComfyUIClient | None, *, public_origin: str = "",
@@ -241,6 +240,19 @@ def tool_media_job_cancel(args: dict) -> dict:
     )
 
 
+def tool_media_job_approve_start(args: dict) -> dict:
+    """Delegate one persisted, human-confirmed cold-worker start."""
+
+    caller = require_scope("media:approve-start")
+    job_id = _str_arg(args, "job_id", required=True)
+    transaction_id = _str_arg(args, "approval_transaction_id", required=True)
+    return _translate(lambda: _services()[0].approve_start(
+        job_id,
+        transaction_id=transaction_id,
+        principal=caller.principal,
+    ))
+
+
 def tool_media_artifact_inspect(args: dict) -> dict:
     caller = require_scope("media:read")
     owner = _owner(args, caller)
@@ -371,6 +383,18 @@ FAMILY = ToolFamily(
             "Cancel one caller-owned media job within exclusive-slot safety rules.",
             {"job_id": {"type": "string", "minLength": 16, "maxLength": 128}, **_OWNER},
             tool_media_job_cancel, scope="media:cancel", required=("job_id",),
+        ),
+        "media_job_approve_start": _tool(
+            "Approve the exact pending cold-worker start after the trusted caller has recorded human confirmation. Retries must reuse the same job and approval transaction.",
+            {
+                "job_id": {"type": "string", "minLength": 16, "maxLength": 128},
+                "approval_transaction_id": {
+                    "type": "string", "minLength": 1, "maxLength": 128,
+                },
+            },
+            tool_media_job_approve_start,
+            scope="media:approve-start",
+            required=("job_id", "approval_transaction_id"),
         ),
         "media_artifact_inspect": _tool(
             "Inspect owned artifact metadata and downloadUrl. Follow requiresAuthentication and downloadExpiresAt: signed URLs open directly; otherwise use the existing MCP credential in the Authorization header. Reusable credentials are never embedded in URLs. Eligible bounded images include native content; videos include resource links when the gateway origin is configured.",

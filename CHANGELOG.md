@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- `media_job_approve_start` lets an explicitly scoped trusted adapter delegate
+  a recorded human approval for its own exact pending media job and lifecycle
+  transaction, without exposing lifecycle receipts or controller authority.
+
 - `scripts/journey_smoke.py` installs the wheel into a stock Python container and
   walks the gateway quickstart and every step of the seven product journeys as a
   new user would. CI runs it on Linux; a step may refuse where it needs hardware,

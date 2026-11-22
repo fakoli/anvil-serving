@@ -598,9 +598,10 @@ Verify the connection by listing the `media_*` tools, selecting and validating a
 available workflow, submitting a named image workflow, polling its job to
 completion, and inspecting the resulting artifact. The image content digest
 must match the artifact metadata. Wrong-token and cross-principal access must
-be refused. The connection does not grant model installation, worker lifecycle,
-or workflow-promotion authority; a cold worker still needs its managed operator
-startup path.
+be refused. The connection does not grant model installation or workflow-promotion
+authority. A cold worker still needs its managed startup path; only a separately
+scoped trusted adapter may delegate a previously recorded human confirmation for
+its exact pending job and lifecycle transaction.
 
 The resource-owning host operates ComfyUI through managed `serves` and
 controller tools; raw Docker is not the operational path. The caller-facing

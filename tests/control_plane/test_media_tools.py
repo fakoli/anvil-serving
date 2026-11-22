@@ -12,6 +12,8 @@ from tests.a2a.test_tasks import cold_service
 
 READ = {"principal": "hermes", "scopes": ["media:read"]}
 SUBMIT = {"principal": "hermes", "scopes": ["media:submit"]}
+APPROVE_START = {"principal": "hermes", "scopes": ["media:approve-start"]}
+OPERATOR = {"principal": "operator", "scopes": ["operator:media"]}
 
 
 def _call_request(name: str) -> dict:
@@ -41,12 +43,52 @@ def test_media_discovery_is_deterministic_and_scope_filtered():
     assert not any(name.startswith("media_worker_") for name in names)
     assert all(tool["inputSchema"]["additionalProperties"] is False for tool in first)
 
+    approved_names = {
+        tool["name"] for tool in mcp.list_tools(
+            caller=APPROVE_START, audience="media"
+        )
+    }
+    assert "media_job_approve_start" in approved_names
+    assert "media_job_approve_start" not in names
+    assert "media_job_approve_start" not in {
+        tool["name"] for tool in mcp.list_tools(caller=OPERATOR, audience="media")
+    }
+
 
 def test_scope_denial_precedes_registry_or_downstream_contact(monkeypatch):
     monkeypatch.setattr(media, "_services", lambda: (_ for _ in ()).throw(AssertionError("resolved services")))
     result = mcp.call_tool("media_workflow_list", {}, caller=SUBMIT)
     assert result["ok"] is False
     assert result["error"]["code"] == "scope_denied"
+
+
+def test_start_approval_scope_denial_precedes_job_lookup(monkeypatch):
+    monkeypatch.setattr(
+        media,
+        "_services",
+        lambda: (_ for _ in ()).throw(AssertionError("resolved services")),
+    )
+    result = mcp.call_tool(
+        "media_job_approve_start",
+        {
+            "job_id": "job_opaque_identifier",
+            "approval_transaction_id": "transaction-opaque-identifier",
+        },
+        caller=SUBMIT,
+        audience="media",
+    )
+    assert result["ok"] is False
+    assert result["error"]["code"] == "scope_denied"
+    operator_result = mcp.call_tool(
+        "media_job_approve_start",
+        {
+            "job_id": "job_opaque_identifier",
+            "approval_transaction_id": "transaction-opaque-identifier",
+        },
+        caller=OPERATOR,
+        audience="media",
+    )
+    assert operator_result["error"]["code"] == "scope_denied"
 
 
 def test_authentication_is_out_of_band_not_a_spoofable_tool_argument(monkeypatch):
@@ -157,6 +199,119 @@ def test_profileless_cold_resume_bundle_can_replay_and_cancel(tmp_path):
     assert tasks.operations.jobs.get(
         bundle["job_id"], principal="hermes"
     ).state == JobState.CANCELED
+
+
+def test_start_approval_delegates_only_the_persisted_transaction(tmp_path, monkeypatch):
+    tasks = cold_service(tmp_path)
+    workflow_arguments = {
+        "workflow_id": "image.test",
+        "version": "v1",
+        "parameters": {"prompt": "cold mountain"},
+        "idempotency_key": "approved-cold-request",
+    }
+    observed = []
+
+    def approve(arguments):
+        observed.append(arguments)
+        tasks.operations.jobs.transition(
+            arguments["job_id"],
+            JobState.PREPARING,
+            principal=arguments["principal"],
+            approval={
+                **tasks.operations.jobs.get(
+                    arguments["job_id"], principal=arguments["principal"]
+                ).approval,
+                "approved": True,
+            },
+        )
+        return {
+            "transactionId": arguments["transaction_id"],
+            "service": arguments["service"],
+            "action": "prepare",
+            "humanRequired": False,
+            "manifest": arguments["manifest"],
+            "controllerReceipt": {"private": "must-not-leak"},
+        }
+
+    tasks.operations._lifecycle_approval = approve
+    with media.service_context(tasks.operations, tasks.backend):
+        submitted = mcp.call_tool(
+            "media_workflow_run",
+            workflow_arguments,
+            caller=SUBMIT,
+            audience="media",
+        )
+        bundle = submitted["data"]["resumeBundle"]
+        denied_extra = mcp.call_tool(
+            "media_job_approve_start",
+            {
+                "job_id": bundle["job_id"],
+                "approval_transaction_id": bundle["approval_transaction_id"],
+                "principal": "another-caller",
+            },
+            caller=APPROVE_START,
+            audience="media",
+        )
+        assert denied_extra["error"]["code"] == "bad_argument"
+        approved = mcp.call_tool(
+            "media_job_approve_start",
+            {
+                "job_id": bundle["job_id"],
+                "approval_transaction_id": bundle["approval_transaction_id"],
+            },
+            caller=APPROVE_START,
+            audience="media",
+        )
+
+    assert approved == {
+        "ok": True,
+        "data": {
+            "job_id": bundle["job_id"],
+            "approval_transaction_id": bundle["approval_transaction_id"],
+            "state": "preparing",
+        },
+    }
+    assert len(observed) == 1
+    assert observed[0] == {
+        "job_id": bundle["job_id"],
+        "principal": "hermes",
+        "service": "media-worker",
+        "manifest": "serves.comfyui.toml",
+        "transaction_id": bundle["approval_transaction_id"],
+        "dry_run": False,
+        "confirm": True,
+        "human_approved": True,
+    }
+    assert "controllerReceipt" not in approved["data"]
+
+
+def test_start_approval_requires_the_exact_pending_transaction(tmp_path, monkeypatch):
+    tasks = cold_service(tmp_path)
+    tasks.operations._lifecycle_approval = lambda _arguments: (_ for _ in ()).throw(
+        AssertionError("controller must not be called")
+    )
+    with media.service_context(tasks.operations, tasks.backend):
+        submitted = mcp.call_tool(
+            "media_workflow_run",
+            {
+                "workflow_id": "image.test",
+                "version": "v1",
+                "parameters": {"prompt": "cold mountain"},
+                "idempotency_key": "wrong-approval-transaction",
+            },
+            caller=SUBMIT,
+            audience="media",
+        )
+        result = mcp.call_tool(
+            "media_job_approve_start",
+            {
+                "job_id": submitted["data"]["resumeBundle"]["job_id"],
+                "approval_transaction_id": "another-transaction",
+            },
+            caller=APPROVE_START,
+            audience="media",
+        )
+    assert result["error"]["code"] == "media_lifecycle_approval_mismatch"
 
 
 def test_cross_principal_scope_is_required_before_job_lookup(monkeypatch):

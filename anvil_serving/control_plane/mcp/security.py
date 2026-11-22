@@ -20,7 +20,14 @@ from .errors import ToolError
 
 
 MEDIA_SCOPES = frozenset(
-    {"media:read", "media:submit", "media:cancel", "media:cross-principal", "operator:media"}
+    {
+        "media:read",
+        "media:submit",
+        "media:cancel",
+        "media:approve-start",
+        "media:cross-principal",
+        "operator:media",
+    }
 )
 
 
@@ -65,7 +72,9 @@ def require_scope(scope: str) -> CallerContext:
     caller = _CALLER_CONTEXT.get()
     if caller is None:
         raise ToolError("authentication_required", "authenticated media caller context is required")
-    if scope not in caller.scopes and "operator:media" not in caller.scopes:
+    if scope not in caller.scopes and (
+        scope == "media:approve-start" or "operator:media" not in caller.scopes
+    ):
         raise ToolError(
             "scope_denied",
             "caller is not authorized for this media operation",

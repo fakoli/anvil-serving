@@ -504,7 +504,14 @@ _SERVER_KEYS = frozenset({
 })
 _WORKLOAD_HOST_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}")
 _MEDIA_SCOPES = frozenset(
-    {"media:read", "media:submit", "media:cancel", "media:cross-principal", "operator:media"}
+    {
+        "media:read",
+        "media:submit",
+        "media:cancel",
+        "media:approve-start",
+        "media:cross-principal",
+        "operator:media",
+    }
 )
 
 

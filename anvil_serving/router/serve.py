@@ -2161,6 +2161,78 @@ def _durable_admission(path: str, config: RouterConfig) -> TierAdmission:
     return admission
 
 
+_MEDIA_WORKER_START_TIMEOUT_SECONDS = 1800
+_MEDIA_WORKER_START_TIMEOUT_MARGIN_SECONDS = 35
+
+
+def _media_lifecycle_controller_call(
+    controller_url: str,
+    token: str,
+    arguments: Mapping[str, Any],
+    *,
+    request_id: str,
+    failure_code: str,
+    timeout: int | None = None,
+    idempotency_key: str | None = None,
+) -> Mapping[str, Any]:
+    request = {
+        "jsonrpc": "2.0",
+        "id": request_id,
+        "method": "tools/call",
+        "params": {
+            "name": "media_worker_prepare",
+            "arguments": dict(arguments),
+            "_meta": {
+                PROTOCOL_VERSION_META_KEY: mcp_facade.PROTOCOL_VERSION,
+                CLIENT_CAPABILITIES_META_KEY: {},
+                CLIENT_INFO_META_KEY: {
+                    "name": "anvil-media-gateway",
+                    "version": mcp_facade.SERVER_INFO["version"],
+                },
+            },
+        },
+    }
+    if idempotency_key is not None:
+        request["params"]["context"] = {
+            "topology": "media-gateway",
+            "execution_host": "gateway",
+            "execution_runtime": "mcp",
+        }
+    try:
+        response = (
+            remote_controller_request(controller_url, request, token)
+            if timeout is None
+            else remote_controller_request(
+                controller_url,
+                request,
+                token,
+                timeout=timeout,
+                idempotency_key=idempotency_key,
+            )
+        )
+    except ToolError as exc:
+        raise MediaError(exc.code, exc.message, status=503, details=exc.details) from exc
+    rpc_error = response.get("error")
+    if isinstance(rpc_error, Mapping):
+        data = rpc_error.get("data")
+        code = data.get("code") if isinstance(data, Mapping) else None
+        raise MediaError(
+            code if isinstance(code, str) else failure_code,
+            "the controller rejected the managed media worker operation",
+            status=503,
+        )
+    result = response.get("result")
+    envelope = result.get("structuredContent") if isinstance(result, Mapping) else None
+    data = envelope.get("data") if isinstance(envelope, Mapping) else None
+    if not isinstance(envelope, Mapping) or envelope.get("ok") is not True or not isinstance(data, Mapping):
+        raise MediaError(
+            failure_code + "_invalid",
+            "controller returned an invalid media worker operation response",
+            status=502,
+        )
+    return data
+
+
 def _media_lifecycle_preview(
     controller_url: str,
     token: str,
@@ -2168,61 +2240,48 @@ def _media_lifecycle_preview(
     """Build a bounded operator-controller preview used only for cold workers."""
 
     def preview(job_id: str, principal: str, service: str) -> Mapping[str, Any]:
-        request = {
-            "jsonrpc": "2.0",
-            "id": "media-lifecycle-preview",
-            "method": "tools/call",
-            "params": {
-                "name": "media_worker_prepare",
-                "arguments": {
-                    "job_id": job_id,
-                    "principal": principal,
-                    "service": service,
-                    "dry_run": True,
-                    "confirm": False,
-                    "human_approved": False,
-                },
-                "_meta": {
-                    PROTOCOL_VERSION_META_KEY: mcp_facade.PROTOCOL_VERSION,
-                    CLIENT_CAPABILITIES_META_KEY: {},
-                    CLIENT_INFO_META_KEY: {
-                        "name": "anvil-media-gateway",
-                        "version": mcp_facade.SERVER_INFO["version"],
-                    },
-                },
+        return _media_lifecycle_controller_call(
+            controller_url,
+            token,
+            {
+                "job_id": job_id,
+                "principal": principal,
+                "service": service,
+                "dry_run": True,
+                "confirm": False,
+                "human_approved": False,
             },
-        }
-        try:
-            response = remote_controller_request(controller_url, request, token)
-        except ToolError as exc:
-            raise MediaError(exc.code, exc.message, status=503, details=exc.details) from exc
-        rpc_error = response.get("error")
-        if isinstance(rpc_error, Mapping):
-            data = rpc_error.get("data")
-            code = data.get("code") if isinstance(data, Mapping) else None
-            raise MediaError(
-                code if isinstance(code, str) else "media_lifecycle_preview_failed",
-                "the controller rejected the managed media worker preview",
-                status=503,
-            )
-        result = response.get("result")
-        envelope = result.get("structuredContent") if isinstance(result, Mapping) else None
-        if not isinstance(envelope, Mapping) or envelope.get("ok") is not True:
-            raise MediaError(
-                "media_lifecycle_preview_invalid",
-                "controller returned an invalid media worker preview envelope",
-                status=502,
-            )
-        data = envelope.get("data")
-        if not isinstance(data, Mapping):
-            raise MediaError(
-                "media_lifecycle_preview_invalid",
-                "controller returned invalid media worker preview data",
-                status=502,
-            )
-        return data
+            request_id="media-lifecycle-preview",
+            failure_code="media_lifecycle_preview",
+        )
 
     return preview
+
+
+def _media_lifecycle_approval(
+    controller_url: str,
+    token: str,
+) -> Callable[[Mapping[str, Any]], Mapping[str, Any]]:
+    """Build the bounded, confirmed lifecycle delegation for one persisted approval."""
+
+    def approve(arguments: Mapping[str, Any]) -> Mapping[str, Any]:
+        request_key = "media-approve-" + hashlib.sha256(
+            json.dumps(dict(arguments), sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        return _media_lifecycle_controller_call(
+            controller_url,
+            token,
+            arguments,
+            request_id="media-job-approve-start",
+            failure_code="media_lifecycle_approval",
+            timeout=(
+                _MEDIA_WORKER_START_TIMEOUT_SECONDS
+                + _MEDIA_WORKER_START_TIMEOUT_MARGIN_SECONDS
+            ),
+            idempotency_key=request_key,
+        )
+
+    return approve
 
 
 def build_server(
@@ -2441,6 +2500,11 @@ def build_server(
                 background_dispatch=True,
                 lifecycle_preview=(
                     _media_lifecycle_preview(controller_url, controller_token)
+                    if controller_url
+                    else None
+                ),
+                lifecycle_approval=(
+                    _media_lifecycle_approval(controller_url, controller_token)
                     if controller_url
                     else None
                 ),
