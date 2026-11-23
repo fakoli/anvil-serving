@@ -62,6 +62,31 @@ def commands() -> CommandNode:
                 mutation_class="read", execution_policy="offline", docs_anchor="docs/cli/connect.md#resources",
             ),
             _node(
+                "hold", "Hold or release one resource at its local connector listener.",
+                children=tuple(
+                    _node(
+                        operation, summary,
+                        handler=_handler("anvil_serving.connect.cli", attribute="dispatch", argv_prefix=("hold", operation),
+                                         forward_confirm_flag=operation != "status"),
+                        options=(_USER_OPTIONS[0],
+                                 _option("--resource", summary=resource_summary, value_name="ID"))
+                        + (_CONFIRM if operation != "status" else ()),
+                        mutation_class="read" if operation == "status" else "mutate",
+                        execution_policy="offline", docs_anchor="docs/cli/connect.md#hold",
+                    )
+                    for operation, summary, resource_summary in (
+                        ("status", "Show holds and any other rule blocking a connector listener.",
+                         "Optional connector resource ID; defaults to every declared one."),
+                        ("apply", "Preview or reset new connections to one resource's listener.",
+                         "Required connector resource ID."),
+                        ("release", "Preview or remove only this command's hold for one resource.",
+                         "Required connector resource ID."),
+                    )
+                ),
+                mutation_class="mutate", execution_policy="offline",
+                docs_anchor="docs/cli/connect.md#hold",
+            ),
+            _node(
                 "users", "Manage local accounts, service entitlements, enrollment codes and authentication backups.",
                 # Legacy option-first calls retain their own parser confirmation gate.
                 handler=_handler("anvil_serving.connect.cli", attribute="dispatch", argv_prefix=("users",)),

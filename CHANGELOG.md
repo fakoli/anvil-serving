@@ -8,6 +8,11 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- `connect hold status|apply|release` closes one Connect resource at its local
+  connector listener during origin maintenance and reopens it, previewing by
+  default. `status` also names any REJECT or DROP rule from another tool that
+  blocks a listener, so an old maintenance block is not mistaken for an outage.
+
 - `media_job_approve_start` lets an explicitly scoped trusted adapter delegate
   a recorded human approval for its own exact pending media job and lifecycle
   transaction, without exposing lifecycle receipts or controller authority.

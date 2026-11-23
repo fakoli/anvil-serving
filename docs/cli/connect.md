@@ -42,6 +42,36 @@ declaration; it does not contact services, read referenced secrets or establish
 live readiness or current access. A deployment without browser resources returns
 an empty list.
 
+## Hold
+
+```sh
+sudo anvil-connect-ctl hold status
+sudo anvil-connect-ctl hold apply --resource memory-ui
+sudo anvil-connect-ctl hold apply --resource memory-ui --confirm
+sudo anvil-connect-ctl hold release --resource memory-ui --confirm
+```
+
+Closes one resource during origin maintenance, such as a database migration,
+without stopping the connector or touching other resources. A hold is one IPv4
+`iptables` OUTPUT rule, inserted first, that resets TCP connections to the
+resource's declared `127.0.0.1` connector listener. Sign-in still works; the
+held resource fails immediately instead of reaching its origin. Each rule
+carries the comment `anvil-connect-hold:RESOURCE`, and `release` deletes only
+that rule. `apply` and `release` preview unless `--confirm` is supplied, and a
+repeat reports `changed: false`.
+
+`status` lists every connector resource with its listener and whether it is
+held. `matches_declaration` is false when the declared listener changed after
+the hold was applied; release and reapply it. `first_in_output` is false when
+another rule now sits above the hold and could accept connections first.
+`other_blocking_rules` lists any REJECT or DROP rule this command does not own
+that still blocks a listener, so a block added by another tool is not mistaken
+for an outage. Remove such a rule with the tool that added it.
+
+Holds are runtime firewall state and are cleared by a reboot. The command
+requires root, reads `/etc/anvil-connect/deployment.json` unless `--manifest`
+is given, and works identically as `anvil-serving connect hold`.
+
 ## Native OIDC clients
 
 Add a native application to `authelia.additional_oidc_clients` with this entry
