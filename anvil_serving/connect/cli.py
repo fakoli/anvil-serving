@@ -111,6 +111,19 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
         if operation != "status":
             leaf.add_argument("--dry-run", action="store_true")
             leaf.add_argument("--confirm", action="store_true")
+    hold = actions.add_parser("hold", allow_abbrev=False,
+                              help="Hold or release one resource at its local connector listener.")
+    hold_actions = hold.add_subparsers(dest="hold_action", required=True)
+    for operation, summary in (("status", "Show holds and any other rule blocking a connector listener."),
+                               ("apply", "Preview or reset new connections to one resource's listener."),
+                               ("release", "Preview or remove only this command's hold for one resource.")):
+        leaf = hold_actions.add_parser(operation, allow_abbrev=False, help=summary, description=summary)
+        leaf.add_argument("--manifest", action=_Once, help="Defaults to /etc/anvil-connect/deployment.json.")
+        leaf.add_argument("--resource", required=operation != "status", action=_Once,
+                          help="Connector resource ID; status lists every declared one.")
+        if operation != "status":
+            leaf.add_argument("--dry-run", action="store_true")
+            leaf.add_argument("--confirm", action="store_true")
     resources = actions.add_parser("resources", allow_abbrev=False,
                                    help="List declared browser services and copyable grant values.")
     resources.add_argument("--manifest", action=_Once, help="Defaults to /etc/anvil-connect/deployment.json.")
@@ -295,6 +308,13 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
         elif action == "native-memory-service":
             from ..native_memory_gateway.lifecycle import operate
             result = operate(args.native_memory_action, args.declaration, apply=apply)
+        elif action == "hold":
+            from .ingress_hold import HoldError, operate as hold
+            from .users import DEFAULT_MANIFEST
+            try:
+                result = hold(args.hold_action, args.manifest or DEFAULT_MANIFEST, args.resource, apply=apply)
+            except HoldError as exc:
+                return CommandResult(error=OperatorError(str(exc), code="connect_hold_failed"))
         elif action == "resources":
             from .inventory import resources
             from .users import DEFAULT_MANIFEST
