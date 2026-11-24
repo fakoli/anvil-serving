@@ -70,12 +70,12 @@ class FakeUpstream:
 
 
 def route(port: int, **kwargs) -> RealtimeRoute:
-    return RealtimeRoute(id=kwargs.pop("id", "mbp-voice"), base_url=f"http://127.0.0.1:{port}/v1", **kwargs)
+    return RealtimeRoute(id=kwargs.pop("id", "voice-proxy"), base_url=f"http://127.0.0.1:{port}/v1", **kwargs)
 
 
 def gateway(*routes, max_concurrency=2, env=None, probe_status=200) -> RealtimeGateway:
     return RealtimeGateway(routes, max_concurrency=max_concurrency,
-                           env=env if env is not None else {"MBP_VOICE_TOKEN": "upstream-secret"},
+                           env=env if env is not None else {"VOICE_PROXY_TOKEN": "upstream-secret"},
                            probe=lambda url, timeout: probe_status)
 
 
@@ -118,9 +118,9 @@ def upgrade(httpd, *, query="?model=voice", token="router-token", extra=(), webs
 def test_realtime_relays_bytes_with_only_the_route_credential():
     upstream = FakeUpstream(protocol="realtime")
     try:
-        realtime = gateway(route(upstream.port, auth_env="MBP_VOICE_TOKEN"))
+        realtime = gateway(route(upstream.port, auth_env="VOICE_PROXY_TOKEN"))
         with router(realtime) as httpd:
-            sock, reader, status, headers = upgrade(httpd, query="?route=mbp-voice&model=voice", extra=(
+            sock, reader, status, headers = upgrade(httpd, query="?route=voice-proxy&model=voice", extra=(
                 "Origin: https://evil.example", "Cookie: session=1",
                 "Sec-WebSocket-Protocol: realtime, openai-insecure-api-key.caller-secret"))
             assert status == 101
@@ -220,12 +220,12 @@ def test_health_probe_is_cached_and_token_free():
 
 
 def test_device_keys_grant_realtime_only_with_its_path():
-    granted = Principal("k1", models=("mbp-voice",), paths=("/v1/models", "/v1/realtime"))
-    chat_only = Principal("k2", models=("mbp-voice",), paths=("/v1/models", "/v1/chat/completions"))
-    assert granted.allows_path("GET", "/v1/realtime?route=mbp-voice")
+    granted = Principal("k1", models=("voice-proxy",), paths=("/v1/models", "/v1/realtime"))
+    chat_only = Principal("k2", models=("voice-proxy",), paths=("/v1/models", "/v1/chat/completions"))
+    assert granted.allows_path("GET", "/v1/realtime?route=voice-proxy")
     assert not chat_only.allows_path("GET", "/v1/realtime")
     assert not granted.allows_path("POST", "/v1/realtime")
-    models, paths = KeyStore._grants(["mbp-voice"], ["/v1/realtime"])  # realtime alone is a usable grant
+    models, paths = KeyStore._grants(["voice-proxy"], ["/v1/realtime"])  # realtime alone is a usable grant
     assert paths == ("/v1/models", "/v1/realtime")
 
 
@@ -257,12 +257,12 @@ def load_with(tmp_path, block: str):
 def test_realtime_route_config_parses_with_defaults(tmp_path):
     config = load_with(tmp_path, """
 [[router.realtime_routes]]
-id = "mbp-voice"
-base_url = "http://100.82.3.103:8765/v1"
-auth_env = "ANVIL_MBP_VOICE_TOKEN"
+id = "voice-proxy"
+base_url = "http://100.64.0.20:8765/v1"
+auth_env = "ANVIL_VOICE_PROXY_TOKEN"
 """)
     assert config.realtime_routes == (RealtimeRoute(
-        id="mbp-voice", base_url="http://100.82.3.103:8765/v1", auth_env="ANVIL_MBP_VOICE_TOKEN"),)
+        id="voice-proxy", base_url="http://100.64.0.20:8765/v1", auth_env="ANVIL_VOICE_PROXY_TOKEN"),)
     assert config.realtime_routes[0].health_path == "/healthz"
     assert config.realtime_max_concurrency == 4
 

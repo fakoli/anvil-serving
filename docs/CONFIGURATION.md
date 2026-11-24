@@ -680,9 +680,9 @@ this table, `/v1/realtime` stays `404`.
 realtime_max_concurrency = 4      # open sessions across all routes, 1-64
 
 [[router.realtime_routes]]
-id = "mbp-voice"                  # callers select ?route=mbp-voice or take the default
-base_url = "http://100.82.3.103:8765/v1"   # the router connects to <base>/realtime
-auth_env = "ANVIL_MBP_VOICE_TOKEN"         # upstream bearer token, by variable name
+id = "voice-proxy"                  # callers select ?route=voice-proxy or take the default
+base_url = "http://100.64.0.20:8765/v1"   # the router connects to <base>/realtime
+auth_env = "ANVIL_VOICE_PROXY_TOKEN"         # upstream bearer token, by variable name
 health_path = "/healthz"          # token-free readiness check; the default
 default = true                    # required when more than one route exists
 ```

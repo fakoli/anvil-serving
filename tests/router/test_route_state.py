@@ -935,7 +935,7 @@ def test_realtime_route_rebase_preserves_route_authority_and_reverses(tmp_path):
     path = tmp_path / "routes.json"
     updates.initialize_route_state(old, path)
     before = json.loads(path.read_text())
-    new = realtime_configuration("mbp-voice", "spare", cap=2)
+    new = realtime_configuration("voice-proxy", "spare", cap=2)
     applied = updates.migrate_route_state_base_config(
         old, new, path, expected_old_config_sha256=sha256(old), expected_new_config_sha256=sha256(new),
         expected_state_sha256=sha256(path.read_bytes()), apply=True,
@@ -956,8 +956,8 @@ def test_realtime_route_rebase_refuses_mixed_or_unrelated_changes(tmp_path):
     old = realtime_configuration()
     path = tmp_path / "routes.json"
     updates.initialize_route_state(old, path)
-    mixed = realtime_configuration("mbp-voice", memory=[("memory.alpha", "device_a", "bank_a")])
-    unrelated = realtime_configuration("mbp-voice").replace(b"context_limit = ", b"context_limit = 1", 1)
+    mixed = realtime_configuration("voice-proxy", memory=[("memory.alpha", "device_a", "bank_a")])
+    unrelated = realtime_configuration("voice-proxy").replace(b"context_limit = ", b"context_limit = 1", 1)
     for candidate in (mixed, unrelated):
         assert candidate != old
         with pytest.raises(updates.RouteUpdateError) as raised:

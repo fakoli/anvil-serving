@@ -361,9 +361,9 @@ def test_front_door_audio_sends_only_the_route_credential_upstream():
     # upstream sees only the route's own auth_env token.
     transport = FakeAudioTransport()
     secured = AudioGateway(
-        (replace(STT, auth_env="ANVIL_MBP_STT_TOKEN"), TTS),
+        (replace(STT, auth_env="ANVIL_STT_TOKEN"), TTS),
         max_input_bytes=1024, max_output_bytes=4096, max_text_chars=256, max_concurrency=1,
-        env={"ANVIL_MBP_STT_TOKEN": "stt-upstream-token"}, transport=transport,
+        env={"ANVIL_STT_TOKEN": "stt-upstream-token"}, transport=transport,
     )
     with audio_server(secured) as (host, port):
         status, _, _ = post(host, port, "/v1/audio/transcriptions", {
