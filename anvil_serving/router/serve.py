@@ -31,6 +31,7 @@ from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Seque
 
 from .admission import AdmissionLease, TierAdmission, RouterAdmission, owned_dispatch, managed_router_admission, _member_id, _reason_code
 from .audio import AudioGateway
+from .realtime import RealtimeGateway
 from .availability import (
     AlwaysAvailable,
     AvailabilityResult,
@@ -2482,6 +2483,10 @@ def build_server(
         raise ConfigError(
             "[[router.audio_routes]] require a resolved [server].auth_env"
         )
+    if config.realtime_routes and auth_token is None:
+        raise ConfigError(
+            "[[router.realtime_routes]] require a resolved [server].auth_env"
+        )
     scoped_policy = None
     policy_path = authorization_policy or server_config.authorization_policy_path
     if policy_path is not None:
@@ -2613,6 +2618,10 @@ def build_server(
                 transport=audio_transport,
                 decision_log=routing._decision_log,
             )
+        realtime: Optional[RealtimeGateway] = None
+        if config.realtime_routes:
+            realtime = RealtimeGateway(config.realtime_routes,
+                                       max_concurrency=config.realtime_max_concurrency, env=env)
         memory: Optional[MemoryRouter] = None
         if config.memory_routes:
             memory = MemoryRouter(config.memory_routes, env=environ)
@@ -2762,7 +2771,7 @@ def build_server(
                 httpd = make_server(
                     host, port, routing, timeout=timeout, model_routes=config.model_routes,
                     exhaustion_status=config.exhaustion_status, auth_token=auth_token,
-                    purpose=purpose, audio=audio, gateway=gateway, memory=memory,
+                    purpose=purpose, audio=audio, gateway=gateway, memory=memory, realtime=realtime,
                     media_signed_downloads=environ.get("ANVIL_MEDIA_SIGNED_DOWNLOADS", "0"),
                     authorization_policy=scoped_policy,
                     operator_routes=operator_routes,

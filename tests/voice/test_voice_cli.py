@@ -425,6 +425,7 @@ def test_run_direct_host_port_override_allows_wildcard_bind(
     _no_topology_guard(monkeypatch)
     seen = {}
     _direct_run_fakes(monkeypatch, seen)
+    monkeypatch.setattr(voice_cli, "_running_in_container", lambda: True)
 
     rc = voice_cli.main([
         "proxy", "run", "--config", direct_proxy_manifest, "--host", "0.0.0.0", "--port", "9999",
@@ -436,6 +437,32 @@ def test_run_direct_host_port_override_allows_wildcard_bind(
     # A wildcard in-container bind opts out of the F2 loopback guard (published
     # only to 127.0.0.1 on the host).
     assert seen["allow_non_loopback"] is True
+
+
+@pytest.mark.parametrize("host,in_container", [("100.82.3.103", True), ("100.82.3.103", False), ("0.0.0.0", False)])
+def test_run_direct_specific_or_bare_host_bind_keeps_the_token_guard(
+    direct_proxy_manifest, monkeypatch, host, in_container
+):
+    # A tailnet/LAN address, or a wildcard outside a container, is reachable
+    # off-host: make_ws_server must still demand realtime_token_env.
+    _no_topology_guard(monkeypatch)
+    seen = {}
+    _direct_run_fakes(monkeypatch, seen)
+    monkeypatch.setattr(voice_cli, "_running_in_container", lambda: in_container)
+
+    assert voice_cli.main(["proxy", "run", "--config", direct_proxy_manifest, "--host", host]) == 0
+    assert seen["allow_non_loopback"] is False
+
+
+def test_run_direct_tailnet_bind_without_token_refuses_to_start(direct_proxy_manifest, monkeypatch, capsys):
+    _no_topology_guard(monkeypatch)
+    monkeypatch.setattr(voice_cli, "_check_required_endpoints_reachable", lambda voice: None)
+    monkeypatch.delenv("ANVIL_VOICE_REALTIME_TOKEN", raising=False)
+
+    rc = voice_cli.main(["proxy", "run", "--config", direct_proxy_manifest, "--host", "100.82.3.103", "--port", "9999"])
+
+    assert rc == 2
+    assert "token" in capsys.readouterr().err.lower()
 
 
 def test_profiles_command_lists_and_describes_profiles(tmp_path, capsys):

@@ -350,7 +350,7 @@ def commands() -> CommandNode:
                         options=(_option("--transaction-id", summary="Held transaction ID.", value_name="ID"),
                                  _option("--router-url", summary="Private router base URL.", value_name="URL")),
                         mutation="read", docs_anchor="docs/cli/router.md#live-route-updates"),
-                    _resource_node("rebase", "Rebase stopped protected route authority across a memory-route-only boot-config migration.",
+                    _resource_node("rebase", "Rebase stopped protected route authority across a memory- or realtime-route-only boot-config migration.",
                         "anvil_serving.router_manage", role="router", argv_prefix=("routes", "rebase"),
                         forward_confirm_flag=True,
                         options=(_option("--old-config", summary="Exact predecessor router TOML accepted by the stop receipt.", value_name="PATH"),

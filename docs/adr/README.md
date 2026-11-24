@@ -65,6 +65,7 @@ people and the chat logs.
 | [0043](0043-colocated-tunnel-fast-path.md) | Co-located connector tunnel fast-path over loopback | Proposed |
 | [0045](0045-media-recipe-planning.md) | Media recipes compile briefs into bounded execution requests | Accepted |
 | [0046](0046-scoped-live-route-reconfiguration.md) | Scoped live route reconfiguration without restarting the gateway | Accepted for implementation |
+| [0047](0047-router-realtime-websocket-relay.md) | The router relays `/v1/realtime` WebSockets (amends ADR-0019) | Proposed |
 | [0047](0047-gateway-socket-recovery.md) | Recover gateway crash sockets under exclusive ownership | Accepted for implementation |
 | [0048](0048-anvil-scribe-record-first-dictation.md) | Anvil Scribe: record-first dictation as a product family | Accepted for implementation |
 | [0049](0049-anvil-agent-glasses-bridge.md) | Anvil Agent: a glasses bridge to the operator's own agents | Accepted for implementation |

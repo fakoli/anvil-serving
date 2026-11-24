@@ -161,7 +161,10 @@ _ROUTER_KEYS = frozenset({
     "audio_max_text_chars",
     "audio_max_concurrency",
     "memory_routes",
+    "realtime_routes",
+    "realtime_max_concurrency",
 })
+_REALTIME_ROUTE_KEYS = frozenset({"id", "base_url", "auth_env", "health_path", "default"})
 _MEMORY_ROUTE_KEYS = frozenset({
     "alias", "principal", "backend", "bank", "base_url", "auth_env", "timeout", "access_file",
 })
@@ -370,6 +373,22 @@ class AudioRoute:
 
 
 @dataclass(frozen=True)
+class RealtimeRoute:
+    """One operator-owned Realtime WebSocket upstream behind ``/v1/realtime``.
+
+    The router authenticates the caller, then opens the upstream upgrade with
+    only this route's credential and relays the socket.  Callers select a route
+    id or take the single default; they never supply an upstream address.
+    """
+
+    id: str
+    base_url: str  # upstream base, e.g. http://100.64.0.20:8765/v1 -> GET /v1/realtime
+    auth_env: Optional[str] = None  # NAME of the env var holding the upstream bearer token
+    health_path: str = "/healthz"  # token-free readiness path on the same origin
+    default: bool = False
+
+
+@dataclass(frozen=True)
 class MemoryRoute:
     """One device-bound memory bank behind the authenticated router."""
 
@@ -421,6 +440,9 @@ class RouterConfig:
     audio_max_output_bytes: int = 4 * 1024 * 1024
     audio_max_text_chars: int = 16 * 1024
     audio_max_concurrency: int = 4
+    # Optional Realtime WebSocket relay (ADR-0047). Absent keeps /v1/realtime 404.
+    realtime_routes: tuple["RealtimeRoute", ...] = ()
+    realtime_max_concurrency: int = 4
     # Device-bound memory routes are additive; no entry leaves memory unavailable.
     memory_routes: tuple[MemoryRoute, ...] = ()
     # The gateway's one fallback (ADR-0039 amendment of 2026-11-26): a source
@@ -1475,6 +1497,74 @@ def _parse_purpose_model(raw: object) -> PurposeModel:
     )
 
 
+def _validate_route_origin(base_url: object, label: str) -> str:
+    """SSRF guard shared by audio and realtime routes.
+
+    Only credential-free http(s) origins on 127.0.0.1, host.docker.internal,
+    RFC1918 or tailnet literals pass; ``localhost`` and public, link-local,
+    wildcard or alternate-loopback hosts are rejected.
+    """
+    if not isinstance(base_url, str) or not base_url.lower().startswith(
+        ("http://", "https://")
+    ):
+        raise ConfigError(
+            f"{label}: base_url must be an http:// or "
+            f"https:// URL (got {base_url!r}); file://, ftp://, and other "
+            "schemes are rejected to prevent SSRF and local-file access"
+        )
+    parsed_url = urllib.parse.urlparse(base_url)
+    try:
+        port = parsed_url.port
+    except ValueError as exc:
+        raise ConfigError(
+            f"{label}: base_url has an invalid port"
+        ) from exc
+    if port is not None and not (1 <= port <= 65535):
+        raise ConfigError(
+            f"{label}: base_url port must be from 1 through 65535"
+        )
+    hostname = (parsed_url.hostname or "").lower()
+    if (
+        not hostname
+        or parsed_url.username is not None
+        or parsed_url.password is not None
+        or parsed_url.query
+        or parsed_url.fragment
+    ):
+        raise ConfigError(
+            f"{label}: base_url must name a credential-free "
+            "origin without query strings or fragments"
+        )
+    if hostname == "localhost":
+        raise ConfigError(
+            f"{label}: base_url must use 127.0.0.1 or "
+            "host.docker.internal, never localhost"
+        )
+    if hostname != "host.docker.internal":
+        try:
+            address = ipaddress.ip_address(hostname)
+        except ValueError:
+            raise ConfigError(
+                f"{label}: base_url host must be "
+                "host.docker.internal or a literal private/tailnet IP address"
+            ) from None
+        allowed_networks = (
+            ipaddress.ip_network("10.0.0.0/8"),
+            ipaddress.ip_network("172.16.0.0/12"),
+            ipaddress.ip_network("192.168.0.0/16"),
+            ipaddress.ip_network("100.64.0.0/10"),
+        )
+        if str(address) != "127.0.0.1" and not any(
+            address in network for network in allowed_networks
+        ):
+            raise ConfigError(
+                f"{label}: base_url host must be 127.0.0.1, "
+                "RFC1918, or tailnet; public, link-local, wildcard, and "
+                "alternate loopback upstreams are not allowed"
+            )
+    return base_url
+
+
 def _parse_audio_route(raw: object) -> AudioRoute:
     """Parse one ``[[router.audio_routes]]`` table.
 
@@ -1508,65 +1598,7 @@ def _parse_audio_route(raw: object) -> AudioRoute:
             f"(the upstream served model name), got {model!r}"
         )
 
-    base_url = raw.get("base_url")
-    if not isinstance(base_url, str) or not base_url.lower().startswith(
-        ("http://", "https://")
-    ):
-        raise ConfigError(
-            f"audio route {route_id!r}: base_url must be an http:// or "
-            f"https:// URL (got {base_url!r}); file://, ftp://, and other "
-            "schemes are rejected to prevent SSRF and local-file access"
-        )
-    parsed_url = urllib.parse.urlparse(base_url)
-    try:
-        port = parsed_url.port
-    except ValueError as exc:
-        raise ConfigError(
-            f"audio route {route_id!r}: base_url has an invalid port"
-        ) from exc
-    if port is not None and not (1 <= port <= 65535):
-        raise ConfigError(
-            f"audio route {route_id!r}: base_url port must be from 1 through 65535"
-        )
-    hostname = (parsed_url.hostname or "").lower()
-    if (
-        not hostname
-        or parsed_url.username is not None
-        or parsed_url.password is not None
-        or parsed_url.query
-        or parsed_url.fragment
-    ):
-        raise ConfigError(
-            f"audio route {route_id!r}: base_url must name a credential-free "
-            "origin without query strings or fragments"
-        )
-    if hostname == "localhost":
-        raise ConfigError(
-            f"audio route {route_id!r}: base_url must use 127.0.0.1 or "
-            "host.docker.internal, never localhost"
-        )
-    if hostname != "host.docker.internal":
-        try:
-            address = ipaddress.ip_address(hostname)
-        except ValueError:
-            raise ConfigError(
-                f"audio route {route_id!r}: base_url host must be "
-                "host.docker.internal or a literal private/tailnet IP address"
-            ) from None
-        allowed_networks = (
-            ipaddress.ip_network("10.0.0.0/8"),
-            ipaddress.ip_network("172.16.0.0/12"),
-            ipaddress.ip_network("192.168.0.0/16"),
-            ipaddress.ip_network("100.64.0.0/10"),
-        )
-        if str(address) != "127.0.0.1" and not any(
-            address in network for network in allowed_networks
-        ):
-            raise ConfigError(
-                f"audio route {route_id!r}: base_url host must be 127.0.0.1, "
-                "RFC1918, or tailnet; public, link-local, wildcard, and "
-                "alternate loopback upstreams are not audio routes"
-            )
+    base_url = _validate_route_origin(raw.get("base_url"), f"audio route {route_id!r}")
 
     raw_timeout = raw.get("timeout")
     timeout: Optional[float] = None
@@ -1619,6 +1651,42 @@ def _parse_audio_route(raw: object) -> AudioRoute:
         auth_env=auth_env,
         default=default,
     )
+
+
+def _parse_realtime_route(raw: object) -> RealtimeRoute:
+    """Parse one ``[[router.realtime_routes]]`` table (ADR-0047)."""
+    if not isinstance(raw, dict):
+        raise ConfigError(
+            f"realtime_routes entry must be a table, got {type(raw).__name__}"
+        )
+    _reject_unknown_keys(raw, _REALTIME_ROUTE_KEYS, "realtime route")
+    route_id = raw.get("id")
+    if not isinstance(route_id, str) or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", route_id) is None:
+        raise ConfigError(
+            f"realtime route id must be 1-64 letters, digits, '.', '_' or '-', got {route_id!r}"
+        )
+    label = f"realtime route {route_id!r}"
+    base_url = _validate_route_origin(raw.get("base_url"), label)
+    auth_env = raw.get("auth_env")
+    if auth_env is not None:
+        _validate_auth_env(auth_env, f"{label}: auth_env", detailed=False)
+    health_path = raw.get("health_path", "/healthz")
+    if (
+        not isinstance(health_path, str)
+        or not health_path.startswith("/")
+        or health_path.startswith("//")
+        or "?" in health_path
+        or "#" in health_path
+    ):
+        raise ConfigError(
+            f"{label}: health_path must be an absolute URL path without query/fragment, "
+            f"got {health_path!r}"
+        )
+    default = raw.get("default", False)
+    if not isinstance(default, bool):
+        raise ConfigError(f"{label}: default must be a boolean (true/false)")
+    return RealtimeRoute(id=route_id, base_url=base_url, auth_env=auth_env,
+                         health_path=health_path, default=default)
 
 
 def _parse_memory_route(raw: object) -> MemoryRoute:
@@ -1925,6 +1993,34 @@ def _parse_router_config(
                 f"audio purpose {audio_purpose!r} has more than one default route"
             )
 
+    raw_realtime = router.get("realtime_routes", [])
+    if not isinstance(raw_realtime, list):
+        raise ConfigError(f"[router].realtime_routes must be a list of tables in {path}")
+    realtime_routes: list[RealtimeRoute] = []
+    for raw in raw_realtime:
+        realtime_route = _parse_realtime_route(raw)
+        if realtime_route.id in seen_ids | seen_purpose_ids | seen_audio_ids | {r.id for r in realtime_routes}:
+            raise ConfigError(
+                f"duplicate realtime route id: {realtime_route.id!r} (route ids share the "
+                "audit-trail namespace with tiers, purpose models and audio routes)"
+            )
+        realtime_routes.append(realtime_route)
+    realtime_defaults = sum(1 for route in realtime_routes if route.default)
+    if len(realtime_routes) > 1 and realtime_defaults != 1:
+        raise ConfigError(
+            f"[router].realtime_routes has {len(realtime_routes)} routes; exactly one "
+            "must set default = true"
+        )
+    realtime_max_concurrency = router.get("realtime_max_concurrency", 4)
+    if (
+        isinstance(realtime_max_concurrency, bool)
+        or not isinstance(realtime_max_concurrency, int)
+        or not (1 <= realtime_max_concurrency <= 64)
+    ):
+        raise ConfigError(
+            f"[router].realtime_max_concurrency must be an integer from 1 through 64 in {path}"
+        )
+
     def _audio_limit(key: str, default: int) -> int:
         value = router.get(key, default)
         if (
@@ -2004,6 +2100,8 @@ def _parse_router_config(
         audio_max_output_bytes=audio_max_output_bytes,
         audio_max_text_chars=audio_max_text_chars,
         audio_max_concurrency=raw_audio_max_concurrency,
+        realtime_routes=tuple(realtime_routes),
+        realtime_max_concurrency=realtime_max_concurrency,
         memory_routes=tuple(memory_routes),
         unavailable_redirects=MappingProxyType(unavailable_redirects),
     )

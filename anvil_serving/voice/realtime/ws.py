@@ -33,7 +33,6 @@ socket pair without any third-party dependency.
 from __future__ import annotations
 
 import base64
-import hashlib
 import hmac
 import json
 import os
@@ -45,9 +44,14 @@ from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Tuple
 
 from anvil_serving.http_host import request_host_allowed
 
-#: RFC 6455 s1.3 magic GUID appended to the client's Sec-WebSocket-Key before
-#: SHA-1 + base64 to compute Sec-WebSocket-Accept.
-_WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+# The handshake helpers live in a neutral module so the router can share
+# them without importing the voice package (which imports the router).
+from anvil_serving.websocket_handshake import (  # noqa: F401 - re-exported
+    _WS_GUID,
+    _header_contains_token,
+    compute_accept_key,
+    is_websocket_upgrade,
+)
 
 # Opcodes (RFC 6455 s5.2).
 OP_CONTINUATION = 0x0
@@ -99,41 +103,6 @@ DEFAULT_IDLE_TIMEOUT_SECONDS: Optional[float] = float(
 
 class WebSocketError(Exception):
     """Raised on a framing violation or a peer that closed mid-frame."""
-
-
-def compute_accept_key(client_key: str) -> str:
-    """RFC 6455 s1.3: base64(SHA1(client_key + magic GUID))."""
-    digest = hashlib.sha1((client_key + _WS_GUID).encode("ascii")).digest()
-    return base64.b64encode(digest).decode("ascii")
-
-
-def _header_contains_token(value: Optional[str], token: str) -> bool:
-    """True if comma-separated ``value`` contains ``token`` (case-insensitive).
-
-    Both ``Connection`` and ``Upgrade`` are allowed to carry a comma-separated
-    list per RFC 7230 s6.1/s6.7 (e.g. ``Connection: keep-alive, Upgrade``).
-    """
-    if not value:
-        return False
-    return token.lower() in [part.strip().lower() for part in value.split(",")]
-
-
-def is_websocket_upgrade(headers) -> bool:
-    """True if ``headers`` (an ``email.message.Message`` or a plain dict) is a
-    valid RFC 6455 upgrade request: ``Upgrade: websocket``, ``Connection``
-    containing ``upgrade``, a present ``Sec-WebSocket-Key``, and
-    ``Sec-WebSocket-Version: 13``.
-    """
-    get = headers.get
-    if not _header_contains_token(get("Upgrade"), "websocket"):
-        return False
-    if not _header_contains_token(get("Connection"), "upgrade"):
-        return False
-    if not (get("Sec-WebSocket-Key") or "").strip():
-        return False
-    if (get("Sec-WebSocket-Version") or "").strip() != "13":
-        return False
-    return True
 
 
 def _extract_bearer_token(headers) -> Optional[str]:

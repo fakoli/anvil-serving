@@ -49,6 +49,7 @@ _POST_PATHS = frozenset({
     "/v1/audio/transcriptions", "/v1/audio/speech",
 })
 _MODELS_PATH = "/v1/models"
+_REALTIME_PATH = "/v1/realtime"  # GET WebSocket upgrade (ADR-0047); also needs the route id as a model grant
 _CATALOG_PATHS = frozenset({_MODELS_PATH, "/v1/models/capabilities", "/v1/router/status"})
 
 # POSIX close() releases every same-process SQLite lock on that inode. Share
@@ -149,6 +150,8 @@ class Principal:
             return False
         clean = path.split("?", 1)[0]
         if method.upper() == "GET":
+            if clean == _REALTIME_PATH:
+                return _REALTIME_PATH in self.paths
             return clean in _CATALOG_PATHS and _MODELS_PATH in self.paths
         return method.upper() == "POST" and clean in self.paths and clean in _POST_PATHS
 
@@ -170,7 +173,7 @@ def _audit_method(value: str) -> str:
 
 def _audit_path(value: str) -> str:
     value = value.split("?", 1)[0]
-    return value if value in _POST_PATHS | _CATALOG_PATHS else "[other]"
+    return value if value in _POST_PATHS | _CATALOG_PATHS | {_REALTIME_PATH} else "[other]"
 
 
 def _link_or_reparse(info: os.stat_result) -> bool:
@@ -1165,13 +1168,14 @@ class KeyStore:
         granted_models = tuple(model.strip() for model in models)
         if len(set(granted_models)) != len(granted_models):
             raise KeyStoreError("model grants must be unique")
-        if not isinstance(paths, list) or not paths or len(paths) > len(_POST_PATHS) + 1:
-            raise KeyStoreError("at least one POST path grant is required")
-        if any(not isinstance(path, str) for path in paths) or any(path not in _POST_PATHS | {_MODELS_PATH} for path in paths):
+        usable = _POST_PATHS | {_REALTIME_PATH}
+        if not isinstance(paths, list) or not paths or len(paths) > len(usable) + 1:
+            raise KeyStoreError("at least one POST or realtime path grant is required")
+        if any(not isinstance(path, str) for path in paths) or any(path not in usable | {_MODELS_PATH} for path in paths):
             raise KeyStoreError("invalid path grants")
         granted = tuple(dict.fromkeys(paths))
-        if len(granted) != len(paths) or not any(path in _POST_PATHS for path in granted):
-            raise KeyStoreError("at least one POST path grant is required")
+        if len(granted) != len(paths) or not any(path in usable for path in granted):
+            raise KeyStoreError("at least one POST or realtime path grant is required")
         return granted_models, tuple(dict.fromkeys((_MODELS_PATH, *granted)))
 
     def create(self, name: str, models: list[str], paths: list[str], rpm: int = 60,
