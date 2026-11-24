@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-11-23
+
 ### Added
 
 - `connect hold status|apply|release` closes one Connect resource at its local
@@ -44,6 +46,12 @@ All notable changes to this project are documented here. The format is based on
   journey has an overview page whose steps render from the same catalog
   `anvil-serving product journey` prints, and every Anvil Connect guide is now
   reachable from navigation. Existing page URLs are unchanged.
+- `router routes rebase` rebases the protected route authority of a successor
+  router that was already stopped through the failed-startup path, for a
+  boot-config migration that only adds or removes `router.memory_routes`. A
+  dry run prints the plan digest that `--confirm` requires. It runs a declared
+  immutable helper image with no network and never starts or readmits the
+  router (#816).
 
 ### Changed
 
@@ -66,6 +74,8 @@ All notable changes to this project are documented here. The format is based on
 - `SECURITY.md` names 3.x as the supported release line, and
   `docs/UPGRADING-3.0.md` collects the 3.0.0 breaking defaults, migration
   steps and opt-outs in one page.
+- Contributor tooling: `scripts/run_tests.py --shards N` balances shards by
+  measured test duration (#811).
 
 ### Fixed
 
@@ -90,6 +100,20 @@ All notable changes to this project are documented here. The format is based on
     `--manifest`.
 - `eval benchmark evidence list` no longer crashes on campaign evidence
   artifacts.
+- Streamed benchmark requests now fail on an upstream SSE `error` event even
+  when no event observer is attached. Before, the error was ignored unless the
+  caller recorded events (#575).
+- The SWE benchmark harness accepts a cached Python environment that is an
+  isolated virtual environment of its declared interpreter, instead of
+  requiring the same interpreter as the running CLI (#575).
+
+### Upgrade notes
+
+- Install the updated CLI to get the new commands. Rebuild the router and
+  controller images to install the router-side route-update support for
+  `router routes rebase`. This release adds no breaking defaults and does not
+  change routes, models or admission policy. A deployment still on 2.x must
+  follow `docs/UPGRADING-3.0.md` first.
 
 ## [3.0.0] - 2026-11-16
 
