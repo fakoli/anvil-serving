@@ -211,6 +211,12 @@ its writable persistent mount, then executes as the router user. The generated
 secret travels through a captured pipe into the host `--out` file; it is never
 printed or passed in process arguments. Keep issued files out of Git.
 
+A key granted `/v1/audio/transcriptions` or `/v1/audio/speech` is bound to
+audio routes: its `--model` grants name the `[[router.audio_routes]]` ids it
+may select, and a request whose resolved route is not granted is refused
+before the audio pool or upstream is used
+([ADR-0048](../adr/0048-voice-memo-capture-through-scoped-audio-gateway.md)).
+
 After initializing storage, preview and install the candidate configuration
 with `router install-config --config PATH --dry-run`, then repeat with
 `--confirm`. This activates device keys using the existing guarded config

@@ -44,6 +44,8 @@ _POST_PATHS = frozenset({
     "/v1/chat/completions", "/v1/messages", "/v1/responses",
     "/v1/embeddings", "/v1/rerank",
     "/v1/memory", "/v1/memory/mcp",
+    # Audio grants are route-bound: the key's model grant names the audio route id (ADR-0048).
+    "/v1/audio/transcriptions", "/v1/audio/speech",
 })
 _MODELS_PATH = "/v1/models"
 _CATALOG_PATHS = frozenset({_MODELS_PATH, "/v1/models/capabilities", "/v1/router/status"})
