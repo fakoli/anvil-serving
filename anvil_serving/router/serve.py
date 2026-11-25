@@ -61,7 +61,7 @@ from .decision_log import (
 )
 from .discovery import models_payload
 from .dialects.translate import has_tool_artifacts
-from .front_door import OperatorRoute, make_server
+from .front_door import OperatorRoute, RouterPortInUseError, make_server
 from .gateway import ProtocolGateway
 from .internal import (
     Backend,
@@ -2770,6 +2770,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             authorization_policy=args.authorization_policy,
             allow_unauthenticated_public_bind=args.allow_unauthenticated_public_bind,
         )
+    except RouterPortInUseError:
+        print(f"anvil-serving router run: {args.host}:{args.port} is already in use; "
+              "choose another port with --port", file=sys.stderr)
+        return 1
     except ConfigError as exc:
         print(f"anvil-serving router run: {exc}", file=sys.stderr)
         return 2

@@ -35,6 +35,7 @@ clients (no chunked encoding) get a close-delimited stream instead, mirroring
 
 from __future__ import annotations
 
+import errno
 import hmac
 import io
 import json
@@ -128,10 +129,26 @@ _ROUTES = {
 }
 
 
+class RouterPortInUseError(OSError):
+    """The requested front-door listener address is already occupied."""
+
+
 class _RouterHTTPServer(ThreadingHTTPServer):
-    """Use the kernel-bounded accept backlog adopted by Python 3.15."""
+    """One front door per address, with a kernel-bounded accept backlog."""
 
     request_queue_size = socket.SOMAXCONN
+    # Windows SO_REUSEADDR allows two live listeners to bind the same port.
+    # On Unix retain fast restart, but never load-share with another router.
+    allow_reuse_address = os.name != "nt"
+    allow_reuse_port = False
+
+    def __init__(self, server_address, request_handler_class):
+        try:
+            super().__init__(server_address, request_handler_class)
+        except OSError as exc:
+            if exc.errno != errno.EADDRINUSE:
+                raise
+            raise RouterPortInUseError(exc.errno, exc.strerror) from exc
 
 
 DECISION_SUMMARY_ENDPOINT = "/v1/decisions"
