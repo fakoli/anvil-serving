@@ -144,6 +144,11 @@ metrics, failure details, decision, promotion boundary, raw artifact links, and
 current-doc impact. Link the common `artifact-manifest.json`, evidence index,
 and raw JSON rather than copying raw results into prose.
 
+For a finding that compares candidates, name the compared candidates in its H1
+title. Generated result cards, latest-result landing cards, and the canonical
+record index use that title; a generic campaign label alone is not sufficient
+for public discovery.
+
 ## Run-catalog row template
 
 ```markdown
@@ -160,3 +165,14 @@ link the applicable hardware subsection of the dossier index.
 A configuration, cache pull, load, health check, preflight, benchmark,
 qualification, or documentation update is never permission to mutate a serve
 or route. Promotion and rollback remain separately human-gated operations.
+
+## Corrected-recipe recommendation boundary
+
+When a later measurement changes a configuration that caused a historical
+failure (for example, a chat or image template), identify the old and corrected
+recipes separately. A workload-specific recommendation must compare the
+corrected recipe with its measured control; it must not describe the old
+configuration defect as a limitation of the corrected recipe. State the exact
+workload, evidence limit, and whether the recommendation differs from the
+shared incumbent. A recommendation is not evidence of a current route or
+promotion without the separate human decision and live verification.

@@ -1,0 +1,79 @@
+{
+  "arms": [
+    "mia_glm",
+    "az_focus"
+  ],
+  "comparison_rule": "Do not pool or claim a paired result until the same partition, prompt bytes, request controls, cap, and scorer version have terminal artifacts for both arms.",
+  "corpus": {
+    "question_count": 60,
+    "source_raw_sha256": "d5db21e6dcb81644e98fab2a946d8ee4a5b53b1497b8c6d116728244e0687c31",
+    "source_url": "https://axonzeta.ai/blog/receipts/glm53-flash-tp2/ttc-questions.json",
+    "suite_counts": {
+      "bbh": 30,
+      "mmlupro": 30
+    }
+  },
+  "created_utc": "2026-11-21T13:21:45Z",
+  "optional_arms": [
+    "swift",
+    "qad"
+  ],
+  "partitions": {
+    "full": {
+      "count": 60,
+      "rule": "all corpus indices"
+    },
+    "pilot": {
+      "ids": [
+        "mmlupro-3593",
+        "mmlupro-6249",
+        "mmlupro-6182",
+        "mmlupro-4993",
+        "mmlupro-12095",
+        "mmlupro-2253",
+        "bbh-object_counting-28",
+        "bbh-salient_translation_error_detection-75",
+        "bbh-tracking_shuffled_objects_seven_objects-136",
+        "bbh-tracking_shuffled_objects_three_objects-139",
+        "bbh-dyck_languages-207",
+        "bbh-movie_recommendation-26"
+      ],
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35
+      ]
+    },
+    "remainder": {
+      "count": 48,
+      "rule": "all corpus indices except pilot"
+    }
+  },
+  "request": {
+    "api": "chat_completions_sse",
+    "max_tokens": 16384,
+    "reasoning_effort": "max",
+    "retries": 0,
+    "seed_rule": "1000 + original corpus index",
+    "temperature": 1.0,
+    "top_p": 0.95
+  },
+  "schema": "az-paired-plan/v1",
+  "scoring": {
+    "bbh": "last boxed answer; accepts normalized reference text or its A-R choice label",
+    "complete_correct": "correct and finish_reason is not length",
+    "judge": "deterministic external parser only; no model judge",
+    "mmlupro": "last boxed answer, normalized to first A-J letter, compared case-insensitively",
+    "time_to_correct_s": "wall latency only for complete_correct; null otherwise"
+  },
+  "status": "frozen-offline"
+}

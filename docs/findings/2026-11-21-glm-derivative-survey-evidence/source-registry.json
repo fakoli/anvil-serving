@@ -1,0 +1,55 @@
+{
+  "schema": "anvil-serving.source-registry/v1",
+  "sources": [
+    {
+      "id": "local-mia-az327-publisher-grades",
+      "url": "raw/mia-vs-az327-60.json",
+      "published_or_observed": "2026-11-21",
+      "observed_at": "2026-11-21",
+      "age_class": "current local measurement",
+      "evidence_type": "matched local derived score record",
+      "hardware_runtime_relevance": "exact local matched 327K TP2 profile pair",
+      "decision_impact": "supports summed sequential C1 request-time comparison only"
+    },
+    {
+      "id": "az327-bounded-functional-receipts",
+      "url": "az327-preflight-summary.json",
+      "published_or_observed": "2026-11-21",
+      "observed_at": "2026-11-21",
+      "age_class": "current local measurement",
+      "evidence_type": "bounded functional and image-case receipts",
+      "hardware_runtime_relevance": "exact local AZ327 TP2 profile",
+      "decision_impact": "supports only the stated retrieval, tool, and image boundaries"
+    },
+    {
+      "id": "az327-swe-bench-verified-scout5",
+      "url": "az327-swe-scout5-summary.json",
+      "published_or_observed": "2026-11-21",
+      "observed_at": "2026-11-21",
+      "age_class": "current local measurement",
+      "evidence_type": "independently graded official-image five-instance scout",
+      "hardware_runtime_relevance": "exact local AZ327 TP2 profile under isolated single-job harness",
+      "decision_impact": "superseded by the paired five-image projection; retained as AZ-only provenance"
+    },
+    {
+      "id": "az327-and-swift-capability-scouts",
+      "url": "capability-scouts-summary.json",
+      "published_or_observed": "2026-11-21",
+      "observed_at": "2026-11-21",
+      "age_class": "current local measurement",
+      "evidence_type": "bounded functional and oracle scouts",
+      "hardware_runtime_relevance": "AZ327 TP2 and distinct Swift light two-GPU layer-split profiles",
+      "decision_impact": "supports only stated bounded passes and separate matched natural cohorts; no broad replacement conclusion"
+    },
+    {
+      "id": "qad-r1-local-receipt",
+      "url": "raw/qad-r1-c1.json",
+      "published_or_observed": "2026-11-21",
+      "observed_at": "2026-11-21",
+      "age_class": "current local measurement",
+      "evidence_type": "one-card functional receipt",
+      "hardware_runtime_relevance": "exact local one-card Qwen profile",
+      "decision_impact": "establishes only the 0/8 performance-eligibility boundary"
+    }
+  ]
+}

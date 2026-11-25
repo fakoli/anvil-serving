@@ -1,0 +1,64 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-11-21-sage-s21-flash-qualification",
+  "observed_at": "2026-11-21",
+  "sources": [
+    {
+      "id": "sage-base-model",
+      "url": "https://huggingface.co/internlm/Sage-S2.1-Flash",
+      "published_or_observed": "2026-11-21",
+      "evidence_type": "official model source",
+      "decision_impact": "Defines a source prior only; it does not prove local TensorFold compatibility or vision behavior."
+    },
+    {
+      "id": "sage-exl3-checkpoint",
+      "url": "https://huggingface.co/Mia-AiLab/Sage-S2.1-Flash-EXL3-4bpw/tree/e272f9573523b7dee7f1a5579c7b2997644d1c87",
+      "revision": "e272f9573523b7dee7f1a5579c7b2997644d1c87",
+      "published_or_observed": "2026-11-21",
+      "evidence_type": "checkpoint publisher source and verified native pull",
+      "decision_impact": "Pins the candidate artifact and supports the selected checkpoint-native template; it does not prove a running serve."
+    },
+    {
+      "id": "checkpoint-comparison",
+      "url": "raw/checkpoint-comparison.json",
+      "published_or_observed": "2026-11-21",
+      "evidence_type": "direct support-file comparison",
+      "decision_impact": "Tokenizer and generation configuration are byte-identical to the pinned GLM control and EOS IDs agree; template and processor configuration differ, so Sage's own template is selected and image support remains separately unproven."
+    },
+    {
+      "id": "sage-functional-preflight",
+      "url": "raw/sage-preflight.json",
+      "published_or_observed": "2026-11-21",
+      "evidence_type": "sanitized native direct functional receipt",
+      "decision_impact": "Supports bounded text/JSON/tools and one OCR-input functionality only; it is not independent quality, context, capacity, or general-vision evidence."
+    },
+    {
+      "id": "historical-comparator-receipt",
+      "url": "raw/historical-comparator-receipt.json",
+      "published_or_observed": "2026-11-21",
+      "evidence_type": "historical local-control receipt",
+      "decision_impact": "Retains denominators and a failed context cell for context only. Different checkpoint, draft mode, context configuration, cache history, and measurement time prohibit qualification or performance inference."
+    },
+    {
+      "id": "official-sage-performance",
+      "url": "https://huggingface.co/internlm/Sage-S2.1-Flash-FP8",
+      "published_or_observed": "2026-11-21",
+      "evidence_type": "Current model publisher evaluation",
+      "decision_impact": "Model-family benchmark comparison and official formats. The locally tested checkpoint has different precision."
+    },
+    {
+      "id": "mia-runtime",
+      "url": "https://github.com/MiaAI-Lab/GLM-5.3-Flash-2x-RTX-PRO-6000-TensorFold/tree/fc1ee3a5381031e2357662b46c2fb44b20190429",
+      "published_or_observed": "2026-11-21",
+      "evidence_type": "Pinned recipe from the runtime publisher",
+      "decision_impact": "Same GPU family and GLM-shaped runtime. Anvil telemetry patch series and local Sage tests are specified in recipe-comparison.md."
+    },
+    {
+      "id": "mixed-nvfp4",
+      "url": "https://huggingface.co/Bizuayeu/Sage-S2.1-Flash-Mixed-NVFP4",
+      "published_or_observed": "2026-11-21",
+      "evidence_type": "Current quant publisher fidelity and serving measurements",
+      "decision_impact": "Holds measured BF16 fidelity and two-GB10 throughput. Engine, quant and hardware differ from the local runs."
+    }
+  ]
+}

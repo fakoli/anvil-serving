@@ -170,7 +170,7 @@ api_keys_path = "/var/lib/anvil-serving/router-keys/keys.sqlite3"
 For the standard Compose deployment, use the dedicated durable
 `anvil-router-keys:/var/lib/anvil-serving/router-keys` mount from the updated
 Compose template. The image seeds it with the router user and private permissions.
-For an existing installation, update only the router image to `anvil-serving:3.0.0`
+For an existing installation, update only the router image to `anvil-serving:3.1.0`
 and add the following entries to the existing operator-home `docker-compose.yml`
 once, retaining its other services, ports, and settings. Do not rerun `init` over
 customized configuration to acquire this mount.
@@ -186,7 +186,7 @@ volumes:
 
 This is a partial configuration delta; merge these entries into the existing
 `services.router.volumes` list and top-level `volumes` mapping. After building or
-installing the 3.0.0 image, preview and recreate the router while retaining its
+installing the 3.1.0 image, preview and recreate the router while retaining its
 current installed router configuration:
 
 ```bash
@@ -1101,6 +1101,27 @@ must name the current original revision. It produces a cancellation preview;
 after confirmed apply it releases the hold, restores the original projection,
 and does not increment the route revision. A later rollback of an already
 published revision remains a separate, newly previewed route change.
+
+### Stopped route-authority rebase
+
+When a selected successor has already been stopped through the protected failed-startup
+path, a memory-route-only boot-config migration can rebase its protected route authority
+without starting a listener:
+
+```bash
+anvil-serving router routes rebase --old-config /protected/predecessor.toml --new-config /protected/successor.toml --compose /protected/successor-compose.yml --env-file /protected/router.env --startup-abort-config /protected/startup-abort.json --current-stop-receipt /protected/current-stop.json --helper-image-id sha256:HELPER --expected-state-sha256 STATE_SHA256 --dry-run
+anvil-serving router routes rebase --old-config /protected/predecessor.toml --new-config /protected/successor.toml --compose /protected/successor-compose.yml --env-file /protected/router.env --startup-abort-config /protected/startup-abort.json --current-stop-receipt /protected/current-stop.json --helper-image-id sha256:HELPER --expected-state-sha256 STATE_SHA256 --expected-plan-sha256 PLAN_SHA256 --confirm
+```
+
+The first command emits the exact `plan_sha256`; the second requires it. The separately
+declared helper must be an immutable image made from the exact stopped image layers plus
+one reviewed route-update module layer, and retain the stopped container user; the bounded
+helper itself has no network or added privileges. Both receipts,
+the stopped container, selected Compose hash, configured image, writable storage owner,
+and the original predecessor configuration digest are rechecked before the helper runs.
+The fixed helper image is taken only from the completed startup-abort declaration. It
+accepts only a strict add or remove of `router.memory_routes`; every other parsed TOML
+setting must remain semantically equal. It never starts or readmits the router.
 
 ## Failed startup recovery
 

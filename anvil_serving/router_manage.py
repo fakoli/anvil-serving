@@ -1152,7 +1152,7 @@ def _build_parser():
     install.add_argument("--dry-run", action="store_true")
     routes = actions.add_parser("routes")
     route_actions = routes.add_subparsers(dest="route_action", required=True)
-    for action in ("init", "preview", "apply", "status", "rollback", "resume"):
+    for action in ("init", "preview", "apply", "status", "rollback", "resume", "rebase"):
         item = route_actions.add_parser(action)
         if action == "init":
             item.add_argument("--config", required=True)
@@ -1176,6 +1176,18 @@ def _build_parser():
             item.add_argument("--revision", required=True, type=int)
         elif action == "resume":
             item.add_argument("--transaction-id", required=True)
+        elif action == "rebase":
+            item.add_argument("--old-config", required=True)
+            item.add_argument("--new-config", required=True)
+            item.add_argument("--compose", required=True)
+            item.add_argument("--env-file")
+            item.add_argument("--startup-abort-config", required=True)
+            item.add_argument("--current-stop-receipt", required=True)
+            item.add_argument("--helper-image-id", required=True)
+            item.add_argument("--expected-state-sha256", required=True)
+            item.add_argument("--expected-plan-sha256")
+            item.add_argument("--dry-run", action="store_true")
+            item.add_argument("--confirm", action="store_true")
     return parser
 
 
@@ -1275,6 +1287,20 @@ def main(argv=None):
         return 0
     if args.action == "routes":
         try:
+            if args.route_action == "rebase":
+                from .router_route_rebase import run
+                result = run(
+                    old_config=args.old_config, new_config=args.new_config,
+                    compose=args.compose, env_file=args.env_file,
+                    startup_abort_config=args.startup_abort_config,
+                    current_stop_receipt=args.current_stop_receipt,
+                    helper_image_id=args.helper_image_id,
+                    expected_state_sha256=args.expected_state_sha256,
+                    expected_plan_sha256=args.expected_plan_sha256,
+                    confirm=args.confirm, dry_run=args.dry_run,
+                )
+                print(json.dumps(result, sort_keys=True))
+                return 0
             if args.route_action == "init":
                 if not args.confirm:
                     raise ValueError("route state initialization requires --confirm")

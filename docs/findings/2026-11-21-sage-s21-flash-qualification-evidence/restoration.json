@@ -1,0 +1,51 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-11-21-sage-s21-flash-qualification",
+  "status": "serving_restored_historical_monitoring_gap_retained",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "private pretrial receipt bound outside this public projection"
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "verified 2026-11-21T09:09:09Z: exact prior weights, image, recipe, accelerator allocation, direct served identity, and host binding"
+    ]
+  },
+  "differences": [
+    {
+      "field": "candidate containers",
+      "status": "unloaded",
+      "detail": "all four candidate containers were unloaded before restoration verification"
+    }
+  ],
+  "post_run_checks": [
+    {
+      "name": "authenticated primary model readiness",
+      "result": "passed",
+      "detail": "HTTP 200 READY"
+    },
+    {
+      "name": "candidate cleanup",
+      "result": "passed",
+      "detail": "all four candidate containers unloaded"
+    },
+    {
+      "name": "pretrial monitoring availability",
+      "result": "monitoring_unavailable_before_and_after",
+      "detail": "Historical generation discovery reported zero available in the two hours before the trial and no generation-bound GLM scrape. After restoration, the current publisher refuses canonical all-GPU binding; registration remains pending. Direct metrics and the authenticated route are healthy. This is not a successful monitoring hook or an observability rollout."
+    },
+    {
+      "name": "authenticated primary route after the final coding jobs",
+      "result": "passed",
+      "detail": "A second bounded request returned HTTP 200 and visible READY at 09:20 UTC."
+    }
+  ],
+  "verified": true,
+  "not_applicable_reason": null,
+  "campaign_window_seconds": 2784.583,
+  "campaign_window_limit_seconds": 5400
+}

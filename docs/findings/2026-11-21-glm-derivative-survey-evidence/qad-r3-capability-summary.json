@@ -1,0 +1,11 @@
+{
+  "schema": "anvil-serving.qad-capability-summary/v1",
+  "hardware": "one RTX PRO 6000 Blackwell Max-Q",
+  "runtime_build_revision": "6a833b698f0b41a9c12922343553eee419b9f465",
+  "runtime_image_digest": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+  "configuration": {"configured_context_tokens": 262144, "kv_cache_dtype": "fp8", "host_embedding_table_offload_gib": 26.82, "runtime": "patched vLLM NVIDIA recipe"},
+  "multimodal": {"passed": 12, "attempted": 12, "cases": 6, "repetitions": 2},
+  "native_agentic": {"passed": 3, "attempted": 3, "tasks": [{"id": "structured-edit", "oracle_revision": "8"}, {"id": "tool-sequence", "oracle_revision": "8"}, {"id": "dependent-result", "oracle_revision": "8"}]},
+  "canary_replay": {"finish": "stop", "marker_visible_offset": 2, "marker_count": 1, "foreign_marker_count": 0},
+  "boundary": "Explains one exact replay only; original C1/C4 populations remain 0/16 eligible and no speed claim follows. The host embedding-table offload means this is not a GPU-only fit, and the configured 262144-token window was not qualified at its full extent."
+}

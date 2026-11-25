@@ -1,0 +1,63 @@
+{
+  "schema": "anvil-serving.public-native-score-projection/v1",
+  "scope": "Field-level outcome projection. No prompts, answers, paths, request identifiers, or raw outputs are retained.",
+  "sources": [
+    {"id":"az327-agentic","schema":"anvil-serving.agentic-suite-run/v1","sha256":"87f26593d85eaa18f2a347128550a8150ed7f2ce9960333e3f47bf1b2626ef2f","model":"AZ327"},
+    {"id":"qad-agentic","schema":"anvil-serving.agentic-suite-run/v1","sha256":"3f0122e8266ae6f94dd89a135990ca102548eacf9e4750fc232d897ce206e3c5","model":"QAD"},
+    {"id":"tev-agentic","schema":"anvil-serving.agentic-suite-run/v1","sha256":"ca36ff1755289ba904254674dca5e5767c93b539db7f0c5c19a99819d4e59cbe","model":"Tev"},
+    {"id":"az327-context","schema":"anvil-serving.context-suite-run/v1","sha256":"9e179b782d4cde55cf5f0df4896b849bff7f393500aaf01795b3bf6138354afe","model":"AZ327"},
+    {"id":"az327-aider-go","schema":"anvil-serving.aider-run/v1","sha256":"17cb2365cdf44eae935e5a71c800d103f2d331273cc136b5377684fab961dc8c","model":"AZ327"},
+    {"id":"az327-aider-affine","schema":"anvil-serving.aider-run/v1","sha256":"6a44635c25c1ade2b7a4174f544105c258e05e9966e3ebca23ca6815c713fcee","model":"AZ327"},
+    {"id":"mia-aider-go","schema":"anvil-serving.aider-run/v1","sha256":"fb4b074a8432035e1412a710e01651eddd2e9e19347b54e13d64ed5d40d3c472","model":"Mia"},
+    {"id":"mia-aider-affine","schema":"anvil-serving.aider-run/v1","sha256":"0d17185db3f73f0bef03c5a104b2afcb22412d3c494e628b4cedf10291e28928","model":"Mia"},
+    {"id":"tev-aider-go","schema":"anvil-serving.aider-run/v1","sha256":"9ac743ba81869d31554689aa5f9c5a21c237aa8aff6193cb49a52f0a91e03961","model":"Tev"},
+    {"id":"qad-images","schema":"multimodal-benchmark-evidence/v1","sha256":"031c9d9ee07722b8da9a081bc0cb5cf41954262b4d4854038c84144c6b67937d","model":"QAD"},
+    {"id":"qad-publisher12","schema":"publisher-graded-items/raw-v1","sha256":"d15a94117c92964e61a6e497f8053c585b9c36a1babc366abe9109d40dcdb7b0","model":"QAD","scorer_sha256":"79133b63d9537c4141dad76e1c1bd9f7abfa9c656ddfe5f36bec2643d8dfa886"},
+    {"id":"swift-2048","schema":"jsonl/paired-oracle-2048","sha256":"86ba0ccd3fbd0785a14a730c9d2018ee322ddf10329249966cbec9343b5c930c","model":"Swift"},
+    {"id":"mia-2048","schema":"jsonl/paired-oracle-2048","sha256":"f6f2b38621573d6e3e6ef72d9b4930a915f97204847a4983b23a4b8fb58a7303","model":"Mia"}
+  ],
+  "agentic": [
+    {"source":"az327-agentic","oracle_revision":"8/8/9","attempted":3,"passed":3,"cases":[{"task_id":"structured-edit","status":"passed","attempts":1},{"task_id":"tool-sequence","status":"passed","attempts":1},{"task_id":"debug-loop-v2","status":"passed","attempts":1}]},
+    {"source":"qad-agentic","oracle_revision":"8","attempted":3,"passed":3,"cases":[{"task_id":"structured-edit","status":"passed","attempts":1},{"task_id":"tool-sequence","status":"passed","attempts":1},{"task_id":"dependent-result","status":"passed","attempts":1}]},
+    {"source":"tev-agentic","oracle_revision":"8","attempted":3,"passed":3,"cases":[{"task_id":"structured-edit","status":"passed","attempts":1},{"task_id":"tool-sequence","status":"passed","attempts":1},{"task_id":"dependent-result","status":"passed","attempts":1}]}
+  ],
+  "aider": [
+    {"source":"az327-aider-go","task_id":"go/exercises/practice/alphametics","scorer":"pinned Aider Polyglot","resolved":true,"first_attempt_passed":true,"attempt_count":1},
+    {"source":"mia-aider-go","task_id":"go/exercises/practice/alphametics","scorer":"pinned Aider Polyglot","resolved":true,"first_attempt_passed":false,"second_attempt_passed":true,"attempt_count":2},
+    {"source":"az327-aider-affine","task_id":"python/exercises/practice/affine-cipher","scorer":"pinned Aider Polyglot","resolved":true,"first_attempt_passed":true,"attempt_count":1},
+    {"source":"mia-aider-affine","task_id":"python/exercises/practice/affine-cipher","scorer":"pinned Aider Polyglot","resolved":true,"first_attempt_passed":true,"attempt_count":1},
+    {"source":"tev-aider-go","task_id":"go/exercises/practice/alphametics","scorer":"pinned Aider Polyglot","resolved":true,"first_attempt_passed":false,"second_attempt_passed":true,"attempt_count":2}
+  ],
+  "az327_context": {
+    "source":"az327-context","scorer":"native context oracle","attempted":12,"passed":12,
+    "cases":[
+      {"case_index":1,"requested_tokens":8192,"status":"passed"},{"case_index":2,"requested_tokens":8192,"status":"passed"},{"case_index":3,"requested_tokens":8192,"status":"passed"},{"case_index":4,"requested_tokens":8192,"status":"passed"},{"case_index":5,"requested_tokens":8192,"status":"passed"},{"case_index":6,"requested_tokens":8192,"status":"passed"},
+      {"case_index":7,"requested_tokens":32768,"status":"passed"},{"case_index":8,"requested_tokens":32768,"status":"passed"},{"case_index":9,"requested_tokens":32768,"status":"passed"},{"case_index":10,"requested_tokens":32768,"status":"passed"},{"case_index":11,"requested_tokens":32768,"status":"passed"},{"case_index":12,"requested_tokens":32768,"status":"passed"}
+    ]
+  },
+  "qad_images": {
+    "source":"qad-images","scorer":"hashed deterministic multimodal corpus","attempted":12,"passed":12,
+    "cases":[{"task_id":"image-chart","repetitions":2,"passed":2},{"task_id":"image-ocr","repetitions":2,"passed":2},{"task_id":"image-scene","repetitions":2,"passed":2},{"task_id":"image-ui","repetitions":2,"passed":2},{"task_id":"image-spatial-count","repetitions":2,"passed":2},{"task_id":"multi-image-comparison","repetitions":2,"passed":2}]
+  },
+  "qad_publisher12": {
+    "source":"qad-publisher12","scorer":"pinned publisher grader","attempted":12,"correct":10,"http_ok":12,"sum_wall_s":183.07312461116817,
+    "cases":[
+      {"task_id":"bbh-dyck_languages-207","suite":"bbh","correct":false,"visible_correct":false,"http_ok":true,"finish":"stop","attempts":1},
+      {"task_id":"bbh-movie_recommendation-26","suite":"bbh","correct":true,"visible_correct":true,"http_ok":true,"finish":"stop","attempts":1},
+      {"task_id":"bbh-object_counting-28","suite":"bbh","correct":true,"visible_correct":true,"http_ok":true,"finish":"stop","attempts":1},
+      {"task_id":"bbh-salient_translation_error_detection-75","suite":"bbh","correct":false,"visible_correct":false,"http_ok":true,"finish":"stop","attempts":1},
+      {"task_id":"bbh-tracking_shuffled_objects_seven_objects-136","suite":"bbh","correct":true,"visible_correct":true,"http_ok":true,"finish":"stop","attempts":1},
+      {"task_id":"bbh-tracking_shuffled_objects_three_objects-139","suite":"bbh","correct":true,"visible_correct":true,"http_ok":true,"finish":"stop","attempts":1},
+      {"task_id":"mmlupro-12095","suite":"mmlupro","correct":true,"visible_correct":true,"http_ok":true,"finish":"stop","attempts":1},
+      {"task_id":"mmlupro-2253","suite":"mmlupro","correct":true,"visible_correct":true,"http_ok":true,"finish":"stop","attempts":1},
+      {"task_id":"mmlupro-3593","suite":"mmlupro","correct":true,"visible_correct":true,"http_ok":true,"finish":"stop","attempts":1},
+      {"task_id":"mmlupro-4993","suite":"mmlupro","correct":true,"visible_correct":true,"http_ok":true,"finish":"stop","attempts":1},
+      {"task_id":"mmlupro-6182","suite":"mmlupro","correct":true,"visible_correct":true,"http_ok":true,"finish":"stop","attempts":1},
+      {"task_id":"mmlupro-6249","suite":"mmlupro","correct":true,"visible_correct":true,"http_ok":true,"finish":"stop","attempts":1}
+    ]
+  },
+  "paired_2048": [
+    {"source":"swift-2048","task_id":"postfix-evaluator","semantic_pass":true,"exact_pass":true},{"source":"swift-2048","task_id":"python-slice-code-trace","semantic_pass":true,"exact_pass":true},{"source":"swift-2048","task_id":"stable-group-reducer","semantic_pass":true,"exact_pass":true},
+    {"source":"mia-2048","task_id":"postfix-evaluator","semantic_pass":true,"exact_pass":false},{"source":"mia-2048","task_id":"python-slice-code-trace","semantic_pass":true,"exact_pass":true},{"source":"mia-2048","task_id":"stable-group-reducer","semantic_pass":true,"exact_pass":true}
+  ]
+}

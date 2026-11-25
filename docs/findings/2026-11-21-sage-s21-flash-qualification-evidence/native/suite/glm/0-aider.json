@@ -1,0 +1,34 @@
+{
+  "retention": {
+    "artifacts": [],
+    "containers": {
+      "errors": [],
+      "ownership_id": "sage-r1",
+      "removed": [],
+      "run_id": "sage-r1-glm-aider-python",
+      "schema": "anvil-serving.aider-container-cleanup/v1",
+      "status": "completed"
+    },
+    "manifest_reference": {
+      "bytes": 241,
+      "path": "public-source/retention.json",
+      "sha256": "22dc4d190cf585009285447458916c78d92c2520edba7ffdf31cce7781febc12"
+    },
+    "missing": [
+      "plan.json",
+      "selection.json",
+      "result.json",
+      "process.json",
+      "requests.jsonl",
+      "adapter-result.json"
+    ],
+    "schema": "anvil-serving.aider-retention/v1",
+    "state": "incomplete"
+  },
+  "schema": "anvil-serving.aider-cancellation/v1",
+  "termination": {
+    "pid": 1523707,
+    "status": "terminated",
+    "stopped": true
+  }
+}

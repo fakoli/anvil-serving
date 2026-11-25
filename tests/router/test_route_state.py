@@ -49,6 +49,29 @@ model_identity = true
 '''.encode()
 
 
+def memory_configuration(*routes, selected="a"):
+    raw = configuration(selected=selected).replace(
+        b'auth_env = "ROUTER_TOKEN"',
+        b'auth_env = "ROUTER_TOKEN"\napi_keys_path = "/protected/keys.sqlite3"',
+        1,
+    )
+    for alias, principal, bank in routes:
+        raw += f'''\n[[router.memory_routes]]
+alias = "{alias}"
+principal = "{principal}"
+backend = "hindsight"
+bank = "{bank}"
+base_url = "http://127.0.0.1:4318"
+auth_env = "HINDSIGHT_TOKEN"
+'''.encode()
+    return raw
+
+
+def sha256(value):
+    import hashlib
+    return hashlib.sha256(value).hexdigest()
+
+
 @dataclass
 class Snapshot:
     config: object
@@ -124,6 +147,106 @@ def manager(tmp_path):
 def apply(manager, raw, **kwargs):
     preview = manager.preview(raw)
     return manager.apply(preview["preview_id"], confirm=True, **kwargs)
+
+
+def test_memory_route_authority_rebase_preserves_settled_route_history_and_reverses(tmp_path):
+    old = memory_configuration()
+    path = tmp_path / "routes.json"
+    updates.initialize_route_state(old, path)
+    manager = updates.RouteUpdateManager(Runtime(old), old, path)
+    try:
+        manager.restore()
+        apply(manager, memory_configuration(selected="b"))
+    finally:
+        manager.close()
+    before = json.loads(path.read_text())
+    assert before["route_revision"] == 1 and before["operation"]["phase"] == "complete"
+    new = memory_configuration(("memory.alpha", "device_a", "bank_a"),
+                               ("memory.beta", "device_b", "bank_b"))
+    preview = updates.migrate_route_state_base_config(
+        old, new, path, expected_old_config_sha256=sha256(old), expected_new_config_sha256=sha256(new),
+        expected_state_sha256=sha256(path.read_bytes()), apply=False,
+    )
+    assert preview["applied"] is False and preview["direction"] == "add"
+    assert json.loads(path.read_text()) == before
+    applied = updates.migrate_route_state_base_config(
+        old, new, path, expected_old_config_sha256=sha256(old), expected_new_config_sha256=sha256(new),
+        expected_state_sha256=sha256(path.read_bytes()), apply=True,
+    )
+    after = json.loads(path.read_text())
+    assert applied["route_revision"] == before["route_revision"] == 1
+    assert {key: value for key, value in after.items() if key != "base_config_sha256"} == {
+        key: value for key, value in before.items() if key != "base_config_sha256"
+    }
+    assert after["base_config_sha256"] == sha256(new)
+    restored = updates.RouteUpdateManager(Runtime(new), new, path)
+    try:
+        assert restored.restore()["route_revision"] == 1
+    finally:
+        restored.close()
+    reverse = updates.migrate_route_state_base_config(
+        new, old, path, expected_old_config_sha256=sha256(new), expected_new_config_sha256=sha256(old),
+        expected_state_sha256=sha256(path.read_bytes()), apply=True,
+    )
+    assert reverse["direction"] == "remove" and json.loads(path.read_text()) == before
+
+
+def test_memory_route_authority_rebase_fails_closed_on_hash_scope_and_pending_state(tmp_path):
+    old = memory_configuration(("memory.alpha", "device_a", "bank_a"))
+    path = tmp_path / "routes.json"
+    updates.initialize_route_state(old, path)
+    add_one = memory_configuration(("memory.alpha", "device_a", "bank_a"),
+                                   ("memory.beta", "device_b", "bank_b"))
+    arguments = dict(expected_old_config_sha256=sha256(old), expected_new_config_sha256=sha256(add_one),
+                     expected_state_sha256=sha256(path.read_bytes()))
+    with pytest.raises(updates.RouteUpdateError, match="old_config_mismatch"):
+        updates.migrate_route_state_base_config(old, add_one, path,
+                                                **{**arguments, "expected_old_config_sha256": "0" * 64})
+    with pytest.raises(updates.RouteUpdateError, match="authority_changed"):
+        updates.migrate_route_state_base_config(old, add_one, path,
+                                                **{**arguments, "expected_state_sha256": "0" * 64})
+    with pytest.raises(updates.RouteUpdateError, match="new_config_mismatch"):
+        updates.migrate_route_state_base_config(old, add_one, path,
+                                                **{**arguments, "expected_new_config_sha256": "0" * 64})
+    with pytest.raises(updates.RouteUpdateError, match="migration_restart_required"):
+        updates.migrate_route_state_base_config(old, memory_configuration(
+            ("memory.alpha", "device_a", "bank_a"), ("memory.beta", "device_b", "bank_b"), selected="b"),
+            path, expected_old_config_sha256=sha256(old),
+            expected_new_config_sha256=sha256(memory_configuration(
+                ("memory.alpha", "device_a", "bank_a"), ("memory.beta", "device_b", "bank_b"), selected="b")),
+            expected_state_sha256=sha256(path.read_bytes()))
+    changed_server = add_one.replace(b'api_keys_path = "/protected/keys.sqlite3"',
+                                     b'api_keys_path = "/protected/other-keys.sqlite3"')
+    with pytest.raises(updates.RouteUpdateError, match="migration_restart_required"):
+        updates.migrate_route_state_base_config(old, changed_server, path,
+                                                expected_old_config_sha256=sha256(old),
+                                                expected_new_config_sha256=sha256(changed_server),
+                                                expected_state_sha256=sha256(path.read_bytes()))
+    replacement = memory_configuration(("memory.alpha", "device_a", "other_bank"))
+    with pytest.raises(updates.RouteUpdateError, match="replacement_unsupported"):
+        updates.migrate_route_state_base_config(old, replacement, path,
+                                                expected_old_config_sha256=sha256(old),
+                                                expected_new_config_sha256=sha256(replacement),
+                                                expected_state_sha256=sha256(path.read_bytes()))
+    too_many = memory_configuration(*[(f"memory.{index}", f"device_{index}", f"bank_{index}") for index in range(4)])
+    with pytest.raises(updates.RouteUpdateError, match="scope_invalid"):
+        updates.migrate_route_state_base_config(memory_configuration(), too_many, path,
+                                                expected_old_config_sha256=sha256(memory_configuration()),
+                                                expected_new_config_sha256=sha256(too_many),
+                                                expected_state_sha256=sha256(path.read_bytes()))
+    manager = updates.RouteUpdateManager(Runtime(old), old, path)
+    try:
+        manager.restore()
+        manager.routing.drained = False
+        with pytest.raises(updates.RouteUpdateError, match="drain_timeout"):
+            apply(manager, old.replace(b'model = "model-a"', b'model = "replacement"'))
+    finally:
+        manager.close()
+    with pytest.raises(updates.RouteUpdateError, match="transaction_pending"):
+        updates.migrate_route_state_base_config(old, add_one, path,
+                                                expected_old_config_sha256=sha256(old),
+                                                expected_new_config_sha256=sha256(add_one),
+                                                expected_state_sha256=sha256(path.read_bytes()))
 
 
 @pytest.mark.parametrize("loss", ["missing", "corrupt"])

@@ -1,0 +1,47 @@
+{
+  "schema": "anvil-serving.service-continuity-projection/v1",
+  "observations": {
+    "authenticated_routed_probe": {
+      "utc": "2026-11-21T14:58:57.305348+00:00",
+      "http_status": 200,
+      "returned_ready": true,
+      "finish_reason": "stop",
+      "original_sha256": "bb1e6bfeb5052cd07af02ae7b7b11af03f80b75a6d172d5dc0236aabf651742e"
+    },
+    "direct_status": {
+      "public_model": "Mia-AiLab/GLM-5.3-Flash-EXL3-4bpw-TensorFold",
+      "revision": "76c0b5173166d2795dd48860f45d8224817f894c",
+      "running": true,
+      "image_digest": "sha256:2824d665f9334db0fe9868706cd26dc7bd2604974625a2602c74c78cf90b5886",
+      "original_sha256": "ffb2013e636fbe6ed0bfcc0fc5b1f325b15e9c1dfa20352c6da3c6fa0ca34476"
+    },
+    "advertised_context": {
+      "tokens": 327680,
+      "original_sha256": "361eb947804548a2557c17e11c47c292d27292186600e4db525688653bb7c761"
+    },
+    "post_restore_swe": {
+      "graded": 5,
+      "source_sha256": "8581ec7dee4cd419233db97ac3ddb926aae8ffe7d610b064890fc384aa722d25"
+    },
+    "monitor_registration": {
+      "generation_verified": false,
+      "direct_service_running": true,
+      "original_sha256": "f4898aa6b5e6180accd4f3ba41fbb4d24c63a1abc8cbc0db1af3afe8de502538"
+    },
+    "post_benchmark_idle_guards": [
+      {
+        "observed_utc": "2026-11-21T15:30:06Z",
+        "original_sha256": "8bbbfee4ea6b5c9b56408fae990d865f0a6a37d9a9154489edce28288b555ea7",
+        "active_requests": 1,
+        "guard_action": "wait; running serve preserved"
+      },
+      {
+        "observed_utc": "2026-11-21T15:36:34Z",
+        "original_sha256": "4a59ee8867d68c0ac1c2d9cbf715dfa17baadaac829f2fd1ccc5a8135289419e",
+        "active_requests": 1,
+        "guard_action": "wait; running serve preserved"
+      }
+    ]
+  },
+  "privacy": "Public projection contains no local address, client or session identity, workload prompt or credential."
+}

@@ -263,7 +263,14 @@ benchmark.
 Complete the publication as one transaction. Before stopping, verify that the
 new finding is reachable from the findings index, run catalog, dossier, and
 hardware page; verify that the run-catalog row links both its dossier and
-finding. Do not leave a finding-only update for a later pass.
+finding. Do not leave a finding-only update for a later pass. The landing-page
+cards are generated, so inspect the rendered local `site/index.html` and
+`site/benchmarks/index.html` after `mkdocs build --strict`; when the dated
+finding is within the configured latest-card window, both pages must contain
+its title and finding URL. After an authorized Pages deploy, read back the
+published page for the deployed commit (bypassing stale browser/CDN cache when
+possible) and retain the result or an explicit publication gap. A successful
+source build is not a user-visible-page receipt.
 
 ### Promotion publication closure
 
@@ -421,6 +428,14 @@ measurement universe into a universal `best`, `fastest`, or `strongest` claim.
 Research-only, readiness-only, and failed-load findings may use a result card;
 their publication summary is optional unless a compact public communication is
 required.
+
+When a corrected recipe fixes a historical configuration defect, make the
+recommendation against the corrected recipe. Name the exact workload and
+recipe/template distinction, retain the historical defect on its original
+profile, and do not carry it into the corrected profile's current limitation.
+Keep a workload-specific recommendation separate from the selected shared
+incumbent and from live promotion state unless the corresponding evidence and
+human decision explicitly establish those facts.
 
 ## 7. Preserve decision boundaries
 

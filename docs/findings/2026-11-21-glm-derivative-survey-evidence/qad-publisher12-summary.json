@@ -1,0 +1,10 @@
+{
+  "schema": "anvil-serving.publisher12-pilot-summary/v1",
+  "items": 12,
+  "scores": {"qwen_one_card_xhigh": "10/12", "az327_max": "10/12", "mia_max": "9/12"},
+  "sum_request_seconds": {"qwen_one_card_xhigh": 183.073, "az327_max": 39.97, "mia_max": 57.36},
+  "completion_tokens": {"qwen_one_card_xhigh": 35865},
+  "common_controls": ["prompts", "output cap", "seed", "top-p", "temperature"],
+  "non_comparability": ["Qwen uses xhigh while GLM uses max", "different underlying engines", "different GPU counts"],
+  "boundary": "Partial cross-runtime pilot; not a promotion, engine ranking, or broad speed conclusion."
+}

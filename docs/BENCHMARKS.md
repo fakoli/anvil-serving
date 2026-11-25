@@ -1,5 +1,34 @@
 # Benchmark results
 
+## 2026-11-21 — GLM derivative matched 327K comparison
+
+The [final matched 327K local comparison](findings/2026-11-21-glm-derivative-survey.md)
+found equal literal-parser accuracy (49/60) for Mia and AZ327-Focus, while
+AZ327-Focus had summed sequential C1 request time of 215.195 s versus 487.233 s
+(55.8% less by that measure). This is not a general performance ranking:
+the matched C4 natural-output receipts have near-tied median E2E latency and
+lower AZ aggregate output ([AZ327 raw](findings/2026-11-21-glm-derivative-survey-evidence/raw/az327-natural-c4.json), [Mia raw](findings/2026-11-21-glm-derivative-survey-evidence/raw/mia-natural-c4.json)). AZ327 additionally passed bounded ~128K retrieval, 20/20 tools, and 12/12 image cases using Mia's exact template. The distinct AZ64 native image template remains 0/12. `no-promotion`.
+
+The paired five-image official SWE-Bench Verified scout resolved 4/5 for AZ327 and 3/5 for Mia under matched controls. It is separate from the publisher subset and not a full-suite score. [Per-case evidence](findings/2026-11-21-glm-derivative-survey-evidence/raw/paired-swe-five.json).
+
+Bounded AZ327 Aider/context/tools and Swift light oracle scouts are recorded separately. Swift/Mia also has a matched eight-request seed-482204 natural C4 cohort, but its lower Swift output rate and much higher first-visible time do not support broad superiority, capacity, or replacement conclusions. [Aggregates](findings/2026-11-21-glm-derivative-survey-evidence/capability-scouts-summary.json) · [C4 graph](findings/2026-11-21-glm-derivative-survey-evidence/graphs/paired-c4-matrix.svg).
+
+## 2026-11-21 — Sage S2.1 Flash TensorFold challenger
+
+The [Sage TensorFold benchmark](findings/2026-11-21-sage-s21-flash-qualification.md)
+retains two practical best-Sage lanes: R2 native MTP, unsharded KV, 64K/C4,
+with 115.09 aggregate output tok/s across eight natural-output requests; and
+R4 native MTP, 327K/C2, with 103.77 aggregate output tok/s across eight C2
+requests plus four single-request retrievals through 259,774 actual input
+tokens. Matched GLM C2 had lower visible latency (3.603s vs 4.140s) while Sage
+had higher aggregate output (103.77 vs 91.85 tok/s); non-fixed output lengths
+and small n make this descriptive, not a broad speed ranking. The matched fresh
+GLM C4 reference recorded 110.40 tok/s.
+R2 coding was Python 1/1 and Go 0/1; `challenger`, `no-promotion` remains
+explicit. Strict C1 failed 20/20 per arm, and contaminated GLM natural C1 is
+excluded. [Dossier](benchmarks/models/sage-s21-flash.md)
+· [evidence](findings/2026-11-21-sage-s21-flash-qualification-evidence/README.md).
+
 ## 2026-11-16 — bounded parallel media capacity
 
 [Independent image workers](findings/2026-11-16-media-parallel.md) passed paired

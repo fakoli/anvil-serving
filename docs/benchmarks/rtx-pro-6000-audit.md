@@ -7,6 +7,15 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-11-21-glm-derivative-survey.md`;
+`docs/findings/2026-11-21-glm-derivative-survey-evidence/README.md`
+(dual-Max-Q final matched GLM 60-case summed sequential C1 request-time comparison: equal
+49/60 complete-correct score, AZ327-Focus 2.26× as fast on the fixed workload;
+separate 327K/C4 summary has near-tied median end-to-end latency and lower AZ
+aggregate output, so no broad concurrent-speed claim; AZ327 image cases 12/12
+with Mia template while distinct AZ64 native template 0/12; one-card Qwen
+receipt separately 0/8 performance eligible; no capacity or promotion claim).
+
 `docs/findings/2026-11-01-swift-tp1-gpu0.md`; `docs/benchmarks/models/qwen38-efficient-variants.md`
 (one RTX PRO 6000 Blackwell Max-Q: final TP1 functional, quality, capacity and
 resource evidence; qualification accepted; deployment status private;

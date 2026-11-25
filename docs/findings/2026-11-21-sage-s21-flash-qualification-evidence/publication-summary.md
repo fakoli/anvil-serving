@@ -1,0 +1,3 @@
+# Publication summary
+
+The dated finding and [decision summary](summary.json) retain the completed bounded Sage qualification: 64K/C4 native MTP is the best measured concurrent Sage lane, and 327K/C2 native MTP the best measured long-context Sage lane. The bundle contains schema-preserving [native source bindings](native/source-bindings.json), a [workload manifest](workload-manifest.json), and a [run plan](run-plan.json). Serving/router restoration is verified; the historical monitoring gap is retained separately. This campaign remains `challenger`, `no-promotion`; no route or promotion change follows.

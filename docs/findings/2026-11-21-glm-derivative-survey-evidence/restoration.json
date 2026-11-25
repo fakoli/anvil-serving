@@ -1,0 +1,13 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-11-21-glm-derivative-survey",
+  "status": "restored-serving; monitoring-registration gap retained",
+  "mutation_required": true,
+  "starting_state": {"captured": true, "evidence": ["restoration-checkpoint.json"]},
+  "ending_state": {"captured": true, "evidence": ["restoration-checkpoint.json", "restoration-router-glm-after-qad-r1.json", "raw/final-service-continuity.json"]},
+  "differences": ["Managed candidate trial loads and unloads occurred; no promotion, default, or route change is claimed."],
+  "post_run_checks": ["The configured 327680-token Mia profile returned authenticated primary-alias HTTP 200 with ready=true.", "The direct Mia status was running at the checkpoint."],
+  "verified": true,
+  "not_applicable_reason": null,
+  "open_items": ["The monitoring-registration gap predates the campaign and remains unresolved; restored serving remains working."]
+}

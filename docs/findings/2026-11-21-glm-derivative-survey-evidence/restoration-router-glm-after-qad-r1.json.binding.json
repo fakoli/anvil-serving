@@ -1,0 +1,33 @@
+{
+  "original_bytes": 423,
+  "original_sha256": "2578a71baac7b30dcdafd0d9f28c8d2a4dba8854341dcf97dad540896946b2b6",
+  "public_bytes": 423,
+  "public_path": "restoration-router-glm-after-qad-r1.json",
+  "public_sha256": "234e013cf39f23c9c0402463ec51284c5251e24f65bf52467999589d5216324e",
+  "redactions": [
+    "api_key",
+    "argv",
+    "authorization",
+    "base_url",
+    "command",
+    "container",
+    "container_id",
+    "credential",
+    "credentials",
+    "endpoint",
+    "env",
+    "environment",
+    "gpu_uuid",
+    "gpu_uuids",
+    "host",
+    "hostname",
+    "path",
+    "paths",
+    "scope",
+    "scopes",
+    "token",
+    "worker"
+  ],
+  "schema": "anvil-serving.private-publication-binding/v1",
+  "synthetic_endpoint": "http://127.0.0.1:8000/v1"
+}
