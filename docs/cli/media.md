@@ -565,6 +565,45 @@ selected deployment. Workflow concurrency remains independently qualified.
 The caller still receives the durable job/waiting contract described above;
 the pool does not add unsolicited MCP completion callbacks.
 
+### Physical GPU telemetry qualification
+
+Existing pool configurations continue to sample physical GPU memory with
+`nvidia-smi`. A candidate can explicitly set the following in the private pool
+JSON; this is a qualification opt-in, not an automatic fallback:
+
+```json
+{
+  "gpuTelemetry": {
+    "provider": "nvml-v1",
+    "deviceUuid": "GPU-00000000-0000-0000-0000-000000000000"
+  }
+}
+```
+
+Use the qualified UUID of the single visible device, not its index. The
+isolated helper uses device-wide NVML **v1** total and free bytes and rounds
+down to whole MiB, not CUDA allocator values or NVML v2 reserved-memory
+accounting. It starts only before render children at initial start and mode
+switch. Provider reads share one serialized helper and a four-second absolute
+deadline; helper process creation itself is outside that deadline and confined
+to the no-render startup path. Requests cannot respawn it. Missing, malformed,
+late or mismatched replies fail closed; no stale reading, second provider,
+lower reserve, or unfenced renderer is allowed. Known idempotent submission
+replay does not submit again.
+
+Before opt-in on any live deployment, pin the image, driver/WSL/runtime and
+GPU identity. On CPU, prove timeout and stale-read refusal, unchanged
+reserve checks and containment across mode changes. On the target device,
+compare synchronized same-UUID physical free/total samples and timings for
+both providers at idle and throughout the same bounded synthetic render.
+Separate prestarted-helper read time from CLI wall time and process launch
+where observable; both call into the same NVIDIA provider. Include timeout
+counts, minimum free memory, disagreement near admission thresholds, and the
+existing low-reserve stop test. Keep the default provider authoritative during
+comparison, then verify exclusive video playback and actual two-image
+overlap separately before wider use. A successful idle query or test fixture
+does not qualify WSL/NVML under load.
+
 ### Connect Codex to the media MCP
 
 Register a dedicated connection to the authenticated gateway after the operator
