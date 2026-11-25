@@ -254,6 +254,20 @@ def commands() -> CommandNode:
                 docs_anchor="docs/cli/voice.md#realtime-proxy",
             ),
             _node(
+                "memo",
+                "Capture voice memos and transcribe them through the gateway.",
+                children=(
+                    _node(
+                        "run",
+                        "Run the loopback voice memo service in the foreground.",
+                        handler=_handler("anvil_serving.voice.cli", argv_prefix=("memo", "run")),
+                        mutation_class="process",
+                        output_policy="foreground",
+                    ),
+                ),
+                docs_anchor="docs/cli/voice.md#voice-memo",
+            ),
+            _node(
                 "benchmark",
                 "Benchmark a voice session or multi-sample STT corpus.",
                 handler=_handler(

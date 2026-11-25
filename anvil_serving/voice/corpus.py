@@ -23,6 +23,9 @@ LIBRISPEECH_ARCHIVES = {
     "test-other": "https://www.openslr.org/resources/12/test-other.tar.gz",
 }
 LIBRISPEECH_MD5_URL = "https://www.openslr.org/resources/12/md5sum.txt"
+# Written at the root of stores whose audio must never train, tune, or evaluate
+# a model (for example captured voice memos, ADR-0048).
+EVALUATION_EXCLUDED_MARKER = "EVALUATION-EXCLUDED.txt"
 SYNTHETIC_PHRASES = (
     ("weather", "What is the weather in Seattle tomorrow morning?"),
     ("timer", "Set a timer for twelve minutes and thirty seconds."),
@@ -142,6 +145,8 @@ def _safe_audio_path(manifest: Path, relative: object) -> Path:
         resolved.relative_to(root)
     except ValueError as exc:
         raise CorpusError("audio_path escapes the manifest directory: %s" % relative) from exc
+    if any((parent / EVALUATION_EXCLUDED_MARKER).exists() for parent in resolved.parents):
+        raise CorpusError("audio_path is in an evaluation-excluded store: %s" % relative)
     return resolved
 
 

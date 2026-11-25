@@ -558,6 +558,17 @@ class AudioGateway:
             "latency_ms": self._elapsed_ms(started),
         }
 
+    def route_id(self, purpose: str, body: Mapping[str, Any]) -> Optional[str]:
+        """The route id this body selects, or None when dispatch would reject it.
+
+        Device-key admission uses it as the audio model grant (ADR-0048). None is
+        safe: the dispatch path resolves identically and fails before any upstream.
+        """
+        try:
+            return self._resolve(purpose, body).id
+        except AudioGatewayError:
+            return None
+
     def _resolve(self, expected_purpose: str, body: Mapping[str, Any]) -> AudioRoute:
         route_id = body.get("route")
         requested_purpose = body.get("purpose")

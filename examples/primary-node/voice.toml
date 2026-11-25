@@ -52,6 +52,20 @@ stt_url = "http://stt:8080/v1"
 tts_url = "http://tts:8880/v1"
 router_url = "http://100.64.0.10:8000/v1"
 
+# Voice memo capture (ADR-0048): `anvil-serving voice memo run`, normally the
+# `voice-memo` serve in serves.voice.toml. It transcribes through the gateway's
+# /v1/audio/transcriptions with a device key bound to one audio route:
+#   anvil-serving router keys create --name voice-memo --model <stt route id> \
+#     --path /v1/audio/transcriptions --rpm 120 --out <protected file>
+# Both env values are secrets/identities supplied at runtime, never written here.
+[voice.memo]
+router_url = "http://127.0.0.1:8000"
+router_key_env = "ANVIL_VOICE_MEMO_ROUTER_KEY"
+allowed_logins_env = "ANVIL_VOICE_MEMO_LOGINS"
+data_dir = "/var/lib/anvil-voice-memo"
+listen_host = "127.0.0.1"
+listen_port = 8790
+
 # A named profile makes the reference choice explicit without changing the
 # already-consistent default tables above.
 [voice.profiles.dark-audio]

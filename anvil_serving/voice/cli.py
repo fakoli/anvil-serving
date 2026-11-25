@@ -2175,7 +2175,7 @@ def build_parser():
     sub = p.add_subparsers(
         dest="action",
         required=True,
-        metavar="{up,down,audio,proxy,benchmark,profiles,sidecar}",
+        metavar="{up,down,audio,proxy,memo,benchmark,profiles,sidecar}",
     )
 
     def add_config(sp):
@@ -2481,7 +2481,38 @@ def build_parser():
 
     sub.add_parser("sidecar", help="validate or render the Hugging Face speech-to-speech sidecar")
 
+    memo = sub.add_parser("memo", help="capture voice memos and transcribe them through the gateway")
+    memo_sub = memo.add_subparsers(dest="memo_action", required=True, metavar="{run}")
+    sp = memo_sub.add_parser("run", help="run the loopback voice memo service in the foreground")
+    add_config(sp)
+
     return p
+
+
+def cmd_memo_run(args):
+    """Foreground memo service; Compose supplies supervision (ADR-0048)."""
+    from . import memo as voice_memo
+    try:
+        config = voice_memo.load_memo_config(args.config)
+    except voice_config.ConfigError as exc:
+        print("voice memo run: %s" % exc, file=sys.stderr)
+        return 2
+    if shutil.which("ffmpeg") is None:
+        print("voice memo run: ffmpeg is required to decode Ogg Opus memos", file=sys.stderr)
+        return 2
+    try:
+        server = voice_memo.make_memo_server(config)
+    except OSError as exc:
+        print("voice memo run: cannot bind or prepare the memo store (%s)" % exc, file=sys.stderr)
+        return 1
+    print("voice memo run: listening on http://%s:%d" % server.server_address[:2], file=sys.stderr, flush=True)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+    return 0
 
 
 def main_profiles_list(argv=None):
@@ -2535,6 +2566,8 @@ def main(argv=None):
     }
     if args.action in {"up", "down"}:
         return cmd_voice_lifecycle(args)
+    if args.action == "memo":
+        return cmd_memo_run(args)
     if args.action == "audio":
         return {
             "up": cmd_up,

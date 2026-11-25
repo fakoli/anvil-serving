@@ -6,6 +6,25 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- `voice memo run` captures Ogg Opus voice memos from a browser or WebView
+  client, stores them, and transcribes them through the gateway's
+  `/v1/audio/transcriptions` instead of calling an STT serve directly. It binds
+  loopback only, accepts allowlisted `Tailscale-User-Login` identities and
+  origins, and fails closed when its key or allowlist is missing. The
+  `voice-memo` Dockerfile target adds ffmpeg, and the reference
+  `serves.voice.toml` declares a `voice-memo` serve (ADR-0048).
+
+### Changed
+
+- Device keys can be granted `/v1/audio/transcriptions` and `/v1/audio/speech`.
+  For those paths the key's model grants name the audio route ids it may
+  select; an ungranted route is refused before the audio pool or upstream is
+  used. Audio audit rows record the real path instead of `[other]`.
+- STT corpus validation refuses case audio under a directory marked
+  `EVALUATION-EXCLUDED.txt`, which the voice memo store writes.
+
 ## [3.1.0] - 2026-11-23
 
 ### Added

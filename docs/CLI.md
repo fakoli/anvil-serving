@@ -335,6 +335,8 @@ required operands, choices, and defaults.
 | `voice proxy status` | Show realtime proxy status. | `read` / `bounded` | - |
 | `voice proxy logs` | Show bounded realtime proxy logs. | `read` / `bounded` | - |
 | `voice proxy bridge` | Run the Mini-to-Dark audio bridge. | `process` / `foreground` | `--dry-run` |
+| `voice memo` | Capture voice memos and transcribe them through the gateway. | `read` / `bounded` | - |
+| `voice memo run` | Run the loopback voice memo service in the foreground. | `process` / `foreground` | - |
 | `voice benchmark` | Benchmark a voice session or multi-sample STT corpus. | `read` / `bounded` | - |
 | `voice corpus` | Prepare or validate an STT benchmark corpus. | `read` / `bounded` | - |
 | `voice corpus prepare` | Build the deterministic English STT corpus. | `read` / `bounded` | - |
@@ -477,6 +479,10 @@ required operands, choices, and defaults.
 | `connect native-agents-check` | Run finite local Agents checks without browser or email sign-in. | `mutate` / `bounded` | `--config`<br>`--dry-run`<br>`--confirm` |
 | `connect native-agents` | Run the native Agents broker behind a managed TLS edge. | `process` / `bounded` | `--config` |
 | `connect resources` | List declared browser services and copyable grant values. | `read` / `bounded` | `--manifest` |
+| `connect hold` | Hold or release one resource at its local connector listener. | `mutate` / `bounded` | - |
+| `connect hold status` | Show holds and any other rule blocking a connector listener. | `read` / `bounded` | `--manifest`<br>`--resource` |
+| `connect hold apply` | Preview or reset new connections to one resource's listener. | `mutate` / `bounded` | `--manifest`<br>`--resource`<br>`--dry-run`<br>`--confirm` |
+| `connect hold release` | Preview or remove only this command's hold for one resource. | `mutate` / `bounded` | `--manifest`<br>`--resource`<br>`--dry-run`<br>`--confirm` |
 | `connect users` | Manage local accounts, service entitlements, enrollment codes and authentication backups. | `mutate` / `bounded` | - |
 | `connect users list` | List local sign-in accounts (not Connect grants). | `read` / `bounded` | `--manifest` |
 | `connect users show` | Show one local sign-in account (not Connect grants). | `read` / `bounded` | `--manifest` |
