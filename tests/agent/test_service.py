@@ -6,6 +6,7 @@ import re
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -191,10 +192,27 @@ def test_backend_http_error_keeps_only_the_status():
         server.shutdown()
 
 
+# The shipped pi-web mobile bridge allows only these query parameters per read and answers
+# HTTP 400 to anything else (lib/mobile-pi-api.ts, pi-web 0.10.0). ``None`` means a safe id.
+PI_BRIDGE_QUERY = {"state": {}, "context": {"before": None, "tail": "50"}, "command": {}}
+
+
+def pi_bridge_rejects(path):
+    """True when the real bridge would refuse this path's query string."""
+    route, _, query = path.partition("?")
+    allowed = PI_BRIDGE_QUERY[route.rsplit("/", 1)[-1]]
+    pairs = urllib.parse.parse_qsl(query, keep_blank_values=True)
+    names = [name for name, _ in pairs]
+    return any(name not in allowed or names.count(name) != 1
+               or (allowed[name] is not None and value != allowed[name]) for name, value in pairs)
+
+
 def test_ask_pi_prompts_bridge_waits_and_reads_newest_assistant_message():
     states = {"n": 0}
 
     def reply(method, path):
+        if pi_bridge_rejects(path):
+            return ({"error": "bad request"}, 400)
         if method == "POST":
             return ({"success": True},)
         if path.endswith("/state"):
@@ -218,9 +236,27 @@ def test_ask_pi_prompts_bridge_waits_and_reads_newest_assistant_message():
         assert len(command[3]["requestId"]) == 36  # a UUID, as the bridge requires
         assert {entry[2]["Authorization"] for entry in server.seen} == {"Bearer pi-test"}
         assert states["n"] >= 3  # waited out the streaming state
-        assert any(entry[1].endswith("/context?tail=4") for entry in server.seen)
+        assert any(entry[1].endswith("/context") for entry in server.seen)
     finally:
         server.shutdown()
+
+
+def test_root_cli_help_shows_the_agent_config_option(capsys):
+    from anvil_serving import cli
+
+    for action in ("run", "validate"):
+        assert cli.main(["agent", action, "--help"]) == 0
+        out = capsys.readouterr().out
+        assert "--config" in out, action  # the leaf parser's help, not the command tree's
+        assert "anvil-serving agent " + action in out
+
+
+def test_fake_pi_bridge_enforces_the_shipped_query_rules():
+    assert not pi_bridge_rejects("/api/mobile-pi/sessions/s/context")
+    assert not pi_bridge_rejects("/api/mobile-pi/sessions/s/context?tail=50")
+    assert pi_bridge_rejects("/api/mobile-pi/sessions/s/context?tail=4")
+    assert pi_bridge_rejects("/api/mobile-pi/sessions/s/context?tail=50&tail=50")
+    assert pi_bridge_rejects("/api/mobile-pi/sessions/s/state?x=1")
 
 
 # ---- glasses ops ----

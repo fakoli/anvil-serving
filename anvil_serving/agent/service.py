@@ -345,7 +345,8 @@ def ask_pi(backend: Backend, text: str, timeout: float, poll_seconds: float = PI
         current = state()
         if current.get("isStreaming") or (current.get("messageCount") or 0) <= before:
             continue
-        newest = _request_json(base + "/context?tail=4", headers=auth, timeout=10)[0]["context"]["messages"][-1]
+        # No query: the bridge accepts only tail=50 (anything else is HTTP 400) and applies it anyway.
+        newest = _request_json(base + "/context", headers=auth, timeout=10)[0]["context"]["messages"][-1]
         if newest.get("role") != "assistant":
             continue  # a tool result or the prompt itself; the answer is still coming
         if newest.get("stopReason") in ("error", "aborted"):
