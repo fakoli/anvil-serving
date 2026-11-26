@@ -141,8 +141,11 @@ USER root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg \
     && rm -rf /var/lib/apt/lists/* \
-    && install -d -o 1000 -g 1000 -m 700 /var/lib/anvil-scribe
+    && install -d -o 1000 -g 1000 -m 700 /var/lib/anvil-scribe \
+    && chown root:root /etc/anvil
 # The operator uid owns the bind-mounted key file and the store (Compose `user:`).
+# /etc/anvil is root-owned here: the key reader refuses a parent directory owned by
+# another user (the runtime stage gives it to `anvil`, uid 999).
 USER 1000:1000
 
 # Loopback bind is enforced by the service; the reference Compose file uses host

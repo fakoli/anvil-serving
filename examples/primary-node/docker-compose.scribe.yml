@@ -25,9 +25,15 @@ services:
       # From the operator .env beside this file (ADR-0033); never written here.
       ANVIL_SCRIBE_LOGINS: ${ANVIL_SCRIBE_LOGINS:?set ANVIL_SCRIBE_LOGINS in the operator .env}
     volumes:
-      - "./scribe.toml:/etc/anvil/scribe.toml:ro"
-      # Written by `router keys create --out`; a missing file stops startup instead
-      # of Docker creating a root-owned directory in its place.
+      # Long syntax for both files: a missing file stops startup instead of Docker
+      # creating a root-owned directory in its place.
+      - type: bind
+        source: ./scribe.toml
+        target: /etc/anvil/scribe.toml
+        read_only: true
+        bind:
+          create_host_path: false
+      # Written by `router keys create --out`.
       - type: bind
         source: ./scribe.key
         target: /etc/anvil/scribe.key
@@ -35,8 +41,8 @@ services:
         bind:
           create_host_path: false
       # Recordings, transcripts, rewrites and custom profiles: user content, evaluation-excluded.
-      # A named volume inherits the image's private directory (uid 1000); a host
-      # bind path (SCRIBE_DATA) must be owned by SCRIBE_UID.
+      # A named volume inherits the image's private directory (uid 1000). With any
+      # other SCRIBE_UID, set SCRIBE_DATA to a host path owned by that uid.
       - "${SCRIBE_DATA:-anvil-scribe-data}:/var/lib/anvil-scribe"
     read_only: true
     tmpfs:
@@ -45,6 +51,8 @@ services:
     security_opt:
       - no-new-privileges:true
     healthcheck:
+      # Port 8790 matches `listen_port` in scribe.toml and `port` in serves.scribe.toml;
+      # change all three together.
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8790/healthz', timeout=3).read()"]
       interval: 30s
       timeout: 5s

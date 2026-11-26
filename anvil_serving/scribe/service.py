@@ -241,6 +241,8 @@ def load_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] 
         data = tomllib.loads(payload.decode("utf-8"))
     except FileNotFoundError:
         raise ConfigError("Scribe config not found: %s" % path) from None
+    except OSError as exc:  # a directory left by a missing bind mount, or no permission
+        raise ConfigError("cannot read Scribe config %s: %s" % (path, type(exc).__name__)) from None
     except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
         raise ConfigError("cannot parse Scribe config %s: %s" % (path, exc)) from None
     table = data.get("scribe")
@@ -470,6 +472,8 @@ def _write_private(path: Path, data: bytes) -> None:
         if hasattr(os, "fchmod"):
             os.fchmod(fd, 0o600)  # a pre-existing file keeps its old mode otherwise
         out.write(data)
+        out.flush()
+        os.fsync(fd)  # durable before `_write_json` renames it over a good record
 
 
 def _write_json(path: Path, value) -> None:
@@ -521,10 +525,15 @@ class MemoStore:
 
     def create(self, audio, duration_ms):
         memo_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(3)
-        _write_private(self.root / (memo_id + ".ogg"), audio)  # keep audio even if STT fails
+        audio_path = self.root / (memo_id + ".ogg")
+        _write_private(audio_path, audio)  # keep audio even if STT fails
         memo = {"id": memo_id, "createdAt": _now(), "durationMs": duration_ms, "transcript": None, "outputs": []}
-        with self.lock:
-            _write_json(self.root / (memo_id + ".json"), memo)
+        try:
+            with self.lock:
+                _write_json(self.root / (memo_id + ".json"), memo)
+        except BaseException:
+            audio_path.unlink(missing_ok=True)  # no record means nothing could ever list or delete it
+            raise
         return memo
 
     def update(self, memo_id, change):
@@ -539,8 +548,9 @@ class MemoStore:
         with self.lock:
             if not path.exists():
                 raise _Refusal(404, "memo not found")
-            path.unlink()
+            # Audio first: if this stops halfway, the record still lists and can be deleted again.
             (self.root / (memo_id + ".ogg")).unlink(missing_ok=True)
+            path.unlink()
 
     def page(self, limit, before):
         ids = sorted((p.stem for p in self.root.glob("*.json") if _MEMO_ID.fullmatch(p.stem)), reverse=True)
@@ -550,8 +560,12 @@ class MemoStore:
         for memo_id in ids[:limit]:
             try:
                 memos.append(self.get(memo_id))
-            except _Refusal:  # deleted between listing and reading
-                continue
+            except _Refusal as refusal:
+                if refusal.status == 404:  # deleted between listing and reading
+                    continue
+                # Keep an unreadable record visible so its audio can still be found and deleted.
+                memos.append({"id": memo_id, "createdAt": None, "durationMs": 0, "transcript": None,
+                              "outputs": [], "unreadable": True})
         return memos, (ids[limit - 1] if len(ids) > limit else None)
 
     def custom_profiles(self):
@@ -585,7 +599,7 @@ def _profile_fields(body, targets, *, partial):
         elif not partial and name != "description":
             raise _Refusal(400, "%s is required" % name)
     if "target" in body:
-        if body["target"] is not None and body["target"] not in targets:
+        if body["target"] is not None and (not isinstance(body["target"], str) or body["target"] not in targets):
             raise _Refusal(400, "unknown target")
         fields["target"] = body["target"]
     return fields
@@ -626,7 +640,7 @@ def make_server(config: ScribeConfig, *,
         if not config.targets:
             raise _Refusal(400, "no rewrite targets are configured")
         target_id = target_id or profile.get("target") or next(t for t, v in config.targets.items() if v.default)
-        if target_id not in config.targets:
+        if not isinstance(target_id, str) or target_id not in config.targets:
             raise _Refusal(400, "unknown target")
         target = config.targets[target_id]
         started = time.monotonic()

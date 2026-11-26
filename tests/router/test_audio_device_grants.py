@@ -42,15 +42,27 @@ def test_other_route_grant_is_denied_before_upstream(store):
     assert transport.calls == []
 
 
+TTS_BODY = {"purpose": "tts", "input": "hello", "response_format": "pcm16"}
+
+
 def test_stt_grant_does_not_grant_speech(store):
-    status, _, transport = _call(store, ["dark-tts"], [STT_PATH], path="/v1/audio/speech",
-                                 body={"purpose": "tts", "input": "hello", "response_format": "pcm16"})
+    status, _, transport = _call(store, ["dark-tts"], [STT_PATH], path="/v1/audio/speech", body=TTS_BODY)
     assert status == 403 and transport.calls == []
 
 
-def test_unresolvable_body_is_rejected_without_upstream(store):
-    status, _, transport = _call(store, ["dark-stt"], [STT_PATH], body={"audio_b64": "AQACAA=="})
-    assert status == 400 and transport.calls == []
+def test_speech_path_without_its_route_grant_is_denied_before_upstream(store):
+    # The path is granted, so this reaches the route-grant check itself.
+    status, payload, transport = _call(store, ["dark-stt"], ["/v1/audio/speech"], path="/v1/audio/speech",
+                                       body=TTS_BODY)
+    assert status == 403 and payload["error"]["message"] == "API key does not grant this model"
+    assert transport.calls == []
+
+
+@pytest.mark.parametrize("body", [{"audio_b64": "AQACAA=="}, {**STT_BODY, "route": "no-such-route"}])
+def test_unresolvable_route_is_denied_for_device_keys_without_naming_routes(store, body):
+    status, payload, transport = _call(store, ["dark-stt"], [STT_PATH], body=body)
+    assert status == 403 and payload["error"]["type"] == "key_access_denied"
+    assert transport.calls == []
 
 
 def test_audio_paths_are_grantable_but_unknown_paths_are_not(store):

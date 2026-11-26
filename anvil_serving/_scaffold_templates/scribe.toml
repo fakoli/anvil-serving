@@ -16,6 +16,7 @@ router_key_file = "scribe.key"
 allowed_logins_env = "ANVIL_SCRIBE_LOGINS"
 data_dir = "/var/lib/anvil-scribe"
 listen_host = "127.0.0.1"
+# Also the Compose healthcheck port and `port` in serves.scribe.toml; change all three together.
 listen_port = 8790
 
 # Rewrite targets: the allowlisted gateway chat aliases a stored memo can be

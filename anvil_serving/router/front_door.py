@@ -3025,9 +3025,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self._error(400, "invalid_request", "body must be a JSON object",
                                 dialect=dialect)
                     return
-                # A device key's audio model grant is the selected route id.
+                # A device key's audio model grant is the selected route id. An unresolvable
+                # route (None) is refused for device keys too, so 403-versus-404 never reveals
+                # which route ids exist; the operator token still gets the gateway's own error.
                 route_id = audio.route_id(audio_kind, body)
-                if route_id is not None and not self._device_model_allowed(route_id, normalize=False):
+                if not self._device_model_allowed(route_id, normalize=False):
                     return
                 if not audio.acquire():
                     self._error(503, "server_busy", "audio gateway busy; try again later",

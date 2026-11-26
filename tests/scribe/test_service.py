@@ -319,6 +319,56 @@ def test_refuses_unknown_login_origin_and_oversize(service):
     assert request(base, "GET", "/v1/memos")[0] == 403
     assert request(base, "GET", "/v1/memos/profiles", headers={**AUTH, "Origin": "https://evil.example"})[0] == 403
     assert request(base, "POST", "/v1/memos/preview", b"", {"Content-Type": ctype, **AUTH})[0] == 413
+    # An announced oversize body is refused before any byte of it is read.
+    assert raw_response(base, "/v1/memos", memo.ScribeConfig.max_upload_bytes + 1).startswith(b"HTTP/1.0 413")
+
+
+def raw_response(base, path, length, ctype="multipart/form-data; boundary=b"):
+    """Send only a request head announcing ``length`` body bytes; return the first response bytes."""
+    import socket
+    conn = socket.create_connection(("127.0.0.1", int(base.rsplit(":", 1)[1])), timeout=5)
+    try:
+        conn.sendall(("POST %s HTTP/1.1\r\nHost: x\r\nTailscale-User-Login: %s\r\nContent-Type: %s\r\n"
+                      "Content-Length: %d\r\n\r\n" % (path, LOGIN, ctype, length)).encode())
+        return conn.recv(64)
+    finally:
+        conn.close()
+
+
+@pytest.mark.parametrize("target", [["voice"], {"id": "voice"}, 7])
+def test_non_string_targets_are_refused_not_crashed(service, target):
+    base, _, _ = service
+    ctype, body = multipart({"audio": ("m.ogg", b"x" * 8)})
+    _, _, stored = request(base, "POST", "/v1/memos", body, {"Content-Type": ctype, **AUTH})
+    assert request(base, "POST", "/v1/memos/%s/process" % stored["id"],
+                   {"profile": "note", "target": target}, AUTH)[0] == 400
+    assert request(base, "POST", "/v1/memos/profiles",
+                   {"label": "X", "prompt": "Y", "target": target}, AUTH)[0] == 400
+
+
+def test_a_failed_record_write_leaves_no_orphaned_audio(tmp_path, monkeypatch):
+    store = memo.MemoStore(tmp_path / "memos")
+    monkeypatch.setattr(memo, "_write_json", lambda *args: (_ for _ in ()).throw(OSError("disk full")))
+    with pytest.raises(OSError):
+        store.create(b"audio", 1000)
+    assert not list((tmp_path / "memos").glob("*.ogg"))
+
+
+def test_an_unreadable_record_stays_listed_and_deletable(tmp_path):
+    store = memo.MemoStore(tmp_path / "memos")
+    good = store.create(b"audio", 1000)
+    (tmp_path / "memos" / "20000101T000000Z-abcdef.json").write_text("{", encoding="utf-8")
+    memos, _ = store.page(10, None)
+    assert [m["id"] for m in memos] == [good["id"], "20000101T000000Z-abcdef"]
+    assert memos[1]["unreadable"] is True
+    store.delete("20000101T000000Z-abcdef")
+    assert [m["id"] for m in store.page(10, None)[0]] == [good["id"]]
+
+
+def test_a_config_path_that_is_a_directory_fails_closed(tmp_path):
+    (tmp_path / "scribe.toml").mkdir()  # what Docker leaves for a missing short-syntax bind
+    with pytest.raises(memo.ConfigError, match="cannot read"):
+        memo.load_config(str(tmp_path / "scribe.toml"), env=ENV)
 
 
 def test_failed_transcription_keeps_audio_and_a_visible_record(tmp_path):
@@ -686,6 +736,8 @@ def test_buffered_uploads_are_admitted_before_any_body_is_read(tmp_path, monkeyp
         first.start()
         assert started.wait(5)
         assert request(base, "POST", "/v1/memos/preview", body, {"Content-Type": ctype, **AUTH})[0] == 503
+        # Refused before reading: a head announcing a body that never comes still gets 503 at once.
+        assert raw_response(base, "/v1/memos/preview", 1000).startswith(b"HTTP/1.0 503")
     finally:
         release.set()
         first.join(5)
