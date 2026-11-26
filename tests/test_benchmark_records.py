@@ -145,6 +145,18 @@ def test_decision_summary_workload_fills_generated_record_gaps(tmp_path):
     assert record["workload"] == {"context_tokens": "fixed C1", "concurrency": "C1; configured C4"}
 
 
+def test_decision_summary_numeric_workload_fills_generated_record_gaps(tmp_path):
+    finding = tmp_path / "findings"
+    finding.mkdir()
+    _write(finding / "2026-11-26-numeric.md", "# Numeric\n")
+    evidence = finding / "2026-11-26-numeric-evidence"
+    evidence.mkdir()
+    _write(evidence / "artifact-manifest.json", {"schema": "anvil-serving.benchmark-artifact-set/v1", "campaign": {}, "artifact_roles": []})
+    _write(evidence / "summary.json", {"schema": "anvil-serving.benchmark-decision-summary/v1", "workload": {"context_tokens": 32768, "concurrency": [1, 4]}})
+    record = records.build_index(finding)["records"][0]
+    assert record["workload"] == {"context_tokens": 32768, "concurrency": [1, 4]}
+
+
 def test_repository_findings_build_and_discover():
     index = records.build_index(REPO / "docs" / "findings")
     assert index["counts"]["records"] > 100

@@ -49,11 +49,9 @@
     },
     {
       "role": "run-plan",
-      "status": "retained",
-      "files": [
-        "coverage-and-gaps.md"
-      ],
-      "reason": "Current coverage and explicitly absent gates."
+      "status": "missing",
+      "files": [],
+      "reason": "The original frozen plan is private and not retained publicly; coverage-and-gaps is retrospective, not a run plan."
     },
     {
       "role": "configuration-and-identity",
@@ -93,6 +91,7 @@
         "raw-request-receipts.json",
         "c8-c16-capacity-receipts.json",
         "quality-scope-receipts.json",
+        "long-context-receipts.json",
         "ernie-fixed-60-summary.json",
         "ernie-long-context-c1.json",
         "ernie-c16-summary.json",

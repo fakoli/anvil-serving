@@ -1,0 +1,43 @@
+{
+  "limitations": "Each record is a bounded C1 observation; no cold/warm inference or broad reliability claim.",
+  "privacy_boundary": "No prompt, completion, reasoning, endpoint, host, or local source path retained.",
+  "purpose": "Public-safe long-context timing and completion projection.",
+  "records": [
+    {
+      "actual_prompt_tokens": 32185.0,
+      "passed": null,
+      "source_sha256": "32cf2321fb10f4341fe9bd37079a2a765731ca25634020c8efe0839e8de2ec49",
+      "ttft_s": 4.249424743000418,
+      "wall_s": null
+    },
+    {
+      "actual_prompt_tokens": 63150.0,
+      "passed": null,
+      "source_sha256": "579a13911e96968860cd90c53dd849d9a442dde6446f8fb708a3d806e3762c82",
+      "ttft_s": 7.030577583936974,
+      "wall_s": null
+    },
+    {
+      "actual_prompt_tokens": 60807,
+      "passed": true,
+      "source_sha256": "cec6a06d97acfde8f01347e99f946e2346454301bd6d41f29588efeb97ac1fe4",
+      "ttft_s": 5.644140155054629,
+      "wall_s": 6.005154002923518
+    },
+    {
+      "actual_prompt_tokens": 85713,
+      "passed": true,
+      "source_sha256": "d28347482ede427f570a09495be1df6fd166fed73fc57c30cce12ef3acdd30b7",
+      "ttft_s": 8.226585248950869,
+      "wall_s": 8.558972815051675
+    },
+    {
+      "actual_prompt_tokens": 999990,
+      "passed": true,
+      "source_sha256": "36e80cf4ab423806c2a96d69f29376e635cfc70164cac0b6212ff7a7f7a52be9",
+      "ttft_s": 201.11144572217017,
+      "wall_s": 202.00478810304776
+    }
+  ],
+  "schema": "anvil-serving.sanitized-long-context-receipts/v1"
+}

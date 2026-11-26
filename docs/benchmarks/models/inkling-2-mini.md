@@ -29,12 +29,20 @@ Original mixed-precision runtime at C1/24K with a 16,384-token maximum output; Q
 
 ## Evidence by measurement class
 
+### Original runtime fixed set
+
+**Status:** completed bounded C1/24K lane. **Measured:** 44/60 correct and complete-correct, four length stops. **Limits:** no matched Swift control. **Evidence:** dated finding and `inkling-original-summary.json`.
+
 At the matched 16,384-token maximum output, the [original Inkling checkpoint](https://huggingface.co/thinkingmachines/Inkling-2-Mini) runtime transported
 all 60 fixed-set requests; 44/60 were correct and complete-correct, with four
 length stops and a 4.274-second median for complete-correct responses. The
 earlier reduced 4,096-token cap result was 42/60 scored correct and 41/60
 complete-correct, with 13 length stops. These are bounded local corpus results,
 not a quality comparison with another model.
+
+### Q8 protocol lane
+
+**Status:** bounded protocol checks completed; quality incomplete. **Measured:** short coding, JSON, and 20/20 shared-prefix tools passed. **Limits:** quality run ended OOM; no fixed-set or throughput result. **Evidence:** `inkling-q8-summary.json`.
 
 Direct coding, chart, JSON, tool, tool-result, streaming, and image/protocol
 checks passed in their stated bounded scopes. The distinct Q8 lane passed short

@@ -17,6 +17,7 @@
     "raw-request-receipts.json",
     "c8-c16-capacity-receipts.json",
     "quality-scope-receipts.json",
+    "long-context-receipts.json",
     "ernie-fixed-60-summary.json",
     "ernie-c16-summary.json",
     "inkling-original-summary.json",
@@ -24,6 +25,11 @@
     "restoration.json",
     "identity.json",
     "coverage-and-gaps.md"
+  ],
+  "failures": [
+    "Q8 quality run ended OOM; no Q8 fixed-set result.",
+    "Fresh Swift C1 and C2 controls were refused by host-memory admission before creation.",
+    "ERNIE SWE scout: two call-budget exhaustions before grading."
   ],
   "headline_results": [
     {

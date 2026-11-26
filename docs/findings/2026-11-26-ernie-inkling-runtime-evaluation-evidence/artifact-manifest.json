@@ -28,8 +28,8 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "acf16b21d852d5e15e52884909e78a0d99475b4173200000ef740ee06354c30c",
-          "bytes": 2937
+          "sha256": "aecf6d9fdfc70517399911ece57a31e3a628f3e33e8adcdc2cd617545c0feb6b",
+          "bytes": 3095
         }
       ],
       "reason": "Evidence index and measurement boundary."
@@ -60,15 +60,9 @@
     },
     {
       "role": "run-plan",
-      "status": "retained",
-      "files": [
-        {
-          "path": "coverage-and-gaps.md",
-          "sha256": "343d99946051b7adcfa4c7e58c40a73a4eb4b0436d479bd1c00acd922a91b9e7",
-          "bytes": 989
-        }
-      ],
-      "reason": "Current coverage and explicitly absent gates."
+      "status": "missing",
+      "files": [],
+      "reason": "The original frozen plan is private and not retained publicly; coverage-and-gaps is retrospective, not a run plan."
     },
     {
       "role": "configuration-and-identity",
@@ -118,8 +112,8 @@
       "files": [
         {
           "path": "summary.json",
-          "sha256": "b54caf5e15e1a842a1fba87d4e486dab96aea79eafad2c9e23d8d83ec8b1b3a5",
-          "bytes": 3077
+          "sha256": "827b219c5764721dd939a56ae3bdb1e9951db8b9bc05c5d66809023fd1737363",
+          "bytes": 3349
         },
         {
           "path": "raw-request-receipts.json",
@@ -135,6 +129,11 @@
           "path": "quality-scope-receipts.json",
           "sha256": "4c780733741e2949ab1076bd3e4603bf50aca079744c22d12422f94e9b92385b",
           "bytes": 1738
+        },
+        {
+          "path": "long-context-receipts.json",
+          "sha256": "89510b1427bd4b6cded4b5414e68c53b9806dc7cce9a4c3c5f7a5eca6378afc9",
+          "bytes": 1520
         },
         {
           "path": "ernie-fixed-60-summary.json",

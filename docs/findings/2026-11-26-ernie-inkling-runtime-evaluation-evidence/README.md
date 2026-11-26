@@ -17,6 +17,7 @@ summary; they support bounded interpretation but are not native raw evidence.
 | `raw-request-receipts.json` | 180 anonymous row-level request receipts | Request/event hashes, timings, token counts, and outcomes only; original native envelopes withheld |
 | `c8-c16-capacity-receipts.json` | Candidate-only C8/C16 timing projection | Public-safe aggregate cells bound to private source hashes; per-cell cache counters retained without a cold/warm inference |
 | `quality-scope-receipts.json` | Scorer sensitivity and bounded agentic/Aider/SWE scope | Public-safe counts and source hashes; SWE is incomplete |
+| `long-context-receipts.json` | Bounded C1 long-context timing and completion projection | Public-safe actual-token and timing rows bound to source hashes |
 | `ernie-fixed-60-summary.json` | Derived fixed-set paired aggregate | No prompt/answer text; not a quality tie or speed ranking |
 | `ernie-long-context-c1.json` | C1 long-context observations, including one 999,990-token lookup | Single-target evidence; not broad reliability |
 | `ernie-c16-summary.json` | Natural and length-controlled C16 aggregates | Descriptive cells, not a general capacity or speed claim |

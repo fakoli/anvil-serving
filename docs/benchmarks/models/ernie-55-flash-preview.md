@@ -29,12 +29,20 @@ Managed TP2 runtime; C1 long-context and bounded C8/C16 cells. Exact private rec
 
 ## Evidence by measurement class
 
+### Fixed-set quality
+
+**Status:** completed bounded comparison. **Measured:** ERNIE 46/60 and AZ-Focus 49/60 sequential C1 complete-correct. **Limits:** distinct completion totals and one length limit prevent a quality ranking. **Evidence:** dated finding and `quality-scope-receipts.json`.
+
 The matched 60-case text/reasoning set scored ERNIE 46/60 and AZ-Focus 49/60.
 Forty-four cases were correct for both; ERNIE alone answered two and AZ-Focus
 alone five. ERNIE summed 447.929 sequential request seconds and 95,688
 completion tokens, against 215.195 seconds and 36,662 tokens for AZ-Focus. On
 the 44 shared-correct cases, the sums were 128.202 and 107.965 seconds. This is
 a fixed local set, not a general quality or speed ranking.
+
+### Long-context retrieval
+
+**Status:** bounded C1 observations. **Measured:** source-bound rows through 999,990 actual input tokens. **Limits:** one target/position per row, not broad reliability. **Evidence:** `long-context-receipts.json`.
 
 An independent offline reconstruction verified all 180 stored HTTP request payload hashes. The frozen
 legacy scorer is retained unchanged; a visible-answer-only sensitivity scorer
@@ -48,12 +56,20 @@ input tokens: first model token at 201.111 seconds and correct completion at
 85,713 actual prompt tokens, respectively, and both passed. These are C1
 observations with one target at one position, not broad context reliability.
 
+### Candidate-only capacity
+
+**Status:** bounded C8/C16 aggregates. **Measured:** fixed-output timing and marker results. **Limits:** no native raw envelope is public and no saturation claim follows. **Evidence:** `c8-c16-capacity-receipts.json`.
+
 Bounded C8/C16 fixed-output cells measured 616/815 tokens/s from first output
 to last completion and 353/359 tokens/s over each entire batch. The C8/C16
 natural cells passed 8/8 and 16/16 semantic markers. A C1 length-limited
 16,384-token coding response measured 223.0 end-to-end tokens/s; a fixed
 8,192-token response measured 223.8. These output populations differ and none
 is a general service-speed or saturation claim.
+
+### Protocol and coding checks
+
+**Status:** bounded checks completed; SWE incomplete. **Measured:** agentic 3/3 and Aider 2/2. **Limits:** SWE stopped at call-budget exhaustion. **Evidence:** `quality-scope-receipts.json`.
 
 The independent coding/protocol checks passed: agentic 3/3 and Aider exercises
 2/2. The five-issue SWE scout resolved one issue, left two unresolved, and had
