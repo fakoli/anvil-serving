@@ -621,3 +621,30 @@ def test_home_out_dir_prints_quoted_shell_selection_before_next_steps(
     assert config_path("serves.toml") == str(target / "serves.toml")
     assert cli.main(["serves", "groups"]) == 0
     assert "llm-stack" in capsys.readouterr().out
+
+
+def test_every_file_a_scaffolded_serve_starts_is_scaffolded():
+    """A serve's `up` command must never point Docker at a file init does not write."""
+    import re
+    import tomllib
+    from anvil_serving.init import _SCAFFOLD_TEMPLATES, _templates_root
+    scaffolded = {destination for destination, _template, _source in _SCAFFOLD_TEMPLATES}
+    root = _templates_root()
+    for destination, template, _source in _SCAFFOLD_TEMPLATES:
+        if not (destination.startswith("serves") and destination.endswith(".toml")):
+            continue
+        for serve in tomllib.loads(root.joinpath(template).read_text(encoding="utf-8")).get("serve", []):
+            # Plain file names only; {dir}/../ paths point outside the scaffold on purpose.
+            for name in re.findall(r"\{dir\}/([A-Za-z0-9_-][A-Za-z0-9._-]*)(?![A-Za-z0-9._/-])", serve.get("up", "")):
+                if (destination, name) in _KNOWN_UNSCAFFOLDED:
+                    continue
+                assert name in scaffolded, f"{destination}: serve {serve['name']} needs unscaffolded {name}"
+
+
+# Pre-existing gaps found by the test above: experimental serves in serves.toml
+# start Compose files that init does not write yet. Remove an entry when its file
+# joins _SCAFFOLD_TEMPLATES; never add one for a new serve.
+_KNOWN_UNSCAFFOLDED = frozenset({
+    ("serves.toml", "docker-compose.experiment.yml"),
+    ("serves.toml", "docker-compose.flexibility.yml"),
+})

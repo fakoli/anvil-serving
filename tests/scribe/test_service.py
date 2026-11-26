@@ -557,3 +557,125 @@ def test_decodes_are_bounded_and_busy_uploads_keep_audio(tmp_path, monkeypatch):
         server.server_close()
     assert memo.load_config(write_manifest(tmp_path, {**BASE, "max_concurrent_transcriptions": 4}), env=ENV
                             ).max_concurrent_transcriptions == 4
+
+
+# --- review fixes: admission, store privacy, scaffold credentials ------------
+
+posix_only = pytest.mark.skipif(os.name != "posix", reason="POSIX ownership and modes")
+
+
+@posix_only
+def test_store_is_private_and_files_are_owner_only(tmp_path):
+    store_dir = tmp_path / "memos"
+    store_dir.mkdir(mode=0o755)
+    os.chmod(store_dir, 0o755)
+    server, base = start(config(tmp_path))
+    try:
+        memo_id = record(base)[2]["id"]
+    finally:
+        server.shutdown()
+        server.server_close()
+    assert (os.stat(store_dir).st_mode & 0o777) == 0o700
+    for name in (memo_id + ".ogg", memo_id + ".json", corpus.EVALUATION_EXCLUDED_MARKER):
+        assert (os.stat(store_dir / name).st_mode & 0o777) == 0o600, name
+
+
+@posix_only
+def test_store_owned_by_another_user_is_refused(tmp_path, monkeypatch):
+    (tmp_path / "memos").mkdir()
+    real = os.geteuid()
+    monkeypatch.setattr(memo.os, "geteuid", lambda: real + 1)
+    with pytest.raises(OSError, match="owned by the service user"):
+        memo.make_server(config(tmp_path))
+
+
+@posix_only
+def test_reference_scaffold_loads_with_a_key_beside_it_and_logins_from_operator_env(tmp_path, monkeypatch):
+    example = Path(__file__).resolve().parents[2] / "examples" / "primary-node" / "scribe.toml"
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / "scribe.toml").write_bytes(example.read_bytes())
+    key = home / "scribe.key"
+    key.write_text("ask_scaffold\n", encoding="utf-8")
+    key.chmod(0o600)
+    (home / ".env").write_text("ANVIL_SCRIBE_LOGINS=owner@example.test\n", encoding="utf-8")
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
+    monkeypatch.setenv("ANVIL_SERVING_NO_HOME_ENV", "1")
+    monkeypatch.delenv("ANVIL_SCRIBE_LOGINS", raising=False)
+    loaded = memo.load_config(str(home / "scribe.toml"))
+    assert loaded.router_key == "ask_scaffold" and loaded.allowed_logins == {"owner@example.test"}
+    key.unlink()
+    with pytest.raises(memo.ConfigError, match="router_key_file"):
+        memo.load_config(str(home / "scribe.toml"))
+
+
+def test_connections_beyond_the_ceiling_are_dropped(tmp_path, monkeypatch):
+    import socket
+    monkeypatch.setattr(memo, "_MAX_CONNECTIONS", 1)
+    monkeypatch.setattr(memo, "_SOCKET_TIMEOUT_SECONDS", 5)
+    server, base = start(config(tmp_path))
+    port = int(base.rsplit(":", 1)[1])
+    idle = socket.create_connection(("127.0.0.1", port))
+    try:
+        import time as _time
+        _time.sleep(0.2)  # the idle connection holds the only slot
+        extra = socket.create_connection(("127.0.0.1", port), timeout=5)
+        try:  # dropped without a response: EOF, or a reset/abort depending on the OS
+            extra.sendall(b"GET /healthz HTTP/1.1\r\nHost: x\r\n\r\n")
+            assert extra.recv(64) == b""
+        except ConnectionError:
+            pass
+        extra.close()
+    finally:
+        idle.close()
+    _time.sleep(0.2)
+    try:
+        assert request(base, "GET", "/healthz")[0] == 200  # the slot is free again
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_buffered_uploads_are_admitted_before_any_body_is_read(tmp_path, monkeypatch):
+    started, release = threading.Event(), threading.Event()
+
+    def slow(ogg):
+        started.set()
+        release.wait(5)
+        return "slow"
+    monkeypatch.setattr(memo, "_MAX_BUFFERED_UPLOADS", 1)
+    server = memo.make_server(config(tmp_path, max_concurrent_transcriptions=4), transcribe=slow)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{server.server_port}"
+    ctype, body = multipart({"audio": ("p.ogg", b"y" * 8)})
+    first = threading.Thread(target=request, args=(base, "POST", "/v1/memos/preview", body,
+                                                    {"Content-Type": ctype, **AUTH}))
+    try:
+        first.start()
+        assert started.wait(5)
+        assert request(base, "POST", "/v1/memos/preview", body, {"Content-Type": ctype, **AUTH})[0] == 503
+    finally:
+        release.set()
+        first.join(5)
+        server.shutdown()
+        server.server_close()
+
+
+def test_a_slowly_dripped_body_is_refused(tmp_path, monkeypatch):
+    import socket
+    import time as _time
+    monkeypatch.setattr(memo, "_BODY_DEADLINE_SECONDS", 0.3)
+    server, base = start(config(tmp_path))
+    port = int(base.rsplit(":", 1)[1])
+    conn = socket.create_connection(("127.0.0.1", port), timeout=5)
+    try:
+        head = ("POST /v1/memos/preview HTTP/1.1\r\nHost: x\r\nTailscale-User-Login: %s\r\n"
+                "Content-Type: multipart/form-data; boundary=b\r\nContent-Length: 100\r\n\r\n" % LOGIN)
+        conn.sendall(head.encode() + b"x" * 10)
+        _time.sleep(0.5)
+        conn.sendall(b"x" * 10)
+        assert conn.recv(64).startswith(b"HTTP/1.0 408")
+    finally:
+        conn.close()
+        server.shutdown()
+        server.server_close()
