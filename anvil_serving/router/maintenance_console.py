@@ -1,4 +1,12 @@
-"""Local TTY acknowledgement of existing native maintenance, without new authority."""
+"""Local TTY acknowledgement of existing native maintenance, without new authority.
+
+By default every STOP and OPEN needs a typed YES at a terminal after its fresh
+preview. ``--assume-yes`` is an explicit, per-invocation operator opt-in that
+skips only that typed reply: each preview is still shown, must be fresh (at most
+60 seconds), and every native guard, fence and authorization still applies. The
+acknowledgement record says ``ASSUMED-BY-FLAG`` so the audit never claims a typed
+reply. No configuration file or environment variable can turn it on.
+"""
 import argparse
 from contextlib import redirect_stderr, redirect_stdout
 import json
@@ -42,26 +50,42 @@ def _expiry(preview):
             else preview['expires_at'])
 
 
-def _acknowledge(preview, phase):
-    """A fresh local human reply is required for each native preview."""
-    require(os.name == 'posix' and sys.stdin.isatty() and sys.stdout.isatty())
+def _visible_stdout():
+    """Under --assume-yes the previews must reach a terminal, pipe or file.
+
+    A discarded stream (``--quiet``'s capture buffer or /dev/null) would run STOP and
+    OPEN with nobody able to read what was approved.
+    """
+    if sys.stdout.isatty():
+        return True
+    try:
+        observed = os.fstat(sys.stdout.fileno())
+    except (AttributeError, OSError, ValueError):
+        return False
+    null = os.stat(os.devnull)
+    return (observed.st_dev, observed.st_ino) != (null.st_dev, null.st_ino)
+
+
+def _interactive():
+    return os.name == 'posix' and sys.stdin.isatty() and sys.stdout.isatty()
+
+
+def _acknowledge(preview, phase, assume_yes=False):
+    """A fresh local human reply is required for each native preview, unless opted out."""
+    require(_visible_stdout() if assume_yes is True else _interactive())
     remaining = _expiry(preview) - int(time.time())
     require(0 < remaining <= 60)
+    if assume_yes is True:
+        _show(preview, phase)
+        print(f'{phase} acknowledged by --assume-yes (no typed reply); remote-memory '
+              'completion is accepted as UNKNOWN.', flush=True)
+        return {'phase': phase, 'preview_sha256': digest(preview),
+                'acknowledged_at': int(time.time()), 'acknowledgement': 'ASSUMED-BY-FLAG',
+                'accepted_remote_memory_completion': 'UNKNOWN'}
     # Discard queued answers before showing this phase's exact fresh preview.
     # A reply to STOP must never be reused as the separate OPEN acknowledgement.
     termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)
-    print('\nAction:', phase, flush=True)
-    print('Exact native preview SHA-256:', digest(preview), flush=True)
-    print('Preview expires (UTC):', time.strftime('%Y-%m-%d %H:%M:%S',
-                                                time.gmtime(_expiry(preview))), flush=True)
-    print('Remote memory completion remains UNKNOWN; this is not a drain.', flush=True)
-    if phase == 'STOP':
-        print('Stop container:', preview['incarnation']['container_id'], flush=True)
-        print('Then start only the declared successor configuration:',
-              preview['successor']['configuration_revision'], flush=True)
-    else:
-        print('Reopen configuration:', preview['closure']['configuration_revision'], flush=True)
-        print('Owner generation:', preview['closure']['generation'], flush=True)
+    _show(preview, phase)
     print(f'To approve {phase} for this exact preview and accept UNKNOWN remote-memory '
           f'completion, type YES and press Enter within {remaining} seconds. '
           'Ctrl-C leaves the operation held:', flush=True)
@@ -74,13 +98,28 @@ def _acknowledge(preview, phase):
             'accepted_remote_memory_completion': 'UNKNOWN'}
 
 
+def _show(preview, phase):
+    print('\nAction:', phase, flush=True)
+    print('Exact native preview SHA-256:', digest(preview), flush=True)
+    print('Preview expires (UTC):', time.strftime('%Y-%m-%d %H:%M:%S',
+                                                time.gmtime(_expiry(preview))), flush=True)
+    print('Remote memory completion remains UNKNOWN; this is not a drain.', flush=True)
+    if phase == 'STOP':
+        print('Stop container:', preview['incarnation']['container_id'], flush=True)
+        print('Then start only the declared successor configuration:',
+              preview['successor']['configuration_revision'], flush=True)
+    else:
+        print('Reopen configuration:', preview['closure']['configuration_revision'], flush=True)
+        print('Owner generation:', preview['closure']['generation'], flush=True)
+
+
 def _quiet_call(function, *args, **kwargs):
     # Native operations own lifecycle and fences. Never print secret-bearing errors.
     with open(os.devnull, 'w') as quiet, redirect_stdout(quiet), redirect_stderr(quiet):
         return function(*args, **kwargs)
 
 
-def _authorize_and_confirm(directory, config_path, phase):
+def _authorize_and_confirm(directory, config_path, phase, assume_yes=False):
     config = _read(config_path)
     auth_path = Path(config['authorization'])
     before = _read(auth_path)
@@ -89,7 +128,7 @@ def _authorize_and_confirm(directory, config_path, phase):
     require(_read(directory / 'preview.json') == preview)
     print('Full protected preview:', directory / 'preview.json', flush=True)
     print('Exact target container:', before['expected_container_id'], flush=True)
-    acknowledgement = _acknowledge(preview, phase)
+    acknowledgement = _acknowledge(preview, phase, assume_yes)
     require(_read(config_path) == config and _read(auth_path) == before
             and _read(directory / 'preview.json') == preview)
     require(int(time.time()) < _expiry(preview))
@@ -123,7 +162,7 @@ def _prepare_stop(template, directory, binding):
     return config
 
 
-def _operate(plan, state):
+def _operate(plan, state, assume_yes=False):
     index_path = state / 'current.json'
     prior = _read(index_path) if os.path.lexists(index_path) else None
     binding = digest(plan)
@@ -143,7 +182,7 @@ def _operate(plan, state):
         _prepare_stop(plan['stop_config'], directory, binding)
         maintenance._publish(index_path, {'plan_sha256': binding, 'operation_id': operation_id},
                              expected=digest(prior) if prior else None)
-        result = _authorize_and_confirm(directory, directory / 'config.json', 'STOP')
+        result = _authorize_and_confirm(directory, directory / 'config.json', 'STOP', assume_yes)
         require(result.get('stopped') is True)
     receipt_path = directory / 'stop-receipt.json'
     receipt = completed_receipt(str(receipt_path))
@@ -185,7 +224,7 @@ def _operate(plan, state):
     old = _read(readmit_index) if os.path.lexists(readmit_index) else None
     maintenance._publish(readmit_index, {'operation_id': operation_id},
                          expected=digest(old) if old else None)
-    result = _authorize_and_confirm(readmit_directory, readmit_directory / 'config.json', 'OPEN')
+    result = _authorize_and_confirm(readmit_directory, readmit_directory / 'config.json', 'OPEN', assume_yes)
     require(result.get('readmitted') is True and result.get('state') == 'admitting')
     # Tier holds remain explicit, separate managed operations after live readback.
     return {'readmitted': True, 'drained': False, 'remote_memory_terminal': 'UNKNOWN',
@@ -193,8 +232,8 @@ def _operate(plan, state):
             'state_directory': str(directory)}
 
 
-def run(config):
-    require(os.name == 'posix' and sys.stdin.isatty() and sys.stdout.isatty())
+def run(config, assume_yes=False):
+    require(os.name == 'posix' and (_visible_stdout() if assume_yes is True else _interactive()))
     path = _absolute_path(config)
     plan = _read(path)
     require(type(plan) is dict and set(plan) == {'schema', 'stop_config', 'state_dir'}
@@ -208,17 +247,24 @@ def run(config):
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         print('Protected cutover plan SHA-256:', digest(plan), flush=True)
         print('This command preserves all individual tier holds.', flush=True)
-        return _operate(plan, state)
+        if assume_yes is True:
+            print('--assume-yes: STOP and OPEN proceed without a typed YES once each fresh '
+                  'preview is shown.', flush=True)
+        return _operate(plan, state, assume_yes)
     finally:
         os.close(fd)
 
 
 def dispatch(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+    # No abbreviations: '--assume' must never switch the bypass on.
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument('--config', required=True)
+    parser.add_argument('--assume-yes', action='store_true',
+                        help='skip the typed YES for STOP and OPEN for this invocation only; '
+                             'previews, expiry and every native guard still apply')
     args = parser.parse_args(argv)
     try:
-        print(json.dumps(run(args.config)))
+        print(json.dumps(run(args.config, assume_yes=args.assume_yes)))
         return 0
     except (Exception, KeyboardInterrupt):
         print('Maintenance console HOLD. Native guards remain intact; preserve the '

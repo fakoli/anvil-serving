@@ -24,6 +24,11 @@ All notable changes to this project are documented here. The format is based on
   custom profiles are managed over `/v1/memos/profiles` and stored with the
   memos, and `GET /v1/memos` (cursor paged), `GET` and `DELETE /v1/memos/{id}`
   provide history.
+- `router maintenance-console --assume-yes` runs a prepared STOP and OPEN
+  without the typed YES, for one explicit invocation. Previews are still
+  printed and must be fresh, native guards and authorizations still apply, the
+  acknowledgement is recorded as `ASSUMED-BY-FLAG`, and it is never on by
+  default or from configuration.
 
 ### Changed
 

@@ -25,6 +25,24 @@ a model or grant maintenance authority. Its plan has exactly these fields:
 }
 ```
 
+## Unattended acknowledgement (opt-in)
+
+When you have already decided to run a prepared cutover and don't want to type
+YES twice, pass `--assume-yes` for that one run:
+
+```bash
+anvil-serving router maintenance-console --config /protected/router-cutover.json --assume-yes
+```
+
+It skips only the typed reply. Each STOP and OPEN preview is still printed,
+must still be fresh (no more than 60 seconds old), and every native ownership
+guard, writer fence and authorization still applies. The acknowledgement record
+says `ASSUMED-BY-FLAG` instead of `YES`, so the audit trail never claims a typed
+reply. The command no longer needs a terminal, but its output must reach a
+terminal, pipe or file you can read: `--quiet`, `--json` (which captures stdout)
+or a redirect to `/dev/null` is refused, and the console stops with its HOLD message. It is off unless you pass the exact flag (abbreviations are refused);
+no configuration file or environment variable can enable it.
+
 All paths must be absolute. Keep the plan, authorization, and operation records
 outside Git. See [acknowledged router maintenance](router.md#acknowledged-router-maintenance)
 for the native configuration and authorization contract.
