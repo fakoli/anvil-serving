@@ -6,6 +6,12 @@ through ``POST /v1/audio/transcriptions`` with a route-bound device key, stores
 the audio and transcript, and returns the transcript. ``/v1/memos/preview``
 transcribes a trailing window for live text and stores nothing.
 
+A memo may name a conversion mode (``[voice.memo.modes.<id>]``: a label, a chat
+alias and instructions). After transcription the raw text is rewritten through
+the gateway's ``POST /v1/chat/completions`` with the same device key, and both
+the raw transcript and the converted text are stored. ``GET /v1/memos/modes``
+lists mode ids and labels only; prompts and aliases stay server-side.
+
 Trust model: the listener binds loopback only, and the ``Tailscale-User-Login``
 header is trusted because ``tailscale serve`` is the only remote path to it.
 Logs carry method, path, status, sizes, timing and allow decisions only; never
@@ -41,6 +47,8 @@ ConfigError = voice_config.ConfigError
 
 MEMOS_PATH = "/v1/memos"
 PREVIEW_PATH = "/v1/memos/preview"
+MODES_PATH = "/v1/memos/modes"
+CHAT_PATH = "/v1/chat/completions"
 HEALTH_PATH = "/healthz"
 TRANSCRIPTIONS_PATH = "/v1/audio/transcriptions"
 IDENTITY_HEADER = "Tailscale-User-Login"
@@ -54,8 +62,10 @@ _MAX_RESPONSE_BYTES = 1024 * 1024
 _KEYS = frozenset({
     "router_url", "router_key_env", "router_key_file", "route", "allowed_logins_env", "allowed_origin_pattern",
     "data_dir", "listen_host", "listen_port", "segment_seconds", "max_upload_bytes",
-    "timeout_seconds",
+    "timeout_seconds", "conversion_timeout_seconds", "modes",
 })
+_MODE_ID = re.compile(r"[a-z0-9][a-z0-9_-]{0,31}\Z")
+_MODE_KEYS = frozenset({"label", "model", "prompt"})
 _MARKER_TEXT = (
     "Captured voice memos: user content, not evidence.\n"
     "Never use this audio or these transcripts to train, fine-tune, or evaluate a model.\n"
@@ -64,7 +74,14 @@ _MARKER_TEXT = (
 
 
 class TranscriptionError(RuntimeError):
-    """A content-free gateway transcription failure."""
+    """A content-free gateway transcription or conversion failure."""
+
+
+@dataclass(frozen=True)
+class Mode:
+    label: str
+    model: str = field(repr=False)
+    prompt: str = field(repr=False)
 
 
 @dataclass(frozen=True)
@@ -80,6 +97,32 @@ class MemoConfig:
     segment_seconds: int = 110
     max_upload_bytes: int = 8 * 1024 * 1024
     timeout_seconds: float = 60.0
+    # The client waits about 90 s for STT plus conversion; a slow LLM returns the raw transcript.
+    conversion_timeout_seconds: float = 45.0
+    modes: Mapping = field(default_factory=dict)
+
+
+def _seconds(table, key, default):
+    value = table.get(key, default)
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 1 <= value <= 600:
+        raise ConfigError("voice.memo.%s must be from 1 through 600" % key)
+    return float(value)
+
+
+def _modes(table):
+    raw = table.get("modes", {})
+    if not isinstance(raw, dict) or len(raw) > 16:
+        raise ConfigError("voice.memo.modes must be a table of at most 16 modes")
+    modes = {}
+    for mode_id, spec in raw.items():
+        if (_MODE_ID.fullmatch(mode_id) is None or not isinstance(spec, dict)
+                or set(spec) - _MODE_KEYS or "model" not in spec):
+            raise ConfigError("voice.memo.modes.%s needs a lowercase id, a model and a prompt" % mode_id)
+        prompt = spec.get("prompt")
+        if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 8000:
+            raise ConfigError("voice.memo.modes.%s.prompt must be 1 to 8000 characters" % mode_id)
+        modes[mode_id] = Mode(label=_str(spec, "label", mode_id), model=_str(spec, "model"), prompt=prompt.strip())
+    return modes
 
 
 def _int(table, key, default, low, high):
@@ -159,10 +202,6 @@ def load_memo_config(path: Optional[str] = None, *, env: Optional[Mapping[str, s
     except re.error as exc:
         raise ConfigError("voice.memo.allowed_origin_pattern is not a valid regex") from exc
 
-    timeout = table.get("timeout_seconds", 60)
-    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not 1 <= timeout <= 600:
-        raise ConfigError("voice.memo.timeout_seconds must be from 1 through 600")
-
     return MemoConfig(
         router_url=router_url,
         router_key=router_key,
@@ -174,7 +213,9 @@ def load_memo_config(path: Optional[str] = None, *, env: Optional[Mapping[str, s
         origin_pattern=origin_pattern,
         segment_seconds=_int(table, "segment_seconds", 110, 1, MAX_SEGMENT_SECONDS),
         max_upload_bytes=_int(table, "max_upload_bytes", 8 * 1024 * 1024, 1024, 32 * 1024 * 1024),
-        timeout_seconds=float(timeout),
+        timeout_seconds=_seconds(table, "timeout_seconds", 60),
+        conversion_timeout_seconds=_seconds(table, "conversion_timeout_seconds", 45),
+        modes=_modes(table),
     )
 
 
@@ -260,6 +301,27 @@ def transcribe_segment(config: MemoConfig, wav: bytes) -> str:
     return text.strip()
 
 
+def convert_transcript(config: MemoConfig, mode: Mode, transcript: str) -> str:
+    """Rewrite a raw transcript with one mode through the gateway's chat path."""
+    payload = {"model": mode.model, "stream": False, "messages": [
+        {"role": "system", "content": mode.prompt},
+        {"role": "user", "content": transcript}]}
+    status, raw = _post_json(config.router_url + CHAT_PATH, payload,
+                             config.router_key, config.conversion_timeout_seconds)
+    if status != 200:
+        raise TranscriptionError("gateway returned HTTP %d" % status)
+    if len(raw) > _MAX_RESPONSE_BYTES:
+        raise TranscriptionError("gateway response too large")
+    try:
+        text = json.loads(raw.decode("utf-8"))["choices"][0]["message"]["content"]
+    except (UnicodeDecodeError, ValueError, KeyError, IndexError, TypeError):
+        raise TranscriptionError("gateway returned an invalid completion") from None
+    if not isinstance(text, str):
+        raise TranscriptionError("gateway returned an invalid completion")
+    # ponytail: drops inline reasoning a model may emit; the gateway normally separates it.
+    return text.rsplit("</think>", 1)[-1].strip()
+
+
 def transcribe_memo(config: MemoConfig, ogg: bytes) -> str:
     segments = split_wav(ogg_to_wav(ogg), config.segment_seconds)
     return " ".join(t for t in (transcribe_segment(config, s) for s in segments) if t)
@@ -276,10 +338,13 @@ def prepare_store(data_dir: Path) -> None:
 
 
 def make_memo_server(config: MemoConfig, *,
-                     transcribe: Optional[Callable[[bytes], str]] = None) -> ThreadingHTTPServer:
-    """Bind the memo listener; ``transcribe`` is injectable for hermetic tests."""
+                     transcribe: Optional[Callable[[bytes], str]] = None,
+                     convert: Optional[Callable[[Mode, str], str]] = None) -> ThreadingHTTPServer:
+    """Bind the memo listener; ``transcribe`` and ``convert`` are injectable for hermetic tests."""
     prepare_store(config.data_dir)
     transcriber = transcribe or (lambda ogg: transcribe_memo(config, ogg))
+    converter = convert or (lambda mode, text: convert_transcript(config, mode, text))
+    mode_list = {"modes": [{"id": mode_id, "label": mode.label} for mode_id, mode in config.modes.items()]}
 
     def origin_allowed(origin):
         return bool(origin) and config.origin_pattern.fullmatch(origin) is not None
@@ -318,16 +383,20 @@ def make_memo_server(config: MemoConfig, *,
             started = time.monotonic()
             if self.path == HEALTH_PATH:
                 return self._send(200, {"ok": True}, started)
+            if self.path == MODES_PATH:
+                if self.headers.get(IDENTITY_HEADER) not in config.allowed_logins:
+                    return self._send(403, {"error": "tailnet identity not allowed"}, started, "login refused")
+                return self._send(200, mode_list, started)
             self._send(404, {"error": "not found"}, started)
 
         def do_OPTIONS(self):
             started = time.monotonic()
             path = self.path.split("?", 1)[0]
-            if path not in (MEMOS_PATH, PREVIEW_PATH) or not origin_allowed(self.headers.get("Origin")):
+            if path not in (MEMOS_PATH, PREVIEW_PATH, MODES_PATH) or not origin_allowed(self.headers.get("Origin")):
                 return self._send(403, {"error": "origin not allowed"}, started, "preflight refused")
             self.send_response(204)
             self.send_header("Access-Control-Allow-Origin", self.headers["Origin"])
-            self.send_header("Access-Control-Allow-Methods", "POST")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.send_header("Access-Control-Max-Age", "600")
             self.send_header("Vary", "Origin")
@@ -357,6 +426,9 @@ def make_memo_server(config: MemoConfig, *,
                 if not audio:
                     raise ValueError("missing audio field")
                 duration_ms = int((fields.get("durationMs") or (None, b"0"))[1] or 0)
+                mode_id = (fields.get("mode") or (None, b""))[1].decode("utf-8").strip() or None
+                if mode_id is not None and path == MEMOS_PATH and mode_id not in config.modes:
+                    raise ValueError("unknown mode")
             except ValueError as error:
                 return self._send(400, {"error": str(error)}, started)
 
@@ -375,8 +447,16 @@ def make_memo_server(config: MemoConfig, *,
                                   started, type(error).__name__)
             memo = {"id": memo_id, "createdAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                     "durationMs": duration_ms, "transcript": transcript}
-            (config.data_dir / (memo_id + ".json")).write_text(
-                json.dumps(memo, ensure_ascii=False), encoding="utf-8")
-            self._send(200, memo, started)
+            record = config.data_dir / (memo_id + ".json")
+            record.write_text(json.dumps(memo, ensure_ascii=False), encoding="utf-8")  # raw first
+            note = ""
+            if mode_id is not None:
+                memo["mode"] = mode_id
+                try:
+                    memo["converted"] = converter(config.modes[mode_id], transcript) if transcript else ""
+                except _FAILURES as error:
+                    memo["converted"], note = None, "conversion " + type(error).__name__
+                record.write_text(json.dumps(memo, ensure_ascii=False), encoding="utf-8")
+            self._send(200, memo, started, note)
 
     return ThreadingHTTPServer((config.listen_host, config.listen_port), Handler)

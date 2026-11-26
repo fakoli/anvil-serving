@@ -122,7 +122,10 @@ class FakeGateway(BaseHTTPRequestHandler):
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         type(self).seen.append((self.path, self.headers["Authorization"], body))
-        data = json.dumps({"text": " hello memo ", "is_final": True}).encode()
+        if self.path == "/v1/chat/completions":
+            data = json.dumps({"choices": [{"message": {"content": "<think>plan</think>\n Polished memo. "}}]}).encode()
+        else:
+            data = json.dumps({"text": " hello memo ", "is_final": True}).encode()
         self.send_response(type(self).status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
@@ -246,9 +249,107 @@ def test_failed_transcription_keeps_audio(tmp_path):
 def test_preflight_and_health(service):
     base, _ = service
     status, headers, _ = request(base, "OPTIONS", "/v1/memos", headers={"Origin": "http://127.0.0.1:4000"})
-    assert status == 204 and headers["Access-Control-Allow-Methods"] == "POST"
+    assert status == 204 and headers["Access-Control-Allow-Methods"] == "GET, POST"
     assert request(base, "OPTIONS", "/v1/memos", headers={"Origin": "https://evil.example"})[0] == 403
     assert request(base, "GET", "/healthz")[0] == 200
+
+
+NOTE = memo.Mode(label="Clean note", model="llm.voice", prompt="Rewrite as a clean note.")
+
+
+def test_config_parses_modes_and_rejects_bad_ones(tmp_path):
+    path = tmp_path / "voice.toml"
+    path.write_text(
+        "[voice.memo]\n" + "\n".join(f"{k} = {json.dumps(v)}" for k, v in
+                                     {**BASE, "data_dir": str(tmp_path / "m")}.items())
+        + '\n[voice.memo.modes.note]\nlabel = "Clean note"\nmodel = "llm.voice"\nprompt = "Rewrite."\n',
+        encoding="utf-8")
+    loaded = memo.load_memo_config(str(path), env=ENV)
+    assert loaded.modes == {"note": memo.Mode("Clean note", "llm.voice", "Rewrite.")}
+    assert "llm.voice" not in repr(loaded.modes["note"])
+    for bad in ('[voice.memo.modes.Note]\nmodel = "llm.voice"\nprompt = "x"\n',
+                '[voice.memo.modes.note]\nprompt = "x"\n',
+                '[voice.memo.modes.note]\nmodel = "llm.voice"\nprompt = " "\n',
+                '[voice.memo.modes.note]\nmodel = "llm.voice"\nprompt = "x"\nurl = "http://127.0.0.1:1"\n'):
+        path.write_text(path.read_text(encoding="utf-8").split("[voice.memo.modes")[0] + bad, encoding="utf-8")
+        with pytest.raises(memo.ConfigError, match="modes"):
+            memo.load_memo_config(str(path), env=ENV)
+
+
+def test_reference_example_modes_are_valid():
+    import tomllib
+    from pathlib import Path
+    example = Path(__file__).resolve().parents[2] / "examples" / "primary-node" / "voice.toml"
+    modes = memo._modes(tomllib.loads(example.read_text(encoding="utf-8"))["voice"]["memo"])
+    assert set(modes) == {"note", "message", "minutes", "tasks", "clarify"}
+    assert {mode.model for mode in modes.values()} == {"llm.voice"}
+
+
+def test_conversion_goes_through_gateway_chat_with_mode_alias(tmp_path, fake_gateway):
+    cfg = config(tmp_path, router_url=fake_gateway)
+    assert memo.convert_transcript(cfg, NOTE, "um so buy milk") == "Polished memo."
+    [(path, auth, body)] = FakeGateway.seen
+    assert path == "/v1/chat/completions" and auth == "Bearer ask_synthetic"
+    assert body == {"model": "llm.voice", "stream": False, "messages": [
+        {"role": "system", "content": "Rewrite as a clean note."}, {"role": "user", "content": "um so buy milk"}]}
+
+
+@pytest.fixture
+def mode_service(tmp_path):
+    calls = []
+
+    def convert(mode, text):
+        calls.append((mode.label, text))
+        if text == "heard 13 bytes":
+            raise memo.TranscriptionError("gateway returned HTTP 504")
+        return f"[{mode.label}] {text}"
+
+    cfg = config(tmp_path, modes={"note": NOTE})
+    server = memo.make_memo_server(cfg, transcribe=lambda ogg: f"heard {len(ogg)} bytes", convert=convert)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{server.server_port}", cfg.data_dir, calls
+    server.shutdown()
+    server.server_close()
+
+
+def test_modes_are_listed_without_prompts_or_aliases(mode_service):
+    base, _, _ = mode_service
+    status, headers, data = request(base, "GET", "/v1/memos/modes",
+                                    headers={"Tailscale-User-Login": LOGIN, "Origin": STUDIO})
+    assert status == 200 and json.loads(data) == {"modes": [{"id": "note", "label": "Clean note"}]}
+    assert headers["Access-Control-Allow-Origin"] == STUDIO
+    assert request(base, "GET", "/v1/memos/modes")[0] == 403
+
+
+def test_memo_with_mode_stores_raw_and_converted(mode_service):
+    base, store, calls = mode_service
+    ctype, body = multipart({"audio": ("m.ogg", b"x" * 7), "mode": (None, b"note")})
+    status, _, data = request(base, "POST", "/v1/memos", body, {"Content-Type": ctype, "Tailscale-User-Login": LOGIN})
+    stored = json.loads(data)
+    assert status == 200 and stored["transcript"] == "heard 7 bytes" and stored["mode"] == "note"
+    assert stored["converted"] == "[Clean note] heard 7 bytes"
+    assert json.loads((store / (stored["id"] + ".json")).read_text(encoding="utf-8")) == stored
+    assert calls == [("Clean note", "heard 7 bytes")]
+
+
+def test_failed_conversion_still_returns_and_keeps_raw_transcript(mode_service):
+    base, store, _ = mode_service
+    ctype, body = multipart({"audio": ("m.ogg", b"x" * 13), "mode": (None, b"note")})
+    status, _, data = request(base, "POST", "/v1/memos", body, {"Content-Type": ctype, "Tailscale-User-Login": LOGIN})
+    stored = json.loads(data)
+    assert status == 200 and stored["transcript"] == "heard 13 bytes" and stored["converted"] is None
+    assert json.loads((store / (stored["id"] + ".json")).read_text(encoding="utf-8"))["converted"] is None
+
+
+def test_unknown_mode_is_refused_before_storing_and_preview_ignores_mode(mode_service):
+    base, store, calls = mode_service
+    before = set(store.iterdir())
+    ctype, body = multipart({"audio": ("m.ogg", b"x" * 5), "mode": (None, b"sonnet")})
+    assert request(base, "POST", "/v1/memos", body, {"Content-Type": ctype, "Tailscale-User-Login": LOGIN})[0] == 400
+    status, _, data = request(base, "POST", "/v1/memos/preview", body,
+                              {"Content-Type": ctype, "Tailscale-User-Login": LOGIN})
+    assert status == 200 and json.loads(data) == {"transcript": "heard 5 bytes"}
+    assert set(store.iterdir()) == before and calls == []
 
 
 def test_store_is_marked_and_refused_by_corpus_validation(service):
