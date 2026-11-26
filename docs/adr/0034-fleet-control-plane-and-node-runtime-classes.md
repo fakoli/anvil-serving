@@ -151,7 +151,7 @@ result in a heterogeneous fleet and must not be reported as failure.
 What is fleet-level is the capability question — is `llm.primary` served
 anywhere, and by what — not placement.
 
-**2026-09-05 amendment — bounded same-host replicas (implemented; see the 2026-11-26 note below).**
+**2026-09-05 amendment — bounded same-host replicas (implemented; see the 2026-11-26 amendment below).**
 This no-arbitration boundary permits one already-selected logical tier to
 declare an optional set of 2–16 equivalent members on its one declared host.
 Alias resolution remains one decision: an alias selects exactly one tier. Only
@@ -170,19 +170,22 @@ returned to the caller without selecting another member. Until the bounded
 replica contract is implemented, a tier continues to have one endpoint.
 
 **2026-11-26 amendment — replica implementation status.**
-The bounded same-host replica contract above is implemented, not pending: #472
-delivered replica tiers in the router request path on the day that amendment
-was written. Two of its statements are therefore out of date. First, a tier may
+The bounded same-host replica contract above is implemented, not pending: PR #472
+delivered replica tiers in the router request path within a day of that
+amendment. Two of its statements are out of date. First, a tier may
 now declare 2–16 member endpoints on one `host_id`, and configuration whose
 members name different hosts is rejected. Second, member selection is no longer
 round robin only. `replica_strategy` is `round_robin`, the default, or
 `capacity`, which orders already eligible members by local reservation ratio,
-then by bounded upstream pressure, then by a rotating member-ID tie. Both
-strategies choose only among ready, admitted members of the one tier the alias
-selected.
+then by bounded upstream pressure, then by a rotating member-ID tie. The
+capacity strategy comes from the
+[capacity scheduler PRD](../prds/replica-capacity-scheduler.md) and shipped in
+the same change; this ADR had specified round robin only. Both strategies
+choose only among ready, admitted members of the one tier the alias selected.
 
 Nothing else in this section changes. There is still no cross-host scheduler,
-no second tier candidate, and no selection of another member after dispatch.
+no second tier candidate, and no selection of another member once one has been
+selected.
 [Qualified same-host replicas](../CONFIGURATION.md#qualified-same-host-replicas)
 is the current configuration reference.
 
