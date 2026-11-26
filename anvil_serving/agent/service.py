@@ -46,7 +46,7 @@ from .. import __version__
 from ..control_plane.mcp.auth_file import AuthFileError, read_private_auth_file
 from ..envfile import resolve_env_value
 from ..paths import config_path
-from ..scribe.service import TranscriptionError, _BoundedServer, parse_multipart, transcribe_memo
+from ..scribe.service import TranscriptionError, _BoundedServer, transcribe_memo
 
 try:
     import tomllib
@@ -88,8 +88,7 @@ MAX_JSON_BODY = 64 * 1024  # MCP and notify bodies; only turns and answers carry
 MAX_MCP_BATCH = 16  # MCP 2025-06-18 dropped batching; older clients send a few messages at most
 # The wearer's answers get their own slots: an ASK holds a general slot while it waits for one.
 MAX_INFLIGHT_ANSWERS = 2
-# email.parser materializes every part, so an 8 MiB body of tiny parts costs ~15x its size in memory
-# and seconds of CPU. Clients send at most four fields; refuse anything near this before parsing.
+# Clients send at most four fields. parse_form refuses more than this before reading any part.
 MAX_FORM_PARTS = 16
 _SOCKET_TIMEOUT_SECONDS = 30  # an idle or stalled socket is dropped (socket reads only, not server waits)
 _BODY_DEADLINE_SECONDS = 60  # a body that drips in slower than this is refused
@@ -631,8 +630,8 @@ def _field(fields, name):
 
 
 def _form_boundary(content_type):
-    """The multipart boundary exactly as parse_multipart's email.parser reads it (decoy and RFC 2231
-    parameters included), or None. Only an ASCII boundary is valid (RFC 2046)."""
+    """The multipart boundary exactly as email.parser reads it (decoy and RFC 2231 parameters
+    included), or None. Only an ASCII boundary is valid (RFC 2046)."""
     header = email.parser.BytesParser(policy=email.policy.HTTP).parsebytes(
         b"Content-Type: " + (content_type or "").encode("latin-1") + b"\r\n\r\n", headersonly=True)
     boundary = header.get_boundary() if header.get_content_type() == "multipart/form-data" else None
@@ -643,10 +642,10 @@ _DELIMITER_TAIL = re.compile(rb"(--)?[ \t]*\Z")
 
 
 def _form_parts(boundary, body):
-    """The outer parts exactly as email.parser delimits them: the bytes between delimiter lines (a line
-    that starts with --boundary, then an optional -- and blanks), up to the close delimiter. A mid-line
-    --boundary is not a delimiter. Lines end at \\r\\n, \\r or \\n. The caller bounds the occurrence count,
-    so at most MAX_FORM_PARTS + 1 candidates are examined."""
+    """The raw parts of a multipart body (RFC 2046): the bytes between delimiter lines, each without
+    the line ending that belongs to the next delimiter, up to the close delimiter. A delimiter line
+    starts with --boundary, then an optional -- and blanks; a mid-line --boundary is data. Lines end
+    at \\r\\n, \\r or \\n. The caller bounds the occurrence count first, so few candidates are examined."""
     delimiter = b"--" + boundary.encode("ascii")
     parts, start, at = [], None, body.find(delimiter)
     while at != -1:
@@ -655,25 +654,37 @@ def _form_parts(boundary, body):
         tail = _DELIMITER_TAIL.match(body, at + len(delimiter), end)
         if tail and (at == 0 or body[at - 1] in b"\r\n"):
             if start is not None:
-                parts.append(body[start:at])
+                part = body[start:at]
+                parts.append(part[:-2] if part.endswith(b"\r\n") else
+                             part[:-1] if part.endswith((b"\r", b"\n")) else part)
             if tail.group(1):
                 return parts
             start = end + (2 if body[end:end + 2] == b"\r\n" else 1)
         at = body.find(delimiter, at + 1)
     if start is not None:
-        parts.append(body[start:])
+        parts.append(body[start:])  # no close delimiter
     return parts
 
 
-def _has_nested_part(boundary, body):
-    """True when an outer part is itself multipart/* or message/*: email.parser would also build its
-    inner parts, which the outer count never sees. Each part's headers are read by that same parser
-    (line endings, folding and encoded words included)."""
-    for part in _form_parts(boundary, body):
-        headers = email.parser.BytesParser(policy=email.policy.HTTP).parsebytes(part, headersonly=True)
-        if headers.get_content_maintype() in ("multipart", "message"):
-            return True
-    return False
+def parse_form(content_type, body) -> dict:
+    """``{field: (filename, bytes)}`` for a flat multipart/form-data body. email.parser never sees the
+    whole body, only one part at a time, and a part that is itself multipart/* or message/* is
+    refused, so a small body cannot expand into many parts however its headers are spelled."""
+    boundary = _form_boundary(content_type)
+    if boundary is None:
+        raise ValueError("expected multipart/form-data with a boundary")
+    # Any occurrence counts, not just delimiter lines, so this also bounds the walk in _form_parts.
+    if body.count(b"--" + boundary.encode("ascii")) > MAX_FORM_PARTS + 1:
+        raise ValueError("too many form fields")
+    fields = {}
+    for raw in _form_parts(boundary, body):
+        part = email.parser.BytesParser(policy=email.policy.HTTP).parsebytes(raw, headersonly=True)
+        if part.get_content_maintype() in ("multipart", "message"):
+            raise ValueError("nested form parts are not accepted")
+        name = part.get_param("name", header="content-disposition")
+        if name:
+            fields[name] = (part.get_filename(), part.get_payload(decode=True) or b"")
+    return fields
 
 
 def _length(headers) -> int:
@@ -836,16 +847,7 @@ def make_server(config: AgentConfig, *,
                     return self._notify(body, started)
                 if path == MCP_PATH:
                     return self._mcp(body, started)
-                content_type = self.headers.get("Content-Type")
-                boundary = _form_boundary(content_type)
-                if boundary is None:
-                    raise ValueError("expected multipart/form-data with a boundary")
-                # Over-counts (any occurrence, not just delimiter lines), so it can only refuse early.
-                if body.count(b"--" + boundary.encode("ascii")) > MAX_FORM_PARTS + 1:
-                    raise ValueError("too many form fields")
-                if _has_nested_part(boundary, body):
-                    raise ValueError("nested form parts are not accepted")
-                fields = parse_multipart(content_type, body)
+                fields = parse_form(self.headers.get("Content-Type"), body)
                 audio = fields.get("audio", (None, b""))[1]
                 if path == ANSWER_PATH:
                     return self._answer(fields, audio, started)

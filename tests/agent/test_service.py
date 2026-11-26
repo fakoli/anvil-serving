@@ -662,62 +662,59 @@ def test_logs_carry_no_content(live, capfd):
     assert "private-method-name" not in err and '"note": "mcp other,ping n=3"' in err
 
 
-def test_form_parts_are_delimited_the_way_email_parser_delimits_them():
-    import email.parser
-    import email.policy
+def test_form_fields_match_the_shared_parser_on_ordinary_forms():
+    from anvil_serving.scribe.service import parse_multipart
 
-    parser = email.parser.BytesParser(policy=email.policy.HTTP)
+    audio = b"OggS\x00\r\n\r--x\n\xff\r\n"  # line endings, a mid-line -- and a trailing CRLF in the data
+    ctype = "multipart/form-data; boundary=b"
     for nl in (b"\r\n", b"\n", b"\r"):
-        body = (b"preamble --b" + nl + b"--b \t" + nl + b"A: 1" + nl + nl + b"x --b y" + nl + b"--bz" + nl
-                + b"--b" + nl + b"A: 2" + nl + nl + b"z" + nl + b"--b-- " + nl + b"epilogue" + nl + b"--b" + nl)
-        whole = parser.parsebytes(b"Content-Type: multipart/form-data; boundary=b" + nl + nl + body)
-        assert [p["A"] for p in whole.iter_parts()] == ["1", "2"], nl
-        parts = agent._form_parts("b", body)
-        assert [parser.parsebytes(p, headersonly=True)["A"] for p in parts] == ["1", "2"], nl
+        body = (b"preamble" + nl + b"--b \t" + nl + b'Content-Disposition: form-data; name="text"' + nl + nl
+                + b"hello --b there" + nl + b"--b" + nl
+                + b'Content-Disposition: form-data; name="audio"; filename="a.ogg"' + nl
+                + b"Content-Type: audio/ogg" + nl + nl + audio + nl + b"--b--" + nl + b"epilogue" + nl)
+        assert agent.parse_form(ctype, body) == parse_multipart(ctype, body), nl
+        assert agent.parse_form(ctype, body) == {"text": (None, b"hello --b there"), "audio": ("a.ogg", audio)}, nl
 
 
-def test_a_form_with_too_many_parts_is_refused_before_parsing(live, monkeypatch):
-    parsed = []
-    monkeypatch.setattr(agent, "parse_multipart", lambda *args: parsed.append(args) or {})
+def test_parts_after_the_close_delimiter_are_never_fields():
+    body = (b'--b\r\nContent-Disposition: form-data; name="text"\r\n\r\nhi\r\n--b\r\n--b--\r\n'
+            b'Content-Disposition: form-data; name="y"\r\n\r\nlater\r\n--b--\r\n')
+    assert agent.parse_form("multipart/form-data; boundary=b", body) == {"text": (None, b"hi")}
+
+
+def test_forms_that_could_expand_are_refused(live):
+    def turn(body, ctype="multipart/form-data; boundary=testboundary123"):
+        status, _, data = live.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})
+        return status, json.loads(data)
+
     ctype, body = multipart({f"f{i}": (None, b"") for i in range(agent.MAX_FORM_PARTS + 1)})
-    status, _, data = live.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})
-    assert (status, json.loads(data), parsed) == (400, {"error": "too many form fields"}, [])
+    assert turn(body, ctype) == (400, {"error": "too many form fields"})
     # The boundary is read the way email.parser reads it, so decoy or RFC 2231 parameters cannot hide parts.
     for disguised in (ctype.replace("; boundary=", "; xboundary=zz; boundary="),
                       ctype.replace("boundary=", "boundary*=utf-8''")):
-        status, _, data = live.request("POST", "/v1/agent/turn", body, {"Content-Type": disguised, **OWNER})
-        assert (status, json.loads(data), parsed) == (400, {"error": "too many form fields"}, []), disguised
-    # A nested multipart/* or message/* part would make the parser build its inner parts too, however
-    # the part header is spelled: folded, bare-CR line endings, or an RFC 2047 encoded word.
-    for nl, nested_type in ((b"\r\n", b"multipart/mixed; boundary=c"), (b"\r\n", b"\r\n\tmessage/rfc822"),
-                            (b"\r", b"multipart/mixed; boundary=c"),
-                            (b"\r\n", b"=?utf-8?q?multipart/mixed?=; boundary=c")):
+        assert turn(body, disguised) == (400, {"error": "too many form fields"}), disguised
+    for unparseable in ("multipart/form-data", "text/plain; boundary=testboundary123"):
+        assert turn(body, unparseable) == (400, {"error": "expected multipart/form-data with a boundary"})
+    # A part that is itself multipart/* or message/* is refused however its header is spelled: folded,
+    # bare-CR line endings, an RFC 2047 encoded word, or after a mid-line --boundary in an earlier header.
+    nested_error = (400, {"error": "nested form parts are not accepted"})
+    for nl, nested_type, decoy in ((b"\r\n", b"multipart/mixed; boundary=c", b""),
+                                   (b"\r\n", b"\r\n\tmessage/rfc822", b""),
+                                   (b"\r", b"multipart/mixed; boundary=c", b""),
+                                   (b"\r\n", b"=?utf-8?q?multipart/mixed?=; boundary=c", b""),
+                                   (b"\r\n", b"multipart/mixed; boundary=c", b"X-Pad: --testboundary123z\r\n"),
+                                   (b"\r\n", b"multipart/mixed; boundary=c", b'X-Name: "x--testboundary123z"\r\n')):
         inner = b"".join(b"--c" + nl + nl + b"x" + nl for _ in range(agent.MAX_FORM_PARTS * 4)) + b"--c--" + nl
         nested = (b"--testboundary123" + nl + b'Content-Disposition: form-data; name="text"' + nl + nl + b"hi" + nl
-                  + b"--testboundary123" + nl + b'Content-Disposition: form-data; name="x"' + nl
+                  + b"--testboundary123" + nl + b'Content-Disposition: form-data; name="x"' + nl + decoy
                   + b"Content-Type: " + nested_type + nl + nl + inner + nl + b"--testboundary123--" + nl)
-        status, _, data = live.request("POST", "/v1/agent/turn", nested, {
-            "Content-Type": "multipart/form-data; boundary=testboundary123", **OWNER})
-        assert (status, json.loads(data), parsed) == (400, {"error": "nested form parts are not accepted"}, []), (
-            nl, nested_type)
-    # A mid-line --boundary is not a delimiter, so it must not hide the part headers after it.
-    inner = b"".join(b"--c\r\n\r\nx\r\n" for _ in range(agent.MAX_FORM_PARTS * 4)) + b"--c--\r\n"
-    for decoy in (b"X-Pad: --testboundary123z\r\n", b'X-Name: "x--testboundary123z"\r\n'):
-        nested = (b"--testboundary123\r\nContent-Disposition: form-data; name=\"x\"\r\n" + decoy
-                  + b"Content-Type: multipart/mixed; boundary=c\r\n\r\n" + inner + b"\r\n--testboundary123--\r\n")
-        status, _, data = live.request("POST", "/v1/agent/turn", nested, {
-            "Content-Type": "multipart/form-data; boundary=testboundary123", **OWNER})
-        assert (status, json.loads(data), parsed) == (400, {"error": "nested form parts are not accepted"}, []), decoy
-    ctype_audio, flat_audio = multipart({"audio": ("a.ogg", b"OggS\r\nContent-Type: multipart/mixed\r\n")})
-    assert live.request("POST", "/v1/agent/turn", flat_audio, {"Content-Type": ctype_audio, **OWNER})[0] == 400
-    assert len(parsed) == 1  # a flat audio part passes the guard, whatever its bytes say
-    parsed.clear()
-    for unparseable in ("multipart/form-data", "text/plain; boundary=testboundary123"):
-        status, _, data = live.request("POST", "/v1/agent/turn", body, {"Content-Type": unparseable, **OWNER})
-        assert (status, parsed) == (400, []), unparseable
+        assert turn(nested) == nested_error, (nl, nested_type, decoy)
+    # Bytes in a flat part that look like headers or delimiters are data, kept exactly.
+    data = b"OggS\r\nContent-Type: multipart/mixed\r\n--testboundary123z\r\n"
+    ctype, body = multipart({"audio": ("a.ogg", data)})
+    assert turn(body, ctype)[1]["transcript"] == "heard %d bytes" % len(data)
     ctype, body = multipart({f"f{i}": (None, b"") for i in range(agent.MAX_FORM_PARTS)})  # at the limit
-    assert live.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})[0] == 400
-    assert len(parsed) == 1  # parsed, then refused for having no text or audio
+    assert turn(body, ctype) == (400, {"error": "send a text or audio field"})
 
 
 # ---- the real speech path, through a fake gateway ----
