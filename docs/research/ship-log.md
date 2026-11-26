@@ -129,7 +129,20 @@ them. Nothing in this log has been deployed unless an entry says so.
   codes, no schema change, no routing change.
 - **Checks.** 897 router tests pass locally, lint and docs audit clean. One
   unrelated test fails on this host with and without the change.
-- **Review.** Fresh-context Fable review in progress.
+- **Review.** Fresh-context Fable review: changes required, no blockers. It
+  confirmed by running code that requests cannot be failed or delayed by the
+  new paths, that the current release reads every row the new code writes, and
+  that the readiness reason stays a closed vocabulary. Two findings mattered:
+  - The upstream clock starts before the admission queue, so a request that
+    timed out waiting showed an upstream duration it never had. Fixed: a
+    request that never dispatched now records only its admission wait, and the
+    contract says the later timings include queue time.
+  - Nothing tested the rule that a client disconnect outranks the generating
+    path's cause, so a disconnect could have been recorded as a backend error
+    without any test failing. Fixed with tests for disconnect, deadline,
+    cancellation, queue timeout, and quiesced and replica refusals.
+  A second review pass on the fix commit is in progress.
+- **CI.** All 18 required checks passed on the first commit.
 - **Deploy.** Not deployed. Before numbers are the baseline table above; the
   after numbers need the owner's cutover and the watch period.
 
