@@ -92,7 +92,7 @@ allowed_logins_env = "AGENT_LOGINS"
 kind = "hermes-api"
 url = "http://127.0.0.1:8642/"
 key_env = "HERMES_KEY"
-session = "memomind-glasses"
+session = "glasses-session"
 
 [agent.backends.pi]
 kind = "pi-web"
@@ -111,7 +111,7 @@ def test_load_config_resolves_references_in_declaration_order(tmp_path):
     assert config.allowed_logins == {LOGIN, "other@example.test"}
     assert list(config.backends) == ["hermes", "pi"]
     assert config.backends["hermes"] == agent.Backend("hermes-api", "hermes", "http://127.0.0.1:8642",
-                                                      "hermes-synthetic", "memomind-glasses")
+                                                      "hermes-synthetic", "glasses-session")
     assert config.listen_port == agent.DEFAULT_PORT and config.turn_timeout_seconds == 150
     for secret in ("ask_synthetic", "hermes-synthetic", "pi-synthetic", LOGIN):
         assert secret not in repr(config)
@@ -164,15 +164,15 @@ def test_scaffold_template_validates(monkeypatch, capsys):
 def test_ask_hermes_sends_key_session_and_hud_hint():
     server = upstream(lambda method, path: ({"choices": [{"message": {"role": "assistant", "content": " Hi there. "},
                                                           "finish_reason": "stop"}]}, 200,
-                                            [("X-Hermes-Session-Id", "memomind-glasses-tip")]))
+                                            [("X-Hermes-Session-Id", "glasses-session-tip")]))
     backend = agent.Backend("hermes-api", "Hermes", f"http://127.0.0.1:{server.server_port}", "test-key",
-                            "memomind-glasses")
+                            "glasses-session")
     try:
-        assert agent.ask_hermes(backend, "what's next", 5) == ("Hi there.", "memomind-glasses-tip", "stop")
+        assert agent.ask_hermes(backend, "what's next", 5) == ("Hi there.", "glasses-session-tip", "stop")
         method, path, headers, body = server.seen[0]
         assert (method, path) == ("POST", "/v1/chat/completions")
         assert headers["Authorization"] == "Bearer test-key"
-        assert headers["X-Hermes-Session-Id"] == "memomind-glasses"
+        assert headers["X-Hermes-Session-Id"] == "glasses-session"
         assert body["messages"] == [{"role": "system", "content": agent.HUD_HINT},
                                     {"role": "user", "content": "what's next"}]
         assert "model" not in body and body["stream"] is False  # the profile's own model, no override
