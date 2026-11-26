@@ -37,13 +37,14 @@ import urllib.parse
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 from typing import Callable, Mapping, Optional
 
 from .. import __version__
 from ..control_plane.mcp.auth_file import AuthFileError, read_private_auth_file
+from ..envfile import resolve_env_value
 from ..paths import config_path
-from ..scribe.service import TranscriptionError, parse_multipart, transcribe_memo
+from ..scribe.service import TranscriptionError, _BoundedServer, parse_multipart, transcribe_memo
 
 try:
     import tomllib
@@ -77,9 +78,21 @@ _KEYS = frozenset({
 })
 _SLOT_WAIT_SECONDS = 30  # a spoken turn waits this long for a decode slot, then gets 503
 # Request bodies held in memory at once. An agent turn or ASK keeps its body for up to its timeout,
-# so this caps memory at MAX_INFLIGHT_POSTS x max_upload_bytes. ponytail: fixed; make it config if
-# several glasses or agents share one service.
+# so this caps buffered bodies at MAX_INFLIGHT_POSTS x max_upload_bytes; JSON bodies are far smaller
+# (MAX_JSON_BODY, MAX_MCP_BATCH) so what they expand into stays small too. ponytail: fixed; make it
+# config if several glasses or agents share one service.
 MAX_INFLIGHT_POSTS = 8
+MAX_JSON_BODY = 64 * 1024  # MCP and notify bodies; only turns and answers carry audio
+MAX_MCP_BATCH = 16  # MCP 2025-06-18 dropped batching; older clients send a few messages at most
+# The wearer's answers get their own slots: an ASK holds a general slot while it waits for one.
+MAX_INFLIGHT_ANSWERS = 2
+# email.parser materializes every part, so an 8 MiB body of tiny parts costs ~15x its size in memory
+# and seconds of CPU. Clients send at most four fields; refuse anything near this before parsing.
+MAX_FORM_PARTS = 16
+_BOUNDARY = re.compile(r'boundary="?([^";\s]+)', re.IGNORECASE)
+_SOCKET_TIMEOUT_SECONDS = 30  # an idle or stalled socket is dropped (socket reads only, not server waits)
+_BODY_DEADLINE_SECONDS = 60  # a body that drips in slower than this is refused
+_MCP_METHODS = frozenset({"initialize", "ping", "tools/list", "tools/call", "notifications/initialized"})
 _BACKEND_KEYS = frozenset({"kind", "label", "url", "key_env", "key_file", "session"})
 
 HUD_HINT = ("The user is talking to you through MemoMind smart glasses with a tiny text display. "
@@ -166,24 +179,29 @@ def _seconds(table, key, default):
 
 def _http_base(value, name):
     parsed = urllib.parse.urlsplit(value or "")
+    try:
+        parsed.port  # raises on a non-numeric or out-of-range port
+    except ValueError:
+        raise ConfigError("%s has an invalid port" % name) from None
     if parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.query or parsed.fragment:
         raise ConfigError("%s must be an http(s) base URL" % name)
     return value.rstrip("/")
 
 
-def _secret(table, prefix, env_key, file_key, environ):
-    """Exactly one of an environment reference or a protected file; never a literal."""
+def _secret(table, prefix, env_key, file_key, environ, base_dir):
+    """Exactly one of an environment reference or a protected file; never a literal. A relative
+    file sits beside the config, so the same file works on the host and in the container."""
     key_file = _str(table, file_key, prefix=prefix)
     if (key_file is None) == (table.get(env_key) is None):
         raise ConfigError("%s needs exactly one of %s or %s" % (prefix, env_key, file_key))
     if key_file is None:
         name = _str(table, env_key, prefix=prefix)
-        value = (environ.get(name) or "").strip()
+        value = resolve_env_value(name, env=environ)[0]
         if not value:
             raise ConfigError("%s.%s names %s, which is unset or empty" % (prefix, env_key, name))
         return value
     try:
-        value = read_private_auth_file(key_file, max_bytes=4096).decode("utf-8").strip()
+        value = read_private_auth_file(os.path.join(base_dir, key_file), max_bytes=4096).decode("utf-8").strip()
     except (AuthFileError, UnicodeDecodeError):
         value = ""
     if not value:
@@ -191,7 +209,7 @@ def _secret(table, prefix, env_key, file_key, environ):
     return value
 
 
-def _backends(table, environ):
+def _backends(table, environ, base_dir):
     raw = table.get("backends", {})
     if not isinstance(raw, dict) or not 1 <= len(raw) <= 8:
         raise ConfigError("agent.backends must declare from 1 through 8 backends")
@@ -213,7 +231,7 @@ def _backends(table, environ):
             kind=kind,
             label=_str(spec, "label", backend_id, prefix=prefix),
             url=_http_base(_str(spec, "url", prefix=prefix), prefix + ".url"),
-            key=_secret(spec, prefix, "key_env", "key_file", environ),
+            key=_secret(spec, prefix, "key_env", "key_file", environ, base_dir),
             session=session or ("anvil-agent" if kind == "hermes-api" else None),
         )
     return backends
@@ -224,8 +242,10 @@ def default_config_path() -> str:
 
 
 def load_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] = None) -> AgentConfig:
-    """Load ``[agent]`` and resolve every credential reference, failing closed."""
-    environ = os.environ if env is None else env
+    """Load ``[agent]`` and resolve every credential reference, failing closed. Env references
+    read the process environment, then the operator .env (as Scribe does); an explicit ``env``
+    mapping is used alone."""
+    environ = env
     path = path or default_config_path()
     try:
         with open(path, "rb") as handle:
@@ -247,22 +267,25 @@ def load_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] 
     router_url = _http_base(_str(table, "router_url"), "agent.router_url")
     if router_url.endswith("/v1"):
         router_url = router_url[:-3]
-    router_key = _secret(table, "agent", "router_key_env", "router_key_file", environ)
+    base_dir = os.path.dirname(os.path.abspath(path))
+    router_key = _secret(table, "agent", "router_key_env", "router_key_file", environ, base_dir)
     logins_env = _str(table, "allowed_logins_env")
     if logins_env is None:
         raise ConfigError("agent.allowed_logins_env is required")
-    logins = frozenset(s.strip() for s in (environ.get(logins_env) or "").split(",") if s.strip())
+    logins_value = resolve_env_value(logins_env, env=environ)[0] or ""
+    logins = frozenset(s.strip() for s in logins_value.split(",") if s.strip())
     if not logins:
         raise ConfigError("agent.allowed_logins_env names %s, which resolves to no logins" % logins_env)
 
     listen_host = _str(table, "listen_host", "127.0.0.1")
     try:
-        loopback = ipaddress.ip_address(listen_host).is_loopback
+        address = ipaddress.ip_address(listen_host)
+        loopback = address.version == 4 and address.is_loopback  # the HTTP server is AF_INET
     except ValueError:
         loopback = False
     if not loopback:
         # The identity header is only trustworthy when tailscale serve is the sole path in.
-        raise ConfigError("agent.listen_host must be a loopback address")
+        raise ConfigError("agent.listen_host must be an IPv4 loopback address")
     try:
         origin_pattern = re.compile(_str(table, "allowed_origin_pattern", DEFAULT_ORIGIN_PATTERN))
     except re.error as exc:
@@ -272,7 +295,7 @@ def load_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] 
         router_url=router_url,
         router_key=router_key,
         allowed_logins=logins,
-        backends=_backends(table, environ),
+        backends=_backends(table, environ, base_dir),
         route=_str(table, "route"),
         listen_host=listen_host,
         listen_port=_int(table, "listen_port", DEFAULT_PORT, 1, 65535),
@@ -351,8 +374,8 @@ def ask_pi(backend: Backend, text: str, timeout: float, poll_seconds: float = PI
             continue
         # No query: the bridge accepts only tail=50 (anything else is HTTP 400) and applies it anyway.
         newest = _request_json(base + "/context", headers=auth, timeout=10)[0]["context"]["messages"][-1]
-        if newest.get("role") != "assistant":
-            continue  # a tool result or the prompt itself; the answer is still coming
+        if newest.get("role") != "assistant" or newest.get("stopReason") == "toolUse":
+            continue  # the prompt, a tool call or its result; the answer is still coming
         if newest.get("stopReason") in ("error", "aborted"):
             raise OSError("Pi turn ended with %s" % newest["stopReason"])
         return _assistant_text(newest), backend.session, newest.get("stopReason") or "stop"
@@ -475,11 +498,16 @@ class Glasses:
         ask_id = secrets.token_hex(8)
         slot = {"done": threading.Event(), "answer": None}
         with self.changed:
+            if self.asks:  # one question on the HUD at a time
+                return {"status": "busy", "detail": "Another question is already waiting for the wearer."}
             self.asks[ask_id] = slot
         queued = None
         try:
             queued = self.add_event({**event, "askId": ask_id, "timeoutMs": int(timeout_s * 1000)}, ttl_s=timeout_s)
-            if not slot["done"].wait(timeout_s):
+            slot["done"].wait(timeout_s)
+            with self.changed:  # from here settle() refuses, so no wearer is told a lost answer landed
+                self.asks.pop(ask_id, None)
+            if not slot["done"].is_set():
                 return {"status": "timeout", "detail": "No answer from the wearer in time."}
             return slot["answer"]
         finally:
@@ -608,12 +636,13 @@ def _length(headers) -> int:
 
 def make_server(config: AgentConfig, *,
                 transcribe: Optional[Callable[[bytes], str]] = None,
-                ask: Optional[Callable[[str, str], tuple]] = None) -> ThreadingHTTPServer:
+                ask: Optional[Callable[[str, str], tuple]] = None) -> _BoundedServer:
     """Bind the listener; ``transcribe`` and ``ask`` are injectable for hermetic tests.
     The returned server carries its session state as ``server.glasses``."""
     glasses = Glasses()
     decode_slots = threading.BoundedSemaphore(config.max_concurrent_transcriptions)
     intake = threading.BoundedSemaphore(MAX_INFLIGHT_POSTS)
+    answer_intake = threading.BoundedSemaphore(MAX_INFLIGHT_ANSWERS)
     transcriber = transcribe or (lambda ogg: transcribe_memo(config, ogg))
     asker = ask or (lambda agent_id, text: ask_backend(config, agent_id, text))
     agents_view = {"agents": [{"id": bid, "label": b.label} for bid, b in config.backends.items()]}
@@ -626,6 +655,26 @@ def make_server(config: AgentConfig, *,
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "anvil-agent/1"
+        timeout = _SOCKET_TIMEOUT_SECONDS  # applied to every connection's socket
+
+        def _read_body(self, length, started):
+            """Exactly ``length`` bytes within one wall-clock deadline (as in Scribe), or None after
+            replying, so a client that drips its body cannot hold a slot for long."""
+            deadline = time.monotonic() + _BODY_DEADLINE_SECONDS
+            chunks, received = [], 0
+            while received < length:
+                if time.monotonic() > deadline:
+                    self.close_connection = True
+                    self._send(408, {"error": "upload too slow"}, started)
+                    return None
+                chunk = self.rfile.read1(min(65536, length - received))
+                if not chunk:
+                    self.close_connection = True
+                    self._send(400, {"error": "incomplete upload"}, started)
+                    return None
+                chunks.append(chunk)
+                received += len(chunk)
+            return b"".join(chunks)
 
         def log_message(self, fmt, *args):  # default request lines can carry query strings
             pass
@@ -639,11 +688,13 @@ def make_server(config: AgentConfig, *,
                 "origin_ok": origin_allowed(self.headers.get("Origin")), "note": note,
             }), file=sys.stderr, flush=True)
 
-        def _send(self, status, payload, started, note=""):
+        def _send(self, status, payload, started, note="", headers=()):
             data = json.dumps(payload).encode()
             self.send_response(status)
+            for name, value in headers:
+                self.send_header(name, value)
             origin = self.headers.get("Origin")
-            if origin_allowed(origin):
+            if origin_allowed(origin) and self.path.split("?", 1)[0] in CORS_PATHS:  # never on /mcp
                 self.send_header("Access-Control-Allow-Origin", origin)
                 self.send_header("Vary", "Origin")
             self.send_header("Content-Type", "application/json")
@@ -672,7 +723,7 @@ def make_server(config: AgentConfig, *,
             if path == HEALTH_PATH:
                 return self._send(200, {"ok": True}, started)
             if path == MCP_PATH:  # no server-initiated SSE stream; JSON responses only
-                return self._send(405, {"error": "use POST"}, started)
+                return self._send(405, {"error": "use POST"}, started, headers=(("Allow", "POST"),))
             if path not in (EVENTS_PATH, AGENTS_PATH):
                 return self._send(404, {"error": "not found"}, started)
             if self._refused(started):
@@ -710,17 +761,27 @@ def make_server(config: AgentConfig, *,
                 return self._send(404, {"error": "not found"}, started)
             if self._refused(started):
                 return None
+            origin = self.headers.get("Origin")
+            content_type = (self.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
+            # A page on an allowed origin may send "simple" cross-origin POSTs that skip preflight.
+            # MCP clients are agents, never browsers; notify from a browser must be JSON, which preflights.
+            if origin and (path == MCP_PATH or (path == NOTIFY_PATH and content_type != "application/json")):
+                self.close_connection = True
+                return self._send(403, {"error": "origin not allowed"}, started, "origin refused")
             length = _length(self.headers)
-            if not 0 < length <= config.max_upload_bytes:
+            limit = MAX_JSON_BODY if path in (MCP_PATH, NOTIFY_PATH) else config.max_upload_bytes
+            if not 0 < length <= limit:
                 self.close_connection = True  # never read an unbounded or unannounced body
                 return self._send(413, {"error": "upload missing or too large"}, started)
-            if not intake.acquire(blocking=False):  # bound buffered bodies, not just decodes
+            slots = answer_intake if path == ANSWER_PATH else intake
+            if not slots.acquire(blocking=False):  # bound buffered bodies, not just decodes
                 self.close_connection = True  # the unread body stays on this socket
                 return self._send(503, {"error": "busy"}, started, "intake busy")
             try:
-                return self._handle_post(path, self.rfile.read(length), started)
+                body = self._read_body(length, started)
+                return None if body is None else self._handle_post(path, body, started)
             finally:
-                intake.release()
+                slots.release()
 
         def _handle_post(self, path, body, started):
             try:
@@ -728,7 +789,11 @@ def make_server(config: AgentConfig, *,
                     return self._notify(body, started)
                 if path == MCP_PATH:
                     return self._mcp(body, started)
-                fields = parse_multipart(self.headers.get("Content-Type"), body)
+                content_type = self.headers.get("Content-Type")
+                boundary = _BOUNDARY.search(content_type or "")
+                if boundary and body.count(b"--" + boundary.group(1).encode("latin-1", "replace")) > MAX_FORM_PARTS + 1:
+                    raise ValueError("too many form fields")
+                fields = parse_multipart(content_type, body)
                 audio = fields.get("audio", (None, b""))[1]
                 if path == ANSWER_PATH:
                     return self._answer(fields, audio, started)
@@ -818,6 +883,10 @@ def make_server(config: AgentConfig, *,
             except (UnicodeDecodeError, json.JSONDecodeError):
                 return self._send(400, {"jsonrpc": "2.0", "id": None,
                                         "error": {"code": -32700, "message": "parse error"}}, started)
+            if message == [] or (isinstance(message, list) and len(message) > MAX_MCP_BATCH):
+                # JSON-RPC 2.0: an empty batch is a single Invalid Request; a long one is refused whole
+                return self._send(200, {"jsonrpc": "2.0", "id": None,
+                                        "error": {"code": -32600, "message": "invalid request"}}, started, "mcp batch refused")
             batch = message if isinstance(message, list) else [message]
             replies = [r for r in (mcp_response(glasses, m) for m in batch) if r is not None]
             if not replies:  # notifications only
@@ -825,11 +894,13 @@ def make_server(config: AgentConfig, *,
                 self.send_header("Content-Length", "0")
                 self.end_headers()
                 return self._log(202, started, "mcp notification")
-            methods = [m.get("method") for m in batch if isinstance(m, dict)]
+            # Method names are client text: log known ones only, once each, plus the batch size.
+            methods = dict.fromkeys(m.get("method") if isinstance(m, dict) and m.get("method") in _MCP_METHODS
+                                    else "other" for m in batch)
             return self._send(200, replies if isinstance(message, list) else replies[0], started,
-                              "mcp " + ",".join(str(m) for m in methods))
+                              "mcp %s n=%d" % (",".join(methods), len(batch)))
 
-    server = ThreadingHTTPServer((config.listen_host, config.listen_port), Handler)
+    server = _BoundedServer((config.listen_host, config.listen_port), Handler)  # Scribe's connection cap
     server.glasses = glasses
     return server
 

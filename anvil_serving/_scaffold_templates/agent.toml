@@ -1,13 +1,15 @@
 # Anvil Agent: glasses turns to your own agents, and the memomind_glasses MCP
 # tool (ADR-0049). Read by `anvil-serving agent run|validate`; normally the
 # `agent` serve in serves.agent.toml. Spoken turns are transcribed through the
-# gateway's /v1/audio/transcriptions with one device key bound to the STT route:
+# gateway's /v1/audio/transcriptions with one device key bound to the STT route.
+# Write it beside this file; the key never goes in this file or in the environment:
 #   anvil-serving router keys create --name agent --model <stt route id> \
-#     --path /v1/audio/transcriptions --rpm 120 --out <protected file>
-# Every env value is a secret or identity supplied at runtime, never written here.
+#     --path /v1/audio/transcriptions --rpm 120 --out ~/.anvil-serving/agent.key
+# The logins and backend credentials are env values supplied at runtime, never
+# written here.
 [agent]
 router_url = "http://127.0.0.1:8000"
-router_key_env = "ANVIL_AGENT_ROUTER_KEY"
+router_key_file = "agent.key"
 allowed_logins_env = "ANVIL_AGENT_LOGINS"
 listen_host = "127.0.0.1"
 listen_port = 8792

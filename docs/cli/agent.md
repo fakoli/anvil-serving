@@ -34,18 +34,29 @@ the reference file is `examples/primary-node/agent.toml`.
 | `OPTIONS` on the client paths | CORS preflight for an allowlisted `Origin`. |
 | `GET /healthz` | Token-free liveness. |
 
-A turn that cannot be transcribed returns 502, and silence returns 422.
-Three limits bound memory. As in Scribe, `max_recording_seconds` (300 by
-default) refuses longer recordings while decoding, and
-`max_concurrent_transcriptions` (2 by default) caps decodes in flight. A
-spoken turn that finds no free slot within 30 seconds returns 503. At most
-eight request bodies are held at once, because an agent turn or `ASK` keeps
-its body until it finishes. A ninth concurrent `POST` gets 503 before its body
-is read. A
+A turn that cannot be transcribed returns 502, and silence returns 422. A
 backend that answers with an error status returns 502 naming only that status;
 its body is never forwarded or logged. A backend that does not finish within
 `turn_timeout_seconds` returns 504 with `unconfirmed: true`, because the agent
 may still finish in its own session.
+
+These limits bound memory and threads:
+
+- As in Scribe, `max_recording_seconds` (300 by default) refuses longer
+  recordings while decoding. `max_concurrent_transcriptions` (2 by default)
+  caps decodes in flight, and a spoken turn that finds no free slot within 30
+  seconds returns 503.
+- At most eight request bodies are held at once, because an agent turn or `ASK`
+  keeps its body until it finishes. A ninth concurrent `POST` gets 503 before
+  its body is read. Answers to `ASK` have two slots of their own, so waiting
+  questions cannot lock out their answers.
+- A body must arrive within 60 seconds, and a socket that goes quiet for 30
+  seconds is dropped. A form with more than 16 parts gets 400 before it is
+  parsed.
+- `/mcp` and notify bodies are JSON of at most 64 KiB; only turns and answers
+  carry audio up to `max_upload_bytes`. An MCP batch of more than 16 messages
+  is refused whole with one `-32600` error.
+- As in Scribe, the server holds at most 16 connections and drops further ones.
 
 ## The `memomind_glasses` tool
 
@@ -56,7 +67,7 @@ may still finish in its own session.
 | `LS` | Live captions on (`v=1`) or off (`v=0`). | after a press |
 | `RC` | Record a memo on or off, with an optional Scribe profile as `mode`. | after a press |
 | `MR` | Meeting minutes: `RC` with mode `minutes`. | after a press |
-| `ASK` | Shows a question and waits up to `timeoutMs` (5–120 s) for the wearer's answer, `declined` or `timeout`. | after a press |
+| `ASK` | Shows a question and waits up to `timeoutMs` (5–120 s) for the wearer's answer, `declined` or `timeout`. One question waits at a time; another gets `busy`. | after a press |
 | `STATUS` | Reports whether the glasses app is open. | no |
 
 Microphone ops only show a request card: nothing records until the wearer
@@ -70,7 +81,7 @@ it.
 Register the tool with an MCP-capable agent by its URL. A Hermes example:
 
 ```bash
-hermes mcp add memomind-glasses --url https://HOST.TAILNET.ts.net:PORT/mcp
+hermes mcp add memomind-glasses --url https://HOST.example.ts.net:PORT/mcp
 ```
 
 ## Backends
@@ -90,19 +101,34 @@ reaches only the declared URL.
 
 ## Access
 
-The device key is either an environment reference (`router_key_env`) or the
-protected file written by `router keys create --out` (`router_key_file`); each
-backend credential is likewise `key_env` or `key_file`; the login allowlist is
-an environment reference. The service refuses to start when any of them is
-empty or when `listen_host` is not loopback. Only requests whose
+The device key is either the protected file written by `router keys create
+--out` (`router_key_file`) or an environment reference (`router_key_env`). The
+reference config uses `agent.key` beside `agent.toml`: a relative path is read
+beside the config, and the Compose file mounts that key next to it. Each
+backend credential is likewise `key_file` or `key_env`, and the login allowlist
+is an environment reference. As in Scribe, environment references read the
+process environment and then the operator `.env`, so `agent validate` on the
+host sees the same values as Compose. The service refuses to start when any of
+them is empty, or when `listen_host` is not an IPv4 loopback address. Only requests whose
 `Tailscale-User-Login` header names an allowlisted login are accepted, and a
 browser `Origin`, when sent, must match `allowed_origin_pattern`. Publish the
 listener through `tailscale serve` and nothing else.
 
+A page on an allowed origin could send a cross-origin `POST` that skips the
+CORS preflight. So `/mcp` refuses any request that carries an `Origin` (MCP
+clients are agents, not browsers), and notify from a browser must be
+`application/json`, which always preflights. CORS headers are sent only on the
+client paths.
+
+One service serves one person. Every allowlisted login shares the event queue,
+the waiting `ASK` and each backend's session, so list only your own logins.
+Run a second service, with its own port, sessions and tailnet listener, for anyone
+else.
+
 Issue a key bound to the STT route and the transcription path only:
 
 ```bash
-anvil-serving router keys create --name agent --model STT_ROUTE_ID --path /v1/audio/transcriptions --rpm 120 --out ~/.config/anvil-serving/device-secrets/agent.key
+anvil-serving router keys create --name agent --model STT_ROUTE_ID --path /v1/audio/transcriptions --rpm 120 --out ~/.anvil-serving/agent.key
 ```
 
 ## Deploy

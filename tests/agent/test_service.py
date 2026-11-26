@@ -126,6 +126,9 @@ def test_load_config_resolves_references_in_declaration_order(tmp_path):
     (("", ""), "AGENT_KEY", "agent.router_key_env names AGENT_KEY"),
     (('router_url = "http://127.0.0.1:8000/v1"', 'router_url = "http://127.0.0.1:8000/v1"\nlisten_host = "0.0.0.0"'),
      None, "loopback"),
+    (('router_url = "http://127.0.0.1:8000/v1"', 'router_url = "http://127.0.0.1:8000/v1"\nlisten_host = "::1"'),
+     None, "IPv4 loopback"),  # the HTTP server is AF_INET, so validate must not pass what run cannot bind
+    (('url = "http://127.0.0.1:8642/"', 'url = "http://127.0.0.1:70000"'), None, "invalid port"),
     (('kind = "pi-web"', 'kind = "shell"'), None, "kind must be one of"),
     (('session = "glasses session/1"', ''), None, "existing pi-web session"),
     (('key_env = "HERMES_KEY"', 'key_env = "HERMES_KEY"\nkey = "literal"'), None, "unknown agent.backends.hermes keys"),
@@ -147,14 +150,18 @@ def test_load_config_requires_a_backend_and_a_file(tmp_path):
         agent.load_config(str(tmp_path / "missing.toml"), env=ENV)
 
 
-def test_scaffold_template_validates(monkeypatch, capsys):
+def test_scaffold_template_validates_with_the_key_beside_it(tmp_path, monkeypatch, capsys):
     template = os.path.join(os.path.dirname(agent.__file__), "..", "_scaffold_templates", "agent.toml")
-    for name in ("ANVIL_AGENT_ROUTER_KEY", "ANVIL_AGENT_HERMES_KEY"):
-        monkeypatch.setenv(name, "synthetic")
+    read = []  # the private-file check itself is POSIX-only; this pins where the key is looked up
+    monkeypatch.setattr(agent, "read_private_auth_file", lambda path, max_bytes: read.append(path) or b"synthetic\n")
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))  # an empty home: no operator .env
+    monkeypatch.setenv("ANVIL_SERVING_NO_HOME_ENV", "1")
+    monkeypatch.setenv("ANVIL_AGENT_HERMES_KEY", "synthetic")
     monkeypatch.setenv("ANVIL_AGENT_LOGINS", LOGIN)
     assert agent_cli.main(["validate", "--config", template]) == 0
     out = capsys.readouterr().out
     assert '"backends": [{"id": "hermes"' in out and "synthetic" not in out and LOGIN not in out
+    assert read == [os.path.join(os.path.dirname(os.path.abspath(template)), "agent.key")]
     monkeypatch.delenv("ANVIL_AGENT_HERMES_KEY")
     assert agent_cli.main(["validate", "--config", template]) == 2
     assert "ANVIL_AGENT_HERMES_KEY" in capsys.readouterr().err
@@ -237,6 +244,30 @@ def test_ask_pi_prompts_bridge_waits_and_reads_newest_assistant_message():
         assert {entry[2]["Authorization"] for entry in server.seen} == {"Bearer pi-test"}
         assert states["n"] >= 3  # waited out the streaming state
         assert any(entry[1].endswith("/context") for entry in server.seen)
+    finally:
+        server.shutdown()
+
+
+def test_ask_pi_skips_a_tool_call_until_the_answer_arrives():
+    contexts = [
+        [{"role": "assistant", "stopReason": "toolUse", "content": [{"type": "text", "text": "Let me check."}]}],
+        [{"role": "toolResult", "content": []}],
+        [{"role": "assistant", "stopReason": "stop", "content": [{"type": "text", "text": "Done."}]}],
+    ]
+    polls = {"state": 0}
+
+    def reply(method, path):
+        if method == "POST":
+            return ({"success": True},)
+        if path.endswith("/state"):
+            polls["state"] += 1
+            return ({"state": {"isStreaming": False, "messageCount": 1 if polls["state"] == 1 else 5}},)
+        return ({"context": {"messages": contexts.pop(0) if len(contexts) > 1 else contexts[0]}},)
+
+    server = upstream(reply)
+    backend = agent.Backend("pi-web", "Pi", f"http://127.0.0.1:{server.server_port}", "pi-test", "s1")
+    try:
+        assert agent.ask_pi(backend, "check", 5, poll_seconds=0.01) == ("Done.", "s1", "stop")
     finally:
         server.shutdown()
 
@@ -326,6 +357,28 @@ def test_ask_round_trip():
     assert glasses.asks == {}
     assert [e for e in glasses.events_after(0, 0) if e["op"] == "ASK"] == []  # gone once settled
     assert not glasses.settle("gone", {"status": "answered"})
+
+
+def test_an_answer_that_lands_as_the_ask_times_out_still_counts(monkeypatch):
+    glasses = agent.Glasses()
+    real_event = threading.Event
+
+    class AnsweredAtTheDeadline(real_event):
+        def wait(self, timeout=None):  # the wearer's answer arrives just as the wait gives up
+            (ask_id,) = glasses.asks
+            assert glasses.settle(ask_id, {"status": "answered", "answer": "yes"})
+            return False
+
+    monkeypatch.setattr(agent.threading, "Event", AnsweredAtTheDeadline)
+    assert glasses.ask_wearer({"op": "ASK", "content": "Ship it?"}, 5) == {"status": "answered", "answer": "yes"}
+    assert glasses.asks == {}
+
+
+def test_only_one_question_waits_at_a_time():
+    glasses = agent.Glasses()
+    glasses.asks["pending"] = {"done": threading.Event(), "answer": None}
+    assert glasses.ask_wearer({"op": "ASK", "content": "Second?"}, 5)["status"] == "busy"
+    assert list(glasses.asks) == ["pending"] and not glasses.events  # nothing queued for the HUD
 
 
 def test_mcp_dispatch():
@@ -499,6 +552,33 @@ def test_notify_then_events(live):
         "Tailscale-User-Login": LOGIN, "Origin": "https://evil.example"})[0] == 403
 
 
+def test_browser_simple_posts_cannot_reach_mcp_or_notify(live):
+    """A page on an allowed origin can skip preflight with a text/plain POST; those paths refuse it."""
+    call = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list"}).encode()
+    for path, body in (("/mcp", call), ("/v1/glasses/notify", b'{"body": "x"}')):
+        status, headers, _ = live.request("POST", path, body, {"Content-Type": "text/plain", **OWNER})
+        assert status == 403, path
+        assert ("Access-Control-Allow-Origin" in headers) == (path in agent.CORS_PATHS), path
+    status, headers, _ = live.request("POST", "/mcp", call, {"Content-Type": "application/json", **OWNER})
+    assert (status, "Access-Control-Allow-Origin" in headers) == (403, False)  # MCP clients are agents
+    status, headers, _ = live.request("POST", "/v1/glasses/notify", b'{"body": "x"}',
+                                      {"Content-Type": "application/json", **OWNER})
+    assert (status, headers["Access-Control-Allow-Origin"]) == (200, STUDIO)  # JSON from a browser preflights
+
+
+def test_json_bodies_and_batches_are_bounded(live):
+    headers = {"Content-Type": "application/json", "Tailscale-User-Login": LOGIN}
+    huge = b"[" + b",".join([b"1"] * (agent.MAX_JSON_BODY // 2)) + b"]"
+    assert live.request("POST", "/mcp", huge, headers)[0] == 413
+    assert live.request("POST", "/v1/glasses/notify", b'{"body": "' + b"x" * agent.MAX_JSON_BODY + b'"}',
+                        headers)[0] == 413
+    ping = {"jsonrpc": "2.0", "id": 1, "method": "ping"}
+    status, _, data = live.request("POST", "/mcp", json.dumps([ping] * (agent.MAX_MCP_BATCH + 1)).encode(), headers)
+    assert (status, json.loads(data)["error"]["code"]) == (200, -32600)
+    status, _, data = live.request("POST", "/mcp", json.dumps([ping] * agent.MAX_MCP_BATCH).encode(), headers)
+    assert status == 200 and len(json.loads(data)) == agent.MAX_MCP_BATCH
+
+
 def test_answer_settles_a_waiting_ask_over_http(live):
     glasses = live.server.glasses
     glasses.polls["last"] = time.monotonic()
@@ -561,15 +641,33 @@ def test_mcp_over_http(live):
     assert live.request("POST", "/mcp", b"{not json", headers)[0] == 400
     assert live.request("POST", "/mcp", call, {
         "Content-Type": "application/json", "Tailscale-User-Login": "stranger@example.test"})[0] == 403
-    assert live.request("GET", "/mcp")[0] == 405
+    status, _, data = live.request("POST", "/mcp", b"[]", headers)  # JSON-RPC: one Invalid Request
+    assert (status, json.loads(data)["error"]["code"], json.loads(data)["id"]) == (200, -32600, None)
+    status, allow, _ = live.request("GET", "/mcp")
+    assert (status, allow["Allow"]) == (405, "POST")
 
 
 def test_logs_carry_no_content(live, capfd):
     ctype, body = multipart({"text": (None, b"private words")})
     live.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})
+    odd = json.dumps([{"jsonrpc": "2.0", "id": 1, "method": "private-method-name"},
+                      {"jsonrpc": "2.0", "id": 2, "method": "ping"}]).encode()
+    live.request("POST", "/mcp", odd, {"Content-Type": "application/json", "Tailscale-User-Login": LOGIN})
     err = capfd.readouterr().err
     assert '"path": "/v1/agent/turn"' in err
     assert "private words" not in err and LOGIN not in err and "echo" not in err
+    assert "private-method-name" not in err and '"note": "mcp other,ping n=2"' in err
+
+
+def test_a_form_with_too_many_parts_is_refused_before_parsing(live, monkeypatch):
+    parsed = []
+    monkeypatch.setattr(agent, "parse_multipart", lambda *args: parsed.append(args) or {})
+    ctype, body = multipart({f"f{i}": (None, b"") for i in range(agent.MAX_FORM_PARTS + 1)})
+    status, _, data = live.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})
+    assert (status, json.loads(data), parsed) == (400, {"error": "too many form fields"}, [])
+    ctype, body = multipart({f"f{i}": (None, b"") for i in range(agent.MAX_FORM_PARTS)})  # at the limit
+    assert live.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})[0] == 400
+    assert len(parsed) == 1  # parsed, then refused for having no text or audio
 
 
 # ---- the real speech path, through a fake gateway ----
@@ -642,6 +740,60 @@ def test_posts_beyond_the_inflight_cap_get_503_before_their_body_is_read(monkeyp
         assert client.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})[0] == 200
     finally:
         release.set()
+        server.shutdown()
+        server.server_close()
+
+
+def test_an_answer_gets_through_while_asks_hold_every_general_slot(monkeypatch):
+    monkeypatch.setattr(agent, "MAX_INFLIGHT_POSTS", 1)
+    server = agent.make_server(make_config(), ask=lambda agent_id, text: ("ok", "s", "stop"))
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    client = Client(server)
+    server.glasses.polls["last"] = time.monotonic()
+    call = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {
+        "name": "memomind_glasses", "arguments": {"op": "ASK", "content": "Lunch?", "timeoutMs": 5000}}}).encode()
+    result = {}
+    waiter = threading.Thread(target=lambda: result.update(zip(("status", "headers", "data"), client.request(
+        "POST", "/mcp", call, {"Content-Type": "application/json", "Tailscale-User-Login": LOGIN}))))
+    try:
+        waiter.start()  # this MCP call holds the only general slot while it waits for the wearer
+        asks = []
+        for _ in range(100):
+            asks = [e for e in server.glasses.events_after(0, 0) if e["op"] == "ASK"]
+            if asks:
+                break
+            time.sleep(0.02)
+        ctype, body = multipart({"askId": (None, asks[0]["askId"].encode()), "text": (None, b"yes")})
+        status, _, data = client.request("POST", "/v1/glasses/answer", body, {"Content-Type": ctype, **OWNER})
+        assert (status, json.loads(data)) == (200, {"status": "answered", "transcript": "yes"})
+        waiter.join(5)
+        tool = json.loads(json.loads(result["data"])["result"]["content"][0]["text"])
+        assert tool == {"status": "answered", "answer": "yes"}
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_a_stalled_body_is_dropped_and_frees_its_slot(monkeypatch):
+    import socket
+
+    monkeypatch.setattr(agent, "MAX_INFLIGHT_POSTS", 1)
+    monkeypatch.setattr(agent, "_SOCKET_TIMEOUT_SECONDS", 0.3)
+    server = agent.make_server(make_config(), ask=lambda agent_id, text: ("ok", "s", "stop"))
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        with socket.create_connection(("127.0.0.1", server.server_port)) as sock:
+            sock.sendall(b"POST /v1/agent/turn HTTP/1.1\r\nHost: x\r\nTailscale-User-Login: " + LOGIN.encode()
+                         + b"\r\nContent-Type: text/plain\r\nContent-Length: 100\r\n\r\n0123456789")
+            sock.settimeout(5)
+            try:
+                dropped = sock.recv(1024)
+            except ConnectionResetError:
+                dropped = b""
+            assert dropped == b""  # no reply: the connection is closed once the socket goes quiet
+        ctype, body = multipart({"text": (None, b"hi")})
+        assert Client(server).request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})[0] == 200
+    finally:
         server.shutdown()
         server.server_close()
 

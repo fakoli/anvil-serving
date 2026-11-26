@@ -28,7 +28,8 @@ All notable changes to this project are documented here. The format is based on
   after 60 s. It binds loopback only, accepts allowlisted `Tailscale-User-Login`
   identities and origins, stores no turns, and fails closed when a key,
   allowlist or backend credential is missing; `agent validate` checks the same
-  references offline. The `agent` Dockerfile target shares Scribe's ffmpeg
+  references offline. Held bodies, answers, connections, body time and form
+  parts are bounded. The `agent` Dockerfile target shares Scribe's ffmpeg
   layer, and `init` scaffolds `agent.toml`, `serves.agent.toml` and
   `docker-compose.agent.yml`.
 - Scribe rewriting after recording: `POST /v1/memos/{id}/process` rewrites a
