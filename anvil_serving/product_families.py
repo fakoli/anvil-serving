@@ -321,6 +321,49 @@ PRODUCT_FAMILIES = (
         ),
     ),
     ProductFamily(
+        id="anvil-agent",
+        name="Anvil Agent",
+        promise=(
+            "Talk to your own agents from smart glasses and read their replies on the HUD, and let "
+            "those agents show cards, run a teleprompter or ask you a question through one MCP tool."
+        ),
+        boundary=(
+            "Owns the glasses turn API, the bounded glasses event queue and the memomind_glasses MCP "
+            "tool; it transcribes only through the gateway with a route-bound key, holds agent "
+            "credentials server-side, stores no turns, and never opens a microphone without the "
+            "wearer's press."
+        ),
+        commands=("agent",),
+        docs_anchor="docs/PRODUCT-FAMILIES.md#anvil-agent",
+        journey=(
+            JourneyStep(
+                "validate",
+                "Check the Anvil Agent config and its references offline.",
+                "anvil-serving agent validate",
+                "A missing key, login allowlist or backend credential, or a non-loopback bind, fails "
+                "before anything binds.",
+            ),
+            JourneyStep(
+                "grant",
+                "Review the route-bound device key Anvil Agent needs for speech.",
+                "anvil-serving router keys create --help",
+                "The key names one STT route and only the transcription path.",
+            ),
+            JourneyStep(
+                "preview",
+                "Review the managed Anvil Agent container start.",
+                "anvil-serving serves up agent --manifest <OPERATOR_HOME>/serves.agent.toml --dry-run",
+                "The exact Compose action is visible before the loopback service starts.",
+            ),
+            JourneyStep(
+                "observe",
+                "Inspect the running Anvil Agent container.",
+                "anvil-serving serves status --manifest <OPERATOR_HOME>/serves.agent.toml",
+                "Container state and health are reported without reading turns.",
+            ),
+        ),
+    ),
+    ProductFamily(
         id="anvil-connect",
         name="Anvil Connect",
         promise=(
@@ -445,6 +488,7 @@ _ALIASES = {
     "voice": "anvil-voice",
     "media": "anvil-media",
     "scribe": "anvil-scribe",
+    "agent": "anvil-agent",
     "connect": "anvil-connect",
     "control": "control-plane-fleet",
     "fleet": "control-plane-fleet",

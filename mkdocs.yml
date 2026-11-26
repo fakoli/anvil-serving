@@ -117,6 +117,9 @@ nav:
       - Anvil Scribe:
           - Overview: journeys/anvil-scribe.md
           - Decision record: adr/0048-anvil-scribe-record-first-dictation.md
+      - Anvil Agent:
+          - Overview: journeys/anvil-agent.md
+          - Decision record: adr/0049-anvil-agent-glasses-bridge.md
       - Anvil Connect:
           - Overview: journeys/anvil-connect.md
           - Why Anvil Connect: CONNECT-OVERVIEW.md
@@ -187,6 +190,7 @@ nav:
           - Voice: cli/voice.md
           - Media: cli/media.md
           - Scribe: cli/scribe.md
+          - Agent: cli/agent.md
           - Anvil Connect: cli/connect.md
           - Control Plane and Fleet: cli/control-plane.md
           - Host and setup: cli/host.md

@@ -1,0 +1,54 @@
+# Anvil Agent as a Docker-MANAGED CONTAINER (ADR-0049). Runs the package CLI
+# verb `anvil-serving agent run` from the repository Dockerfile's `agent`
+# target (the shared runtime plus ffmpeg). Managed via
+# `anvil-serving serves up agent --manifest serves.agent.toml`; do not
+# docker-run by hand.
+#
+# Host networking is deliberate: the service refuses a non-loopback bind, the
+# gateway and the agent backends listen on host loopback, and `tailscale serve`
+# proxies the tailnet edge to the same 127.0.0.1 listener. Nothing else
+# publishes this port. The service stores nothing, so it has no data volume.
+#
+# Build: docker build --target agent -t anvil-serving-agent:3.1.0 .
+# AGENT_IMAGE is a per-invocation candidate override.
+name: anvil-agent
+
+services:
+  agent:
+    image: ${AGENT_IMAGE:-anvil-serving-agent:3.1.0}
+    container_name: anvil-agent
+    restart: unless-stopped
+    network_mode: host
+    # The owner-only key file is readable only by the operator who created it.
+    user: "${AGENT_UID:-1000}:${AGENT_GID:-1000}"
+    command: ["run", "--config", "/etc/anvil/agent.toml"]
+    environment:
+      # Resolved by env-var NAME from [agent] and [agent.backends.*]; values come
+      # from the operator .env beside this file (ADR-0033), never from this file.
+      ANVIL_AGENT_LOGINS: ${ANVIL_AGENT_LOGINS:?set ANVIL_AGENT_LOGINS in the operator .env}
+      ANVIL_AGENT_HERMES_KEY: ${ANVIL_AGENT_HERMES_KEY:?set ANVIL_AGENT_HERMES_KEY in the operator .env}
+      # Uncomment with the pi backend in agent.toml.
+      # ANVIL_AGENT_PI_TOKEN: ${ANVIL_AGENT_PI_TOKEN:?set ANVIL_AGENT_PI_TOKEN in the operator .env}
+    volumes:
+      - "./agent.toml:/etc/anvil/agent.toml:ro"
+      # Written by `router keys create --out`; a missing file stops startup instead
+      # of Docker creating a root-owned directory in its place.
+      - type: bind
+        source: ./agent.key
+        target: /etc/anvil/agent.key
+        read_only: true
+        bind:
+          create_host_path: false
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      # Keep this port equal to listen_port in agent.toml.
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8792/healthz', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3

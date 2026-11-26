@@ -11,6 +11,7 @@
 | Anvil Voice | Family for STT, TTS, realtime proxy lifecycle, profiles, and voice qualification. |
 | Anvil Media | Family for named image/video workflows, durable jobs, cancellation, qualification, and opaque artifacts. |
 | Anvil Scribe | Family for record-first dictation: raw transcripts, saved rewrite profiles, target allowlist, and a private, evaluation-excluded memo history. |
+| Anvil Agent | Family that bridges a smart-glasses client to the operator's own agents: spoken or typed turns, a bounded glasses event queue, and the `memomind_glasses` MCP tool, with agent credentials held server-side. |
 | Anvil Connect | Family that publishes local loopback applications to browsers through a self-hosted edge with your own OIDC provider. See [Anvil Connect](CONNECT-OVERVIEW.md). |
 | Control Plane & Fleet | Family for topology, typed remote dispatch, host utilities, integrations, observability, and fleet state. |
 | Thin capability gateway | The request-path implementation of the capability meta-router: token authentication, protocol translation, readiness, admission, streaming, and relay without an intent classifier or fallback chain. |

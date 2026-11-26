@@ -16,6 +16,7 @@ and does not perform semantic model selection.
 | Anvil Voice | STT/TTS and realtime proxy lifecycle plus voice qualification | Uses declared owners and explicit audio routes. |
 | Anvil Media | Named workflows, durable jobs, cancellation, qualification, and artifacts | Uses one declared worker and typed controller operations. |
 | Anvil Scribe | Capture API, memo store, rewrite profiles, and target allowlist | Transcribes and rewrites only through the gateway with a route-bound key. |
+| Anvil Agent | Glasses turn API, glasses event queue, and the `memomind_glasses` MCP tool | Transcribes only through the gateway with a route-bound key; holds agent credentials server-side and stores no turns. |
 | Control Plane & Fleet | Topology resolution, controller/MCP dispatch, host utilities, integrations, and fleet state | Preserves the selected resource owner's authority. |
 
 The code-owned catalog and ordered journeys are documented in

@@ -17,6 +17,21 @@ All notable changes to this project are documented here. The format is based on
   validate` checks the same references offline. The `scribe` Dockerfile target
   adds ffmpeg, and `init` scaffolds `scribe.toml`, `serves.scribe.toml` and
   `docker-compose.scribe.yml`.
+- **Anvil Agent**, a ninth product family (ADR-0049, `agent`). `agent run`
+  bridges a smart-glasses client to the operator's own agents: `POST
+  /v1/agent/turn` takes typed text or Ogg Opus speech, transcribes speech
+  through the gateway's `/v1/audio/transcriptions` with a route-bound key, and
+  asks a declared backend (`hermes-api` or `pi-web`) whose credential stays
+  server-side. `GET /v1/glasses/events` long-polls a bounded event queue, and
+  `POST /mcp` serves the `memomind_glasses` tool (NOTIFY, TP, LS, RC, MR, ASK,
+  STATUS); microphone ops wait for the wearer's press and control ops expire
+  after 60 s. It binds loopback only, accepts allowlisted `Tailscale-User-Login`
+  identities and origins, stores no turns, and fails closed when a key,
+  allowlist or backend credential is missing; `agent validate` checks the same
+  references offline. Held bodies, answers, connections, body time and form
+  parts are bounded. The `agent` Dockerfile target shares Scribe's ffmpeg
+  layer, and `init` scaffolds `agent.toml`, `serves.agent.toml` and
+  `docker-compose.agent.yml`.
 - Scribe rewriting after recording: `POST /v1/memos/{id}/process` rewrites a
   stored raw transcript with a profile on an allowlisted target
   (`[scribe.targets.<id>]`, a gateway chat alias) and appends the result to

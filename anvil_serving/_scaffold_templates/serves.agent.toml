@@ -1,0 +1,16 @@
+# Anvil Agent (ADR-0049): `anvil-serving agent run` in the repository
+# Dockerfile's `agent` target. No GPU. Kept apart from serves.toml so generic
+# serve hygiene over the model manifest never stops it.
+#   anvil-serving serves up agent --manifest serves.agent.toml --dry-run
+[[serve]]
+name = "agent"
+gpu_inference = false
+stack = "agent"
+container = "anvil-agent"
+runtime = "docker"
+port = 8792
+model = "anvil-agent"
+engine = "none"
+health = "/healthz"
+groups = ["agent"]
+up = "docker compose --project-name anvil-agent -f {dir}/docker-compose.agent.yml up -d agent"
