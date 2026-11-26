@@ -673,14 +673,23 @@ def test_a_form_with_too_many_parts_is_refused_before_parsing(live, monkeypatch)
                       ctype.replace("boundary=", "boundary*=utf-8''")):
         status, _, data = live.request("POST", "/v1/agent/turn", body, {"Content-Type": disguised, **OWNER})
         assert (status, json.loads(data), parsed) == (400, {"error": "too many form fields"}, []), disguised
-    inner = b"".join(b"--c\r\n\r\nx\r\n" for _ in range(agent.MAX_FORM_PARTS * 4)) + b"--c--\r\n"
-    for nested_type in (b"multipart/mixed; boundary=c", b"\r\n\tmessage/rfc822"):  # the second is folded
-        nested = (b"--testboundary123\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nhi\r\n"
-                  b"--testboundary123\r\nContent-Disposition: form-data; name=\"x\"\r\nContent-Type: "
-                  + nested_type + b"\r\n\r\n" + inner + b"\r\n--testboundary123--\r\n")
+    # A nested multipart/* or message/* part would make the parser build its inner parts too, however
+    # the part header is spelled: folded, bare-CR line endings, or an RFC 2047 encoded word.
+    for nl, nested_type in ((b"\r\n", b"multipart/mixed; boundary=c"), (b"\r\n", b"\r\n\tmessage/rfc822"),
+                            (b"\r", b"multipart/mixed; boundary=c"),
+                            (b"\r\n", b"=?utf-8?q?multipart/mixed?=; boundary=c")):
+        inner = b"".join(b"--c" + nl + nl + b"x" + nl for _ in range(agent.MAX_FORM_PARTS * 4)) + b"--c--" + nl
+        nested = (b"--testboundary123" + nl + b'Content-Disposition: form-data; name="text"' + nl + nl + b"hi" + nl
+                  + b"--testboundary123" + nl + b'Content-Disposition: form-data; name="x"' + nl
+                  + b"Content-Type: " + nested_type + nl + nl + inner + nl + b"--testboundary123--" + nl)
         status, _, data = live.request("POST", "/v1/agent/turn", nested, {
             "Content-Type": "multipart/form-data; boundary=testboundary123", **OWNER})
-        assert (status, json.loads(data), parsed) == (400, {"error": "nested form parts are not accepted"}, [])
+        assert (status, json.loads(data), parsed) == (400, {"error": "nested form parts are not accepted"}, []), (
+            nl, nested_type)
+    ctype_audio, flat_audio = multipart({"audio": ("a.ogg", b"OggS\r\nContent-Type: multipart/mixed\r\n")})
+    assert live.request("POST", "/v1/agent/turn", flat_audio, {"Content-Type": ctype_audio, **OWNER})[0] == 400
+    assert len(parsed) == 1  # a flat audio part passes the guard, whatever its bytes say
+    parsed.clear()
     for unparseable in ("multipart/form-data", "text/plain; boundary=testboundary123"):
         status, _, data = live.request("POST", "/v1/agent/turn", body, {"Content-Type": unparseable, **OWNER})
         assert (status, parsed) == (400, []), unparseable

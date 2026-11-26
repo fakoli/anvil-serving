@@ -91,9 +91,6 @@ MAX_INFLIGHT_ANSWERS = 2
 # email.parser materializes every part, so an 8 MiB body of tiny parts costs ~15x its size in memory
 # and seconds of CPU. Clients send at most four fields; refuse anything near this before parsing.
 MAX_FORM_PARTS = 16
-# email.parser also builds every part of a nested multipart/* or message/* part, which the outer count
-# never sees. Clients send flat forms, so any part header declaring one is refused (\s spans folding).
-_NESTED_PART = re.compile(rb"(?im)^content-type:\s*(multipart|message)/")
 _SOCKET_TIMEOUT_SECONDS = 30  # an idle or stalled socket is dropped (socket reads only, not server waits)
 _BODY_DEADLINE_SECONDS = 60  # a body that drips in slower than this is refused
 _MCP_METHODS = frozenset({"initialize", "ping", "tools/list", "tools/call", "notifications/initialized"})
@@ -642,6 +639,23 @@ def _form_boundary(content_type):
     return boundary if boundary and boundary.isascii() else None
 
 
+def _has_nested_part(boundary, body):
+    """True when a part is itself multipart/* or message/*, whose inner parts email.parser would also
+    build unseen by the outer count. Each part's headers are read by that same parser (line endings,
+    folding and encoded words included). Splitting on every occurrence over-splits, so this can only
+    refuse early; the outer count already bounds the work to MAX_FORM_PARTS + 1 chunks."""
+    for chunk in body.split(b"--" + boundary.encode("ascii"))[1:]:
+        chunk = chunk.lstrip(b" \t")
+        for ending in (b"\r\n", b"\r", b"\n"):
+            if chunk.startswith(ending):
+                chunk = chunk[len(ending):]
+                break
+        part = email.parser.BytesParser(policy=email.policy.HTTP).parsebytes(chunk, headersonly=True)
+        if part.get_content_maintype() in ("multipart", "message"):
+            return True
+    return False
+
+
 def _length(headers) -> int:
     value = headers.get("Content-Length") or ""
     return int(value) if value.isascii() and value.isdigit() else 0
@@ -809,7 +823,7 @@ def make_server(config: AgentConfig, *,
                 # Over-counts (any occurrence, not just delimiter lines), so it can only refuse early.
                 if body.count(b"--" + boundary.encode("ascii")) > MAX_FORM_PARTS + 1:
                     raise ValueError("too many form fields")
-                if _NESTED_PART.search(body):
+                if _has_nested_part(boundary, body):
                     raise ValueError("nested form parts are not accepted")
                 fields = parse_multipart(content_type, body)
                 audio = fields.get("audio", (None, b""))[1]
