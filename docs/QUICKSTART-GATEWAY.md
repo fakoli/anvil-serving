@@ -161,7 +161,8 @@ More diagnostics: [Troubleshooting](TROUBLESHOOTING.md) and
 ## Next steps
 
 - [Capability meta-router](META-ROUTER.md): what an alias is and what the
-  gateway will never do (no fallback, no model substitution).
+  gateway will never do (no fallback or model substitution you did not
+  declare).
 - [Configuration](CONFIGURATION.md): more aliases, more tiers, purpose models.
 - [Getting started](GETTING-STARTED.md): let Anvil Serving manage the model
   server itself on a Linux NVIDIA host.

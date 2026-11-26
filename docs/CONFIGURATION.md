@@ -11,7 +11,8 @@ The capability route and metadata authority are separate decisions. The
 operator always owns `alias -> tier -> endpoint`; `metadata_source` decides
 only whether the router config or that already-selected inference service owns
 the tier's served model, context, and allowlisted runtime facts. No setting in
-this file enables intent routing, candidate ranking, or fallback. See
+this file enables intent routing or candidate ranking, and the only fallback is
+the explicit, one-hop [unavailable redirect](#unavailable-redirects). See
 [Capability meta-router](META-ROUTER.md).
 
 ## Configuration locations
@@ -238,7 +239,8 @@ returns 404.
 
 Each alias must map to one configured local tier. A tier cannot stand in for a
 caller-visible alias; use an explicit route table. The route does not create a
-fallback pool.
+fallback pool. The only way another tier answers for an alias is an explicit
+[unavailable redirect](#unavailable-redirects).
 
 ### Metadata authority modes
 
@@ -569,6 +571,67 @@ and instead reports allowlisted live values under `served_configuration`.
 See the
 [router observability API](THIN-CAPABILITY-GATEWAY.md#router-observability-api)
 for the full read-only surface and privacy boundary.
+
+## Unavailable redirects
+
+`[router.unavailable_redirects]` is optional and is the gateway's only
+fallback. Each entry names a source alias and the one alias that may answer
+for it while the source's tier is not serving its model:
+
+```toml
+[router.model_routes]
+llm.primary = "primary-local"
+llm.secondary = "secondary-local"
+
+[router.unavailable_redirects]
+llm.secondary = "llm.primary"
+```
+
+An absent or empty table leaves routing unchanged. The table is validated when
+the configuration loads:
+
+- both names must be aliases in `[router.model_routes]`, matched the same way
+  (case-insensitive after trimming);
+- the two aliases must resolve to different tiers;
+- the source's tier must be direct, because a replica tier never redirects;
+  and
+- a target must not itself be a source, so a redirect is always one hop.
+
+Changing the table requires a router restart. A live route update that would
+change it is refused.
+
+The redirect is decided once per request, before dispatch. Every condition
+below must hold. Otherwise the caller receives the response it would have
+received without the table.
+
+| Condition | Detail |
+| --- | --- |
+| The source is verifiably not serving | A completed readiness probe failed its health check, its served-model identity check, or its upstream metadata resolution. A pending or invalidated probe is not enough. |
+| The source is admitting | A quiesced tier or a route under a live-update hold never redirects. |
+| The source would not refuse the request itself | A request over the source's context, media, or tool policy keeps that refusal. |
+| The caller already holds the target | A device key must grant the target alias. The operator token and configured-scope clients are not model-scoped and can already use every alias. |
+| The request fits the target | The target's own context, media, and tool policy applies, and so does its `max_output_tokens`. |
+
+Rate limiting, replica capacity or admission limits, and any failure after the
+request has been dispatched never redirect. If the target tier is itself
+unavailable, the caller receives the target's unavailable error; there is no
+second redirect and no return to the source.
+
+A redirected response is identifiable:
+
+- its `model` field is the target alias, in every dialect, streaming or not;
+- it carries `X-Anvil-Redirected-From` with the source alias;
+- the decision record keeps `route` as the requested alias and
+  `requested_tier` as the source tier, lists the skipped source attempt before
+  the target attempt, and sets `served_tier` to the target tier; and
+- usage accounting keeps `model` as the requested alias and associates the
+  request with the target tier.
+
+A redirect changes which model answers. Declare one only where callers of the
+source alias can accept the target model, and have a client that depends on
+the source model check the response `model` or the header. The
+[ADR-0039 amendment](adr/0039-capability-meta-router.md) states the rule and
+what remains forbidden.
 
 ## Purpose models and audio
 

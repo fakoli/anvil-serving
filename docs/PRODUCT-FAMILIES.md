@@ -15,7 +15,7 @@ ordered CLI journey.
 | Product family | Promise | Primary commands | Does not own |
 | --- | --- | --- | --- |
 | [Model Serving](#model-serving) | Discover, pin, start, inspect, switch, and stop local model serves. | `init`, `models`, `serves` | Caller capability choice or automatic promotion. |
-| [Capability Gateway](#capability-gateway) | Expose exact aliases through one authenticated protocol boundary. | `router` | Intent classification, semantic model selection, or fallback. |
+| [Capability Gateway](#capability-gateway) | Expose exact aliases through one authenticated protocol boundary. | `router` | Intent classification, semantic model selection, or any fallback beyond one operator-declared unavailable redirect. |
 | [Evaluation & Evidence](#evaluation-evidence) | Prove compatibility and retain comparison-safe evidence. | `eval` | Serve, route, or promotion mutation from a result alone. |
 | [Anvil Voice](#anvil-voice) | Operate qualified STT, TTS, and realtime voice paths. | `voice` | Undeclared placement or hidden split-host fallback. |
 | [Anvil Media](#anvil-media) | Run bounded named image/video workflows with durable jobs and artifacts. | `media` | Raw backend graphs, paths, installs, placement, or fallback. |

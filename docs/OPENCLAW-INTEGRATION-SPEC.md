@@ -9,7 +9,10 @@ status: current-contract
 OpenClaw uses Anvil Serving as an OpenAI-compatible provider. It sends a configured
 capability alias to the gateway, which proxies that alias to its one declared local tier.
 There is no intent plugin, request classifier, decision endpoint, quality-profile lookup,
-or automatic cross-model fallback.
+or automatic cross-model fallback. The gateway answers from another alias only when the
+operator has declared an [unavailable redirect](CONFIGURATION.md#unavailable-redirects) for
+the requested alias; that response names the alias that served in `model` and carries
+`X-Anvil-Redirected-From`.
 
 Use `anvil-serving harness sync openclaw` to render or apply provider configuration.
 The generated provider uses the router base URL, an environment-variable reference for its
