@@ -215,7 +215,7 @@ A key granted `/v1/audio/transcriptions` or `/v1/audio/speech` is bound to
 audio routes: its `--model` grants name the `[[router.audio_routes]]` ids it
 may select, and a request whose resolved route is not granted is refused
 before the audio pool or upstream is used
-([ADR-0048](../adr/0048-voice-memo-capture-through-scoped-audio-gateway.md)).
+([ADR-0048](../adr/0048-anvil-scribe-record-first-dictation.md)).
 
 After initializing storage, preview and install the candidate configuration
 with `router install-config --config PATH --dry-run`, then repeat with

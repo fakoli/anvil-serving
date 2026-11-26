@@ -4,8 +4,8 @@ Anvil Serving is one umbrella product for operating, qualifying, and exposing
 local AI capabilities through explicit, reviewable contracts. It is broader
 than the request router and narrower than a general orchestration platform.
 
-The public product has seven families. Anvil Voice and Anvil Media are branded,
-first-class domains inside Anvil Serving; they are not separate repositories,
+The public product has eight families. Anvil Voice, Anvil Media and Anvil
+Scribe are branded, first-class domains inside Anvil Serving; they are not separate repositories,
 installations, or release lines. Run `anvil-serving product families` for the
 same map from installed code, or `anvil-serving product journey FAMILY` for an
 ordered CLI journey.
@@ -19,6 +19,7 @@ ordered CLI journey.
 | [Evaluation & Evidence](#evaluation-evidence) | Prove compatibility and retain comparison-safe evidence. | `eval` | Serve, route, or promotion mutation from a result alone. |
 | [Anvil Voice](#anvil-voice) | Operate qualified STT, TTS, and realtime voice paths. | `voice` | Undeclared placement or hidden split-host fallback. |
 | [Anvil Media](#anvil-media) | Run bounded named image/video workflows with durable jobs and artifacts. | `media` | Raw backend graphs, paths, installs, placement, or fallback. |
+| [Anvil Scribe](#anvil-scribe) | Record dictation first, then rewrite it on demand with saved profiles and a private history. | `scribe` | Direct model-serve calls, unscoped credentials, or feeding memos to training or evaluation. |
 | [Anvil Connect](#anvil-connect) | Publish local browser surfaces through one self-hosted, authenticated edge. | `connect` | Origin rewrites, loopback bypass, vendor-hosted identity, or exposure outside a rendered declaration. |
 | [Control Plane & Fleet](#control-plane-fleet) | Resolve ownership, dispatch bounded operations, and expose fleet state. | `topology`, `controller`, `mcp`, `fleet`, `host`, and integration utilities | Resource-owner bypass, embedded secrets, or SSH-first operations. |
 
@@ -132,6 +133,24 @@ and [ADR-0040](adr/0040-media-gateway-and-controller-authority.md) for the
 gateway/controller authority split. [ADR-0045](adr/0045-media-recipe-planning.md)
 records the recipe/planning boundary and its qualification requirements.
 
+## Anvil Scribe
+
+Anvil Scribe is record-first dictation. It saves the raw transcript of every
+recording, rewrites it only on request with a saved profile on an allowlisted
+target, and keeps the raw text and every rewrite in a private,
+evaluation-excluded history. It is a client of Anvil Voice speech-to-text and
+the Capability Gateway's chat aliases through one route-bound device key.
+
+1. Check the config and its references with `anvil-serving scribe validate`.
+2. Review the key it needs with `anvil-serving router keys create --help`.
+3. Review the managed start with
+   `anvil-serving serves up scribe --manifest <OPERATOR_HOME>/serves.scribe.toml --dry-run`.
+4. Inspect the running container with
+   `anvil-serving serves status --manifest <OPERATOR_HOME>/serves.scribe.toml`.
+
+See [Scribe commands](cli/scribe.md) and
+[ADR-0048](adr/0048-anvil-scribe-record-first-dictation.md).
+
 ## Anvil Connect
 
 Anvil Connect owns the browser edge for local surfaces: edge TLS under an
@@ -194,5 +213,6 @@ Model Serving candidate
   -> Control Plane & Fleet parity and client checks
 ```
 
-Voice and Media use the same pattern with domain-specific qualification. No
+Voice and Media use the same pattern with domain-specific qualification. Scribe
+consumes Voice and Gateway capabilities through a scoped key; it never owns them. No
 arrow is an implicit fallback, auto-promotion, or transfer of authority.

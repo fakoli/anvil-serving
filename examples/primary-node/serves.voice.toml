@@ -52,20 +52,3 @@ engine = "audio"
 health = "/healthz"            # the proxy's token-free readiness route
 groups = ["voice"]             # serve groups (serves up/down/status --group)
 up = "docker compose --project-name anvil-voice-proxy -f {dir}/docker-compose.voice-proxy.yml up -d realtime-proxy"
-
-# Voice memo capture (ADR-0048): `anvil-serving voice memo run` in the
-# `voice-memo` Dockerfile target. No GPU; transcribes through the gateway's
-# /v1/audio/transcriptions with a route-bound device key. Brought up with
-# `anvil-serving serves up voice-memo --manifest serves.voice.toml`.
-[[serve]]
-name = "voice-memo"
-gpu_inference = false
-stack = "voice-memo"
-container = "anvil-voice-memo"
-runtime = "docker"
-port = 8790
-model = "anvil-voice-memo"
-engine = "audio"
-health = "/healthz"
-groups = ["voice"]
-up = "docker compose --project-name anvil-voice-memo -f {dir}/docker-compose.voice-memo.yml up -d voice-memo"

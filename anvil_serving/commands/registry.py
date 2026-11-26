@@ -15,6 +15,7 @@ from .models import commands as model_commands
 from .media import commands as media_commands
 from .product import commands as product_commands
 from .router import commands as router_commands
+from .scribe import commands as scribe_commands
 from .serves import commands as serves_commands
 from .voice import commands as voice_commands
 
@@ -40,6 +41,7 @@ ROOT_ORDER = (
     "eval",
     "voice",
     "media",
+    "scribe",
     "fleet",
     "harness",
     "mcp",
@@ -103,6 +105,7 @@ FAMILIES = (
     eval_commands,
     voice_commands,
     media_commands,
+    scribe_commands,
     harness_commands,
     control_plane_commands,
     connect_commands,

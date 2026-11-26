@@ -134,6 +134,7 @@ _SCAFFOLD_TEMPLATES = (
      "deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-1m-recipe.toml",
      "configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-1m-recipe.toml"),
     ("serves.voice.toml", "serves.voice.toml", "examples/primary-node/serves.voice.toml"),
+    ("serves.scribe.toml", "serves.scribe.toml", "examples/primary-node/serves.scribe.toml"),
     ("serves.comfyui.toml", "serves.comfyui.toml", "examples/primary-node/serves.comfyui.toml"),
     ("docker-compose.yml", "docker-compose.yml", "examples/primary-node/docker-compose.yml"),
     ("Dockerfile.omni-small", "Dockerfile.omni-small",
@@ -142,6 +143,8 @@ _SCAFFOLD_TEMPLATES = (
      "examples/primary-node/docker-compose.voice-audio.yml"),
     ("docker-compose.voice-proxy.yml", "docker-compose.voice-proxy.yml",
      "examples/primary-node/docker-compose.voice-proxy.yml"),
+    ("docker-compose.scribe.yml", "docker-compose.scribe.yml",
+     "examples/primary-node/docker-compose.scribe.yml"),
     ("docker-compose.comfyui.yml", "docker-compose.comfyui.yml",
      "examples/primary-node/docker-compose.comfyui.yml"),
     ("Dockerfile.comfyui", "Dockerfile.comfyui",
@@ -152,6 +155,7 @@ _SCAFFOLD_TEMPLATES = (
      "examples/primary-node/operator-topology.toml"),
     (".env.example", "env.example", "examples/primary-node/.env.example"),
     ("voice.toml", "voice.toml", "examples/primary-node/voice.toml"),
+    ("scribe.toml", "scribe.toml", "examples/primary-node/scribe.toml"),
 )
 
 

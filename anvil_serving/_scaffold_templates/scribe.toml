@@ -1,0 +1,31 @@
+# Anvil Scribe: record-first dictation (ADR-0048). Read by
+# `anvil-serving scribe run|validate`; normally the `scribe` serve in
+# serves.scribe.toml. Scribe transcribes through the gateway's
+# /v1/audio/transcriptions and rewrites through /v1/chat/completions with one
+# device key bound to the STT route and every target alias:
+#   anvil-serving router keys create --name scribe --model <stt route id> \
+#     --model llm.voice --model llm.primary --path /v1/audio/transcriptions \
+#     --path /v1/chat/completions --rpm 120 --out <protected file>
+# Both env values are secrets or identities supplied at runtime, never written here.
+[scribe]
+router_url = "http://127.0.0.1:8000"
+router_key_env = "ANVIL_SCRIBE_ROUTER_KEY"
+allowed_logins_env = "ANVIL_SCRIBE_LOGINS"
+data_dir = "/var/lib/anvil-scribe"
+listen_host = "127.0.0.1"
+listen_port = 8790
+
+# Rewrite targets: the allowlisted gateway chat aliases a stored memo can be
+# rewritten on (POST /v1/memos/{id}/process). GET /v1/memos/targets lists ids,
+# labels and the default, never the alias. Profiles (saved prompts) are built
+# in, plus custom ones kept in data_dir/profiles.json.
+[scribe.targets.voice]
+label = "Voice LLM"
+detail = "Small, fast instruct model"
+model = "llm.voice"
+default = true
+
+[scribe.targets.primary]
+label = "Primary"
+detail = "Largest local model"
+model = "llm.primary"

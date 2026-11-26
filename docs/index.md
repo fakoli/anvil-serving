@@ -60,7 +60,7 @@ hide:
 <p>Everything here is meant to leave the site and run on your hardware.</p>
 <div class="av-grid">
 <a class="av-card" href="recipes/"><span class="av-card__kicker">Download</span><span class="av-card__title">Serve recipes</span><span class="av-card__body">Every published recipe as a file you can load, or all of them as one zip.</span><span class="av-card__go">Browse recipes →</span></a>
-<a class="av-card" href="cheat-sheet/"><span class="av-card__kicker">One page</span><span class="av-card__title">Operator cheat sheet</span><span class="av-card__body">The commands for all seven journeys, in order, ready to print.</span><span class="av-card__go">Open the cheat sheet →</span></a>
+<a class="av-card" href="cheat-sheet/"><span class="av-card__kicker">One page</span><span class="av-card__title">Operator cheat sheet</span><span class="av-card__body">The commands for all eight journeys, in order, ready to print.</span><span class="av-card__go">Open the cheat sheet →</span></a>
 <a class="av-card" href="benchmarks/results/"><span class="av-card__kicker">Data</span><span class="av-card__title">Benchmark index</span><span class="av-card__body">Every record, capacity point, and quality result as one JSON file.</span><span class="av-card__go">Open results →</span></a>
 <a class="av-card" href="CLI/"><span class="av-card__kicker">Reference</span><span class="av-card__title">Command index</span><span class="av-card__body">Every command family, option, and execution policy.</span><span class="av-card__go">Open the CLI reference →</span></a>
 </div>

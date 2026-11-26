@@ -8,16 +8,18 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
-- `voice memo run` captures Ogg Opus voice memos from a browser or WebView
-  client, stores them, and transcribes them through the gateway's
+- **Anvil Scribe**, an eighth product family (ADR-0048, `scribe`). `scribe run`
+  serves record-first dictation for a browser or WebView client: it saves each
+  Ogg Opus recording and its raw transcript, transcribing through the gateway's
   `/v1/audio/transcriptions` instead of calling an STT serve directly. It binds
   loopback only, accepts allowlisted `Tailscale-User-Login` identities and
-  origins, and fails closed when its key or allowlist is missing. The
-  `voice-memo` Dockerfile target adds ffmpeg, and the reference
-  `serves.voice.toml` declares a `voice-memo` serve (ADR-0048).
-- Voice memo rewriting after recording: `POST /v1/memos/{id}/process` rewrites a
+  origins, and fails closed when its key or allowlist is missing; `scribe
+  validate` checks the same references offline. The `scribe` Dockerfile target
+  adds ffmpeg, and `init` scaffolds `scribe.toml`, `serves.scribe.toml` and
+  `docker-compose.scribe.yml`.
+- Scribe rewriting after recording: `POST /v1/memos/{id}/process` rewrites a
   stored raw transcript with a profile on an allowlisted target
-  (`[voice.memo.targets.<id>]`, a gateway chat alias) and appends the result to
+  (`[scribe.targets.<id>]`, a gateway chat alias) and appends the result to
   the memo's `outputs`. Eight read-only built-in profiles ship with the product,
   custom profiles are managed over `/v1/memos/profiles` and stored with the
   memos, and `GET /v1/memos` (cursor paged), `GET` and `DELETE /v1/memos/{id}`
@@ -30,7 +32,7 @@ All notable changes to this project are documented here. The format is based on
   select; an ungranted route is refused before the audio pool or upstream is
   used. Audio audit rows record the real path instead of `[other]`.
 - STT corpus validation refuses case audio under a directory marked
-  `EVALUATION-EXCLUDED.txt`, which the voice memo store writes.
+  `EVALUATION-EXCLUDED.txt`, which the Scribe store writes.
 
 ## [3.1.0] - 2026-11-23
 

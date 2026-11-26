@@ -17,7 +17,7 @@ STT_BODY = {"purpose": "stt", "audio_b64": "AQACAA==", "format": "pcm16", "sampl
 def _call(store, models, paths, path=STT_PATH, body=STT_BODY):
     usage, *_ = store
     keys = usage.key_store
-    _, secret = keys.create("voice-memo", models, paths)
+    _, secret = keys.create("scribe", models, paths)
     transport = FakeAudioTransport()
     with server(relay(usage, []), store, audio=gateway(transport),
                 server_config=ServerConfig(api_keys_path=str(keys.path))) as conn:
