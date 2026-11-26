@@ -188,7 +188,7 @@ required operands, choices, and defaults.
 | `router clients preview` | Preview declared recipients and owner changes. | `read` / `bounded` | `--config`<br>`--compose` |
 | `router clients install` | Enroll owned keys and install protected feature bindings. | `mutate` / `bounded` | `--config`<br>`--compose`<br>`--dry-run`<br>`--confirm` |
 | `router clients readback` | Independently read installed feature bindings and current key owners. | `read` / `bounded` | `--config`<br>`--compose` |
-| `router maintenance-console` | Acknowledge current stop and successor reopening locally in a terminal. | `mutate` / `foreground` | `--config` |
+| `router maintenance-console` | Acknowledge current stop and successor reopening locally in a terminal. | `mutate` / `foreground` | `--config`<br>`--assume-yes` |
 | `router maintenance` | Preview or execute one protected acknowledged router maintenance operation. | `mutate` / `bounded` | `--config`<br>`--preview-out`<br>`--confirm` |
 | `router keys` | Manage local device API keys and inspect bounded access history. | `read` / `bounded` | - |
 | `router keys init` | Initialize protected device-key storage without changing the master key. | `mutate` / `bounded` | `--config`<br>`--container` |
@@ -477,6 +477,10 @@ required operands, choices, and defaults.
 | `connect native-agents-check` | Run finite local Agents checks without browser or email sign-in. | `mutate` / `bounded` | `--config`<br>`--dry-run`<br>`--confirm` |
 | `connect native-agents` | Run the native Agents broker behind a managed TLS edge. | `process` / `bounded` | `--config` |
 | `connect resources` | List declared browser services and copyable grant values. | `read` / `bounded` | `--manifest` |
+| `connect hold` | Hold or release one resource at its local connector listener. | `mutate` / `bounded` | - |
+| `connect hold status` | Show holds and any other rule blocking a connector listener. | `read` / `bounded` | `--manifest`<br>`--resource` |
+| `connect hold apply` | Preview or reset new connections to one resource's listener. | `mutate` / `bounded` | `--manifest`<br>`--resource`<br>`--dry-run`<br>`--confirm` |
+| `connect hold release` | Preview or remove only this command's hold for one resource. | `mutate` / `bounded` | `--manifest`<br>`--resource`<br>`--dry-run`<br>`--confirm` |
 | `connect users` | Manage local accounts, service entitlements, enrollment codes and authentication backups. | `mutate` / `bounded` | - |
 | `connect users list` | List local sign-in accounts (not Connect grants). | `read` / `bounded` | `--manifest` |
 | `connect users show` | Show one local sign-in account (not Connect grants). | `read` / `bounded` | `--manifest` |
