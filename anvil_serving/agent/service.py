@@ -73,8 +73,9 @@ _SLUG = re.compile(r"[a-z0-9][a-z0-9_-]{0,31}\Z")
 _KEYS = frozenset({
     "router_url", "router_key_env", "router_key_file", "route", "allowed_logins_env", "allowed_origin_pattern",
     "listen_host", "listen_port", "segment_seconds", "max_upload_bytes", "timeout_seconds",
-    "turn_timeout_seconds", "backends",
+    "turn_timeout_seconds", "max_recording_seconds", "max_concurrent_transcriptions", "backends",
 })
+_SLOT_WAIT_SECONDS = 30  # a spoken turn waits this long for a decode slot, then gets 503
 _BACKEND_KEYS = frozenset({"kind", "label", "url", "key_env", "key_file", "session"})
 
 HUD_HINT = ("The user is talking to you through MemoMind smart glasses with a tiny text display. "
@@ -117,8 +118,9 @@ class Backend:
 
 @dataclass(frozen=True)
 class AgentConfig:
-    # router_url, router_key, route, segment_seconds and timeout_seconds are the
-    # attributes scribe.service.transcribe_memo reads; keep the names aligned.
+    # router_url, router_key, route, segment_seconds, timeout_seconds and
+    # max_recording_seconds are the attributes scribe.service.transcribe_memo
+    # reads; keep the names aligned (test_spoken_turn_transcribes_through_the_gateway).
     router_url: str
     router_key: str = field(repr=False)
     allowed_logins: frozenset = field(repr=False)
@@ -132,6 +134,9 @@ class AgentConfig:
     timeout_seconds: float = 60.0
     # A full agent turn can run tools; the client waits a little longer than this.
     turn_timeout_seconds: float = 150.0
+    # Spoken turns and answers are short; captions and memos go to Anvil Scribe.
+    max_recording_seconds: int = 300
+    max_concurrent_transcriptions: int = 2
 
 
 def _int(table, key, default, low, high):
@@ -272,6 +277,8 @@ def load_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] 
         max_upload_bytes=_int(table, "max_upload_bytes", 8 * 1024 * 1024, 1024, 32 * 1024 * 1024),
         timeout_seconds=_seconds(table, "timeout_seconds", 60),
         turn_timeout_seconds=_seconds(table, "turn_timeout_seconds", 150),
+        max_recording_seconds=_int(table, "max_recording_seconds", 300, 1, 3600),
+        max_concurrent_transcriptions=_int(table, "max_concurrent_transcriptions", 2, 1, 16),
     )
 
 
@@ -600,6 +607,7 @@ def make_server(config: AgentConfig, *,
     """Bind the listener; ``transcribe`` and ``ask`` are injectable for hermetic tests.
     The returned server carries its session state as ``server.glasses``."""
     glasses = Glasses()
+    decode_slots = threading.BoundedSemaphore(config.max_concurrent_transcriptions)
     transcriber = transcribe or (lambda ogg: transcribe_memo(config, ogg))
     asker = ask or (lambda agent_id, text: ask_backend(config, agent_id, text))
     agents_view = {"agents": [{"id": bid, "label": b.label} for bid, b in config.backends.items()]}
@@ -729,11 +737,16 @@ def make_server(config: AgentConfig, *,
                 raise ValueError("text is longer than %d characters" % MAX_TEXT_CHARS)
             if text:
                 return text
+            if not decode_slots.acquire(timeout=_SLOT_WAIT_SECONDS):
+                self._send(503, {"error": "busy"}, started, "decode busy")
+                raise _Sent()
             try:
                 text = transcriber(audio)
             except _STT_FAILURES as error:
                 self._send(502, {"error": "transcription failed"}, started, type(error).__name__)
                 raise _Sent() from None
+            finally:
+                decode_slots.release()
             if not text:
                 self._send(422, {"error": "no speech recognized", "transcript": ""}, started, "empty")
                 raise _Sent()

@@ -554,10 +554,13 @@ class FakeGateway(BaseHTTPRequestHandler):
 
 
 def test_spoken_turn_transcribes_through_the_gateway(monkeypatch):
+    """Also the contract check for the AgentConfig attributes scribe.transcribe_memo reads."""
     gateway = serve(FakeGateway)
     gateway.seen = []
-    wav = agent_wav = b"RIFF" + b"\x00" * 4 + b"WAVEfmt " + b"\x00" * 20 + b"data" + b"\x00" * 4 + b"\x01\x02" * 8
-    monkeypatch.setattr("anvil_serving.scribe.service.ogg_to_wav", lambda ogg: agent_wav)
+    wav = b"RIFF" + b"\x00" * 4 + b"WAVEfmt " + b"\x00" * 20 + b"data" + b"\x00" * 4 + b"\x01\x02" * 8
+    bounds = []
+    monkeypatch.setattr("anvil_serving.scribe.service.ogg_to_wav",
+                        lambda ogg, max_seconds: bounds.append(max_seconds) or wav)
     config = make_config(router_url=f"http://127.0.0.1:{gateway.server_port}", route="stt-main")
     server = agent.make_server(config, ask=lambda agent_id, text: ("ok", "s", "stop"))
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -569,7 +572,37 @@ def test_spoken_turn_transcribes_through_the_gateway(monkeypatch):
         assert (path, auth) == ("/v1/audio/transcriptions", "Bearer ask_synthetic")
         assert payload["route"] == "stt-main" and payload["purpose"] == "stt"
         assert base64.b64decode(payload["audio_b64"]).endswith(wav[-16:])
+        assert bounds == [300]  # agent turns are short; the bound comes from AgentConfig
     finally:
         server.shutdown()
         server.server_close()
         gateway.shutdown()
+
+
+def test_spoken_turn_gets_503_when_every_decode_slot_is_busy(monkeypatch):
+    monkeypatch.setattr(agent, "_SLOT_WAIT_SECONDS", 0.1)
+    release = threading.Event()
+
+    def slow(ogg):
+        release.wait(5)
+        return "late words"
+    server = agent.make_server(make_config(max_concurrent_transcriptions=1), transcribe=slow,
+                               ask=lambda agent_id, text: ("ok", "s", "stop"))
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    client = Client(server)
+    ctype, body = multipart({"audio": ("t.ogg", b"OggS-synthetic")})
+    first = {}
+    holder = threading.Thread(target=lambda: first.update(zip(("status", "headers", "data"), client.request(
+        "POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER}))))
+    try:
+        holder.start()
+        time.sleep(0.2)  # the first turn now holds the only slot
+        status, _, data = client.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})
+        assert (status, json.loads(data)) == (503, {"error": "busy"})
+        release.set()
+        holder.join(5)
+        assert first["status"] == 200 and json.loads(first["data"])["transcript"] == "late words"
+    finally:
+        release.set()
+        server.shutdown()
+        server.server_close()
