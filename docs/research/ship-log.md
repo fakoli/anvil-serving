@@ -80,8 +80,8 @@ them. Nothing in this log has been deployed unless an entry says so.
 | # | Item | Status |
 | --- | --- | --- |
 | 5 | ADR-0034 and ADR-0039 amendments match the replica code | **Shipped.** PR 834 merged; nothing to deploy |
-| 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | In implementation |
-| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | Queued behind 2+4a |
+| 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | PR 835 open, in review. Deploy left for the owner |
+| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | In implementation, stacked on PR 835 |
 | 2 | Fix what the recorded refusal cause shows | Blocked on data from 2+4a |
 | 4b | Accounting: emit the new refusal codes | Queued behind 2+4a deploy |
 | 4c | Accounting: session identifier | Left for the owner |
@@ -112,6 +112,26 @@ them. Nothing in this log has been deployed unless an entry says so.
 - **Status.** Merged 2026-11-26 23:05 UTC as `cafe3835`, by squash, after all 18
   required checks passed on the rerun. Documentation only, so there is no
   deploy and no before-and-after metric.
+
+### 2026-11-26 — Items 2 and 4, first step: PR 835
+
+- **Cause found.** The usage lifecycle built each terminal record without the
+  timing and error-code fields, so they were always empty.
+- **Change.** For chat requests the record now carries admission wait, upstream
+  duration, first-content time, and a fixed error code where the failure type
+  names the cause: tier unavailable, upstream failure after dispatch, timeout,
+  cancellation, client disconnect. Context, media and tool refusals stay
+  uncoded in this step. Three new codes for those refusals are accepted on read
+  but not yet written, so the later change that writes them can be rolled back
+  safely. The decision record gains a closed-vocabulary readiness reason for an
+  unavailable direct tier.
+- **Not included.** No session identifier, no rate-limit or authorization
+  codes, no schema change, no routing change.
+- **Checks.** 897 router tests pass locally, lint and docs audit clean. One
+  unrelated test fails on this host with and without the change.
+- **Review.** Fresh-context Fable review in progress.
+- **Deploy.** Not deployed. Before numbers are the baseline table above; the
+  after numbers need the owner's cutover and the watch period.
 
 ### 2026-11-26 — Item 3, measurement only (no change)
 
