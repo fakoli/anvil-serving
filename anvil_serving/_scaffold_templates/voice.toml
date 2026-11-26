@@ -56,7 +56,7 @@ router_url = "http://100.64.0.10:8000/v1"
 # `voice-memo` serve in serves.voice.toml. It transcribes through the gateway's
 # /v1/audio/transcriptions with a device key bound to one audio route:
 #   anvil-serving router keys create --name voice-memo --model <stt route id> \
-#     --model llm.voice --path /v1/audio/transcriptions \
+#     --model llm.voice --model llm.primary --path /v1/audio/transcriptions \
 #     --path /v1/chat/completions --rpm 120 --out <protected file>
 # Both env values are secrets/identities supplied at runtime, never written here.
 [voice.memo]
@@ -67,34 +67,21 @@ data_dir = "/var/lib/anvil-voice-memo"
 listen_host = "127.0.0.1"
 listen_port = 8790
 
-# Conversion modes: after transcription, POST /v1/memos with `mode=<id>`
-# rewrites the raw transcript through /v1/chat/completions with that alias.
-# The key also needs `--path /v1/chat/completions` and a `--model` grant for
-# each alias used below. GET /v1/memos/modes lists ids and labels only.
-[voice.memo.modes.note]
-label = "Clean note"
+# Rewrite targets: the allowlisted gateway chat aliases a stored memo can be
+# rewritten on (POST /v1/memos/{id}/process). GET /v1/memos/targets lists ids,
+# labels and the default, never the alias. The key also needs
+# `--path /v1/chat/completions` and a `--model` grant for every alias below.
+# Profiles (saved prompts) are built in, plus custom ones kept in data_dir.
+[voice.memo.targets.voice]
+label = "Voice LLM"
+detail = "Small, fast instruct model"
 model = "llm.voice"
-prompt = "Rewrite this dictated transcript as a clean note in the speaker's voice. Remove filler words, false starts and repetitions, and fix punctuation. Keep every fact; add none. Reply with the note only."
+default = true
 
-[voice.memo.modes.message]
-label = "Email or message"
-model = "llm.voice"
-prompt = "Rewrite this dictated transcript as a polished, ready-to-send email or message. Keep the speaker's intent, tone and every fact; add none. Reply with the message only."
-
-[voice.memo.modes.minutes]
-label = "Meeting minutes"
-model = "llm.voice"
-prompt = "Turn this dictated transcript into meeting minutes: a one-line summary, then decisions, action items with owners and dates when stated, and open questions. Use only what was said. Reply with the minutes only."
-
-[voice.memo.modes.tasks]
-label = "Task list"
-model = "llm.voice"
-prompt = "Turn this dictated transcript into a task list: one task per line, starting with a verb, with any stated person or due date. Do not invent tasks. Reply with the list only."
-
-[voice.memo.modes.clarify]
-label = "Say it better"
-model = "llm.voice"
-prompt = "Say what the speaker meant, more clearly and concisely, in their own voice. Keep their meaning and every fact; add none. Reply with the rewritten text only."
+[voice.memo.targets.primary]
+label = "Primary"
+detail = "Largest local model"
+model = "llm.primary"
 
 # A named profile makes the reference choice explicit without changing the
 # already-consistent default tables above.

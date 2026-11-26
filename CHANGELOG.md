@@ -15,12 +15,13 @@ All notable changes to this project are documented here. The format is based on
   origins, and fails closed when its key or allowlist is missing. The
   `voice-memo` Dockerfile target adds ffmpeg, and the reference
   `serves.voice.toml` declares a `voice-memo` serve (ADR-0048).
-- Voice memo conversion modes: `[voice.memo.modes.<id>]` pairs a label, a chat
-  alias and instructions. A memo sent with `mode=<id>` is rewritten through
-  `/v1/chat/completions` after transcription, and the raw `transcript` is stored
-  and returned beside the `converted` text. `GET /v1/memos/modes` lists ids and
-  labels; the reference `voice.toml` ships note, message, minutes, tasks and
-  clarify modes.
+- Voice memo rewriting after recording: `POST /v1/memos/{id}/process` rewrites a
+  stored raw transcript with a profile on an allowlisted target
+  (`[voice.memo.targets.<id>]`, a gateway chat alias) and appends the result to
+  the memo's `outputs`. Eight read-only built-in profiles ship with the product,
+  custom profiles are managed over `/v1/memos/profiles` and stored with the
+  memos, and `GET /v1/memos` (cursor paged), `GET` and `DELETE /v1/memos/{id}`
+  provide history.
 
 ### Changed
 

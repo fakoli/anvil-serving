@@ -17,7 +17,7 @@ loopback forwarders, but it is model-free by default.
 | Run the realtime proxy interactively | `voice proxy run` | Interrupt the foreground process when finished. |
 | Manage the background proxy | `voice proxy status` | Preview `up`, `down`, or `restart`, then apply with `--confirm`. |
 | Forward Mini-local audio ports | `voice proxy bridge --dry-run` | Run the bridge in the foreground after reviewing both routes. |
-| Capture voice memos from a web client | `serves up voice-memo` | The service transcribes through the gateway with a route-bound device key. |
+| Capture voice memos from a web client | `serves up voice-memo` | The service saves raw transcripts and rewrites them on request with saved profiles. |
 | Measure a voice candidate | `voice benchmark` | Retain structured evidence with `--evidence-out`. |
 | Qualify an STT model | `voice corpus prepare` | Validate it, then run `voice benchmark --scope stt`. |
 | Measure TTS generation over a text corpus | `voice benchmark --scope tts` | Retain audio outside Git, then obtain independent STT and human listening evidence. |
@@ -193,15 +193,19 @@ rejected.
 
 ## Voice memo
 
-`voice memo run` serves a small capture API for a browser or WebView client
-that records Ogg Opus memos ([ADR-0048](../adr/0048-voice-memo-capture-through-scoped-audio-gateway.md)):
+`voice memo run` serves a record-first dictation API for a browser or WebView
+client that records Ogg Opus memos ([ADR-0048](../adr/0048-voice-memo-capture-through-scoped-audio-gateway.md)):
 
 | Request | Result |
 | --- | --- |
-| `POST /v1/memos` (multipart `audio`, `durationMs`, `droppedFrames`) | Stores `<id>.ogg` and `<id>.json`; returns `{id, createdAt, durationMs, transcript}`. |
+| `POST /v1/memos` (multipart `audio`, `durationMs`, `droppedFrames`) | Stores `<id>.ogg` and `<id>.json`; returns `{id, createdAt, durationMs, transcript, outputs: []}`. |
 | `POST /v1/memos/preview` (same input, a trailing window) | Returns `{transcript}`; stores nothing. |
-| `POST /v1/memos` with a `mode` field | Also rewrites the raw transcript with that mode; returns and stores `mode` and `converted` beside `transcript`. |
-| `GET /v1/memos/modes` | Lists mode `id` and `label` for an allowlisted login; prompts and aliases stay server-side. |
+| `POST /v1/memos/{id}/process` (`{profile, target?}`) | Rewrites the stored raw transcript and appends `{id, profile, profileLabel, target, model, text, createdAt, ms}` to `outputs`; 502/504 append nothing. |
+| `GET /v1/memos?limit=&before=` | History, newest first, with a `next` cursor. |
+| `GET` / `DELETE /v1/memos/{id}` | One memo with all outputs; delete removes its audio, transcript and outputs. |
+| `GET /v1/memos/profiles` | Built-in (read-only) and custom profiles, prompts included. |
+| `POST` / `PUT` / `DELETE /v1/memos/profiles[/{id}]` | Create, edit or delete custom profiles; built-ins answer 403. |
+| `GET /v1/memos/targets` | Rewrite targets: `id`, `label`, `detail`, `default`; never the alias. |
 | `OPTIONS` on either path | CORS preflight for an allowlisted `Origin`. |
 | `GET /healthz` | Token-free liveness. |
 
@@ -217,19 +221,23 @@ when `listen_host` is not loopback. Only requests whose `Tailscale-User-Login`
 header names an allowlisted login are accepted, so publish the listener through
 `tailscale serve` and nothing else.
 
-Conversion modes work like dictation presets. Each `[voice.memo.modes.<id>]`
-names a label, a chat alias and instructions. After transcription the service
-sends the raw transcript to the gateway's `POST /v1/chat/completions` with the
-same device key. The response and the stored record keep the raw `transcript`
-next to the `converted` text. If conversion fails or exceeds
-`conversion_timeout_seconds` (45 by default), `converted` is `null` and the raw
-transcript is still returned. Preview requests never run a mode.
+Recording always saves the raw transcript first. Rewriting is a separate,
+optional step: the client picks a **profile** (a saved prompt) and a **target**
+(an allowlisted gateway chat alias from `[voice.memo.targets.<id>]`), and the
+service sends the stored transcript to `POST /v1/chat/completions` with the same
+device key. Each result is appended to the memo's `outputs`, so one memo can
+carry several rewrites beside its raw text. A rewrite that fails returns 502, one
+that exceeds `conversion_timeout_seconds` (45 by default) returns 504, and
+neither appends anything. Eight built-in profiles (email, technical-doc, note,
+message, minutes, tasks, clarify, summary) are read-only; custom profiles live in
+`profiles.json` inside `data_dir`, so every device sees the same set. Preview
+requests never rewrite.
 
 Issue a key bound to the STT route, the transcription path, and the chat path
-and aliases the modes use:
+plus every target alias:
 
 ```bash
-anvil-serving router keys create --name voice-memo --model STT_ROUTE_ID --model llm.voice --path /v1/audio/transcriptions --path /v1/chat/completions --rpm 120 --out ~/.config/anvil-serving/device-secrets/voice-memo.key
+anvil-serving router keys create --name voice-memo --model STT_ROUTE_ID --model llm.voice --model llm.primary --path /v1/audio/transcriptions --path /v1/chat/completions --rpm 120 --out ~/.config/anvil-serving/device-secrets/voice-memo.key
 ```
 
 Build the `voice-memo` image target, which adds ffmpeg to the shared runtime,
@@ -240,10 +248,10 @@ docker build --target voice-memo -t anvil-serving-voice-memo:3.1.0 .
 anvil-serving serves up voice-memo --manifest serves.voice.toml
 ```
 
-The memo store carries an `EVALUATION-EXCLUDED.txt` marker. Memos are user
-content, never evidence: `voice corpus validate` refuses any case audio under a
+The memo store carries an `EVALUATION-EXCLUDED.txt` marker. Memos, outputs and
+saved prompts are user content, never evidence: `voice corpus validate` refuses any case audio under a
 marked directory. Logs record method, path, status, byte counts, latency and
-allow decisions, never audio, transcripts or identity values.
+allow decisions, never audio, transcripts, prompts, outputs or identity values.
 
 ## Benchmark
 

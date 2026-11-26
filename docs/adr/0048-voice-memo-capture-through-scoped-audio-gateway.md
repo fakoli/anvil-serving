@@ -63,18 +63,20 @@ limit, so long memos never exceed `audio_max_input_bytes`. Audio is written befo
 transcription, so an STT failure never loses the recording. Logs carry method, path, status,
 byte count, latency, and allow decisions; never audio, transcript text, or identity values.
 
-**Conversion modes.** Dictation is often more useful rewritten: a clean note, a ready-to-send
-message, meeting minutes, a task list, or the same thought said more clearly. Each
-`[voice.memo.modes.<id>]` declares a label, a chat alias, and instructions, all server-side, so
-clients hold no model choice or credential. A memo upload may name one mode. After
-transcription the service sends the raw transcript through the gateway's
+**Record first, rewrite later.** Recording always stores the raw transcript. Rewriting is a
+separate, optional request: `POST /v1/memos/{id}/process` with a **profile** (a saved prompt) and
+an optional **target** (an allowlisted chat alias declared in `[voice.memo.targets.<id>]`, one of
+them the default). The service sends the stored transcript through the gateway's
 `POST /v1/chat/completions` with the same device key, which therefore also needs the chat path
-and a grant for each alias. It stores and returns both the raw `transcript` and the `converted`
-text. A failed or slow conversion (bounded by `conversion_timeout_seconds`) returns the raw
-transcript with `converted: null`. `GET /v1/memos/modes` lists ids and labels only. Preview
-requests never run a mode, so live text stays fast. Conversion is ordinary chat traffic: the
-decision log and usage accounting remain metadata-only, and the result is user content under the
-same evaluation exclusion.
+and a grant for every target alias. Each result is appended to the memo's `outputs`, so raw text
+and any number of rewrites coexist; a failed (502) or slow (504, `conversion_timeout_seconds`)
+rewrite appends nothing. Eight built-in profiles ship read-only in the product. Custom profiles
+are created, edited and deleted over `/v1/memos/profiles` and kept in `profiles.json` inside the
+memo store, so every device sees the same set, and they inherit its evaluation exclusion.
+`GET /v1/memos/targets` exposes ids, labels and the default, never the alias. History is
+`GET /v1/memos` (newest first, cursor paged), `GET` and `DELETE /v1/memos/{id}`. Store mutations
+share one lock and replace records atomically. Rewriting is ordinary chat traffic: the decision
+log and usage accounting remain metadata-only.
 
 **Deployment.** The service is a Compose-defined container (ADR-0002) built from the repository
 `Dockerfile` target `voice-memo`, which adds ffmpeg to the shared runtime. The container uses host
@@ -97,8 +99,9 @@ and usage accounting stay metadata-only, as ADR-0024 requires.
   route id.
 - Segments use fixed cuts and can split a word at a boundary. Cut on silence if accuracy at seams
   matters.
-- Conversion latency is the chat alias's latency. A reasoning-heavy alias can exceed the client's
-  upload timeout; such a memo still returns its raw transcript, so pick a fast alias for modes.
+- Rewrite latency is the target alias's latency. A reasoning-heavy alias can exceed the bound;
+  the raw transcript is already stored, so the default target should be a fast instruct model.
+- Memo ids carry second resolution; two memos saved in the same second order arbitrarily.
 - Preview transcription re-sends a trailing window every few seconds. It is not streaming STT; the
   Realtime proxy remains the streaming surface.
 - Identity relies on loopback reachability. Any process on the host can reach the listener and
