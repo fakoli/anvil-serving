@@ -532,18 +532,21 @@ class MemoStore:
 
     def get(self, memo_id):
         try:
-            return self._complete(json.loads(self._memo_path(memo_id).read_text(encoding="utf-8")))
+            memo = json.loads(self._memo_path(memo_id).read_text(encoding="utf-8"))
         except FileNotFoundError:
             raise _Refusal(404, "memo not found") from None
-        except (UnicodeDecodeError, ValueError):
+        except (OSError, UnicodeDecodeError, ValueError, RecursionError):
             raise _Refusal(500, "memo record is unreadable") from None
+        if not isinstance(memo, dict):
+            raise _Refusal(500, "memo record is unreadable")
+        return self._complete(memo)
 
     def create(self, audio, duration_ms):
         memo_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(3)
         audio_path = self.root / (memo_id + ".ogg")
-        _write_private(audio_path, audio)  # keep audio even if STT fails
         memo = {"id": memo_id, "createdAt": _now(), "durationMs": duration_ms, "transcript": None, "outputs": []}
         try:
+            _write_private(audio_path, audio)  # keep audio even if STT fails
             with self.lock:
                 _write_json(self.root / (memo_id + ".json"), memo)
         except BaseException:

@@ -366,9 +366,17 @@ def test_non_string_targets_are_refused_not_crashed(service, target):
                    {"label": "X", "prompt": "Y", "target": target}, AUTH)[0] == 400
 
 
-def test_a_failed_record_write_leaves_no_orphaned_audio(tmp_path, monkeypatch):
+@pytest.mark.parametrize("broken", ["_write_json", "_write_private"])
+def test_a_failed_write_leaves_no_orphaned_audio(tmp_path, monkeypatch, broken):
     store = memo.MemoStore(tmp_path / "memos")
-    monkeypatch.setattr(memo, "_write_json", lambda *args: (_ for _ in ()).throw(OSError("disk full")))
+    real = memo._write_private
+
+    def partial_then_fail(path, data):  # a disk-full audio write leaves a partial file behind
+        real(path, data[:2])
+        raise OSError("disk full")
+
+    monkeypatch.setattr(memo, broken, partial_then_fail if broken == "_write_private"
+                        else lambda *args: (_ for _ in ()).throw(OSError("disk full")))
     with pytest.raises(OSError):
         store.create(b"audio", 1000)
     assert not list((tmp_path / "memos").glob("*.ogg"))
@@ -378,11 +386,16 @@ def test_an_unreadable_record_stays_listed_and_deletable(tmp_path):
     store = memo.MemoStore(tmp_path / "memos")
     good = store.create(b"audio", 1000)
     (tmp_path / "memos" / "20000101T000000Z-abcdef.json").write_text("{", encoding="utf-8")
+    (tmp_path / "memos" / "20000101T000000Z-aaaaaa.json").write_text("[]", encoding="utf-8")
+    (tmp_path / "memos" / "20000101T000000Z-bbbbbb.json").mkdir()
     memos, _ = store.page(10, None)
-    assert [m["id"] for m in memos] == [good["id"], "20000101T000000Z-abcdef"]
+    assert [m["id"] for m in memos] == [good["id"], "20000101T000000Z-bbbbbb", "20000101T000000Z-abcdef",
+                                        "20000101T000000Z-aaaaaa"]
+    assert all(m.get("unreadable") for m in memos[1:])
+    memos = [m for m in memos if m["id"] in (good["id"], "20000101T000000Z-abcdef")]
     assert memos[1]["unreadable"] is True and memos[1]["createdAt"] == "2000-01-01T00:00:00+00:00"
     store.delete("20000101T000000Z-abcdef")
-    assert [m["id"] for m in store.page(10, None)[0]] == [good["id"]]
+    assert "20000101T000000Z-abcdef" not in [m["id"] for m in store.page(10, None)[0]]
 
 
 def test_a_config_path_that_is_a_directory_fails_closed(tmp_path):
