@@ -1,0 +1,172 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-11-26-ernie-inkling-runtime-evaluation",
+    "capability": "bounded local runtime evaluation",
+    "repository_revision": "8aae2aca4741c2171720d2587d2ac8b4cfe3a81d",
+    "dirty_state": "final documented benchmark evidence",
+    "started_at": "2026-11-26",
+    "completed_at": "2026-11-26",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "partial capacity"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "completion_note": "Both bounded lanes completed; public request-level projections retained, original native envelopes withheld, retained baselines restored, and no promotion authorized."
+  },
+  "native_evidence_schemas": [],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "c7599c8debc900cc816635db88855c1e1ba88fde793793978d71eb5bd1a6c245",
+          "bytes": 2407
+        }
+      ],
+      "reason": "Evidence index and measurement boundary."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "8ee6cad03ca91df8f0242a443827e37e299f39396e5e383b9eabec3dfeb795f1",
+          "bytes": 2355
+        }
+      ],
+      "reason": "Dated local observation provenance."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "4518893a7f8d7f8254f164e5b0ca28ebc48a280aaa42da1c096d0ffdad03ec43",
+          "bytes": 1678
+        }
+      ],
+      "reason": "Sanitized workload controls."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "343d99946051b7adcfa4c7e58c40a73a4eb4b0436d479bd1c00acd922a91b9e7",
+          "bytes": 989
+        }
+      ],
+      "reason": "Current coverage and explicitly absent gates."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "identity.json",
+          "sha256": "16015209f96fd26eb346a6f9f54ed3695c5d32343473274b018352393e74f64c",
+          "bytes": 549
+        }
+      ],
+      "reason": "Public hardware/runtime classes without deployment identities."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "raw-request-receipts.json",
+          "sha256": "7bf20379eb86be649e88364c7ac5da6db0d3b88a281ab4af62d2a86ffef751f4",
+          "bytes": 90029
+        }
+      ],
+      "reason": "Public-safe request-level projections; original native envelopes are withheld because they contain private request content and deployment metadata."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "343d99946051b7adcfa4c7e58c40a73a4eb4b0436d479bd1c00acd922a91b9e7",
+          "bytes": 989
+        }
+      ],
+      "reason": "Closed limitations, refused controls, and Q8 OOM boundary."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "2432c1b48fef54f01ca0bfc969ba5c963b2bd9d1433ee3e72dce93f2a6fc02c1",
+          "bytes": 614
+        }
+      ],
+      "reason": "Sanitized derivative retained-primary continuity summary; original native restoration records are not retained publicly."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "028ec1090642400a7c85345a19e037185617664cbcd02daadc76476fa460519f",
+          "bytes": 2313
+        },
+        {
+          "path": "ernie-fixed-60-summary.json",
+          "sha256": "0ecc584e63983238c7c7491c3ff2cc97cce9ed38e24b785844397ae0e2913c59",
+          "bytes": 944
+        },
+        {
+          "path": "ernie-long-context-c1.json",
+          "sha256": "72722da2bac528430385b99015b9a4746419bf24dd18d6f9c316925d2ef837b5",
+          "bytes": 948
+        },
+        {
+          "path": "ernie-c16-summary.json",
+          "sha256": "f46e516f4b3111bf9892909fbfd1199b7681d7163d86782ee53d940bb00ea9f4",
+          "bytes": 1313
+        },
+        {
+          "path": "inkling-original-summary.json",
+          "sha256": "65ad3402f0d625a30220c1af65bf035d873581638677b7fd4e94249a7a5a0ec5",
+          "bytes": 1318
+        },
+        {
+          "path": "inkling-q8-summary.json",
+          "sha256": "9ec7bd08613e0f3781a71a86848856ec6c8b0424ea569a17062490025701348c",
+          "bytes": 853
+        }
+      ],
+      "reason": "Sanitized derivative aggregate summaries, distinct from native evidence envelopes."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "792430b16c8f81fe751e893f3776c1f92841e40c0ae95ce429a56d1098828b2c",
+          "bytes": 266
+        }
+      ],
+      "reason": "Claim and closure boundary."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

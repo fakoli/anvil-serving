@@ -1,0 +1,61 @@
+{
+  "excluded": [
+    "prompt bodies",
+    "completion text",
+    "reasoning",
+    "task identifiers",
+    "endpoint and deployment details"
+  ],
+  "fixed_set": {
+    "cases": 60,
+    "input_source_sha256": {
+      "az-focus": "b1d53b0cfa6868ee9c26bc943e25e6aa503418cf1a362f59d000f9f5e249b16b",
+      "ernie-55-flash-preview": "4f17f986adb3bb46da1c6b8552fa74fbea0e1d55c20b4fbc3616a5c2fad96904",
+      "inkling-2-mini-original": "6829c8c03be59057add532367785ab3ae7ee93e80219885fecc04050f9c116d6"
+    },
+    "local_output_cap_tokens": 16384,
+    "mode": "sequential C1 text requests",
+    "request_controls": {
+      "az-focus": {
+        "api": "chat_completions_sse",
+        "max_tokens": 16384,
+        "reasoning_effort": "max",
+        "retries": 0,
+        "seed_rule": "1000 + original corpus index",
+        "temperature": 1.0,
+        "top_p": 0.95
+      },
+      "ernie-55-flash-preview": {
+        "api": "chat_completions_sse",
+        "max_tokens": 16384,
+        "reasoning_effort": "max",
+        "retries": 0,
+        "seed_rule": "1000 + original corpus index",
+        "temperature": 1.0,
+        "top_p": 0.95
+      },
+      "inkling-2-mini-original": {
+        "api": "chat_completions_sse",
+        "max_tokens": 16384,
+        "reasoning_effort": "max",
+        "retries": 0,
+        "seed_rule": "1000 + original corpus index",
+        "temperature": 1.0,
+        "top_p": 0.95
+      }
+    },
+    "scorer": "independent literal parser"
+  },
+  "long_context": {
+    "mode": "C1",
+    "observed_prompt_tokens": [
+      32185,
+      63150
+    ],
+    "output_tokens": [
+      264,
+      261
+    ]
+  },
+  "schema": "anvil-serving.public-workload-manifest/v1"
+}

@@ -1,0 +1,112 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "campaign": {
+    "id": "2026-11-26-ernie-inkling-runtime-evaluation",
+    "capability": "bounded local runtime evaluation",
+    "repository_revision": "8aae2aca4741c2171720d2587d2ac8b4cfe3a81d",
+    "dirty_state": "final documented benchmark evidence",
+    "started_at": "2026-11-26",
+    "completed_at": "2026-11-26",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "partial capacity"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "completion_note": "Both bounded lanes completed; public request-level projections retained, original native envelopes withheld, retained baselines restored, and no promotion authorized."
+  },
+  "native_evidence_schemas": [],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Evidence index and measurement boundary."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Dated local observation provenance."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json"
+      ],
+      "reason": "Sanitized workload controls."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "coverage-and-gaps.md"
+      ],
+      "reason": "Current coverage and explicitly absent gates."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "identity.json"
+      ],
+      "reason": "Public hardware/runtime classes without deployment identities."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "raw-request-receipts.json"
+      ],
+      "reason": "Public-safe request-level projections; original native envelopes are withheld because they contain private request content and deployment metadata."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "coverage-and-gaps.md"
+      ],
+      "reason": "Closed limitations, refused controls, and Q8 OOM boundary."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Sanitized derivative retained-primary continuity summary; original native restoration records are not retained publicly."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "ernie-fixed-60-summary.json",
+        "ernie-long-context-c1.json",
+        "ernie-c16-summary.json",
+        "inkling-original-summary.json",
+        "inkling-q8-summary.json"
+      ],
+      "reason": "Sanitized derivative aggregate summaries, distinct from native evidence envelopes."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Claim and closure boundary."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB"
+}

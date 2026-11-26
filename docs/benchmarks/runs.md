@@ -1,5 +1,19 @@
 # Benchmark run catalog
 
+## 2026-11-26 ERNIE and Inkling bounded evaluation
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| ERNIE TP2 versus AZ-Focus; matched text, long-context, and fixed C8/C16 cells | Two RTX PRO 6000 Blackwell Max-Q GPUs | ERNIE 46/60 vs AZ-Focus 49/60; ERNIE passed one 999,990-token retrieval. C8/C16 fixed output measured 616/815 tok/s post-first and 353/359 tok/s whole-batch. LIL 919/1340 is mismatched external reference only. `no-promotion`; primary restored. | [ERNIE dossier](models/ernie-55-flash-preview.md) · [Finding](../findings/2026-11-26-ernie-inkling-runtime-evaluation.md) |
+| Inkling 2 Mini original mixed-precision C1/24K, 16,384 maximum output | One RTX 5090 | 60 transported; 44/60 correct and complete-correct; four length stops; 4.274s median complete-correct. Fresh Swift controls refused before creation for host-memory admission; no matched comparison. `no-promotion`; split-mode restored. | [Inkling dossier](models/inkling-2-mini.md) · [Finding](../findings/2026-11-26-ernie-inkling-runtime-evaluation.md) · [Historical Swift](../findings/2026-09-25-swift15-ninfer-5090-promotion.md) |
+
+## 2026-11-26 ERNIE 5.5 Flash Preview — bounded dual-GPU evaluation
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| ERNIE 5.5 Flash Preview, managed TP2; matched fixed 60-case text/reasoning set against AZ-Focus | Two RTX PRO 6000 Blackwell Max-Q GPUs; direct local C1 | ERNIE 46/60 vs AZ-Focus 49/60; 44 shared correct, 2 ERNIE-only, 5 AZ-only. ERNIE summed 447.929 request seconds / 95,688 completion tokens vs 215.195 / 36,662. Five-issue SWE scout: 1 resolved, 2 unresolved, 2 ungraded after call-budget exhaustion. Agentic 3/3 and Aider 2/2 passed. No promotion; retained primary restored. | [ERNIE dossier](models/ernie-55-flash-preview.md) · [Finding](../findings/2026-11-26-ernie-inkling-runtime-evaluation.md) |
+| ERNIE bounded context and fixed-output C8/C16 cells | Same dual-GPU pair; direct local requests | One exact single-target lookup passed at 999,990 actual input tokens; 39,082/55,092 target fixtures were 60,807/85,713 actual tokens. Fixed-output C8/C16 first-output-to-last-completion: 616/815 tok/s; entire-batch: 353/359 tok/s. Natural C8/C16 markers: 8/8 and 16/16. LIL's ~919/~1,340 tok/s figures are a workload/hardware/settings-mismatched reference only. | [ERNIE dossier](models/ernie-55-flash-preview.md) · [Finding](../findings/2026-11-26-ernie-inkling-runtime-evaluation.md) |
+
 ## 2026-11-21 GLM derivative survey — matched fixed-set result
 
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |

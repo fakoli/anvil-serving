@@ -1,5 +1,16 @@
 # RTX PRO 6000 benchmark view
 
+## 2026-11-26 — ERNIE 5.5 Flash Preview bounded evaluation
+
+Two RTX PRO 6000 Blackwell Max-Q GPUs in TP2 ran a text-only candidate against
+the retained AZ-Focus text baseline. The fixed 60-case result was 46/60 for
+ERNIE and 49/60 for AZ-Focus; no primary-route change followed. ERNIE completed
+one single-target 999,990-actual-input-token lookup and bounded C8/C16 output
+cells, but neither proves broad context reliability or full-window capacity.
+The detailed [finding](../../findings/2026-11-26-ernie-inkling-runtime-evaluation.md)
+keeps the external-LIL workload, hardware, cache, and timing-boundary mismatch
+explicit.
+
 **2026-11-21 Sage S2.1 Flash TensorFold qualification:** two NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition GPUs, TP2, completed four bounded profiles. R2 native MTP at 64K/C4 was 8/8 natural requests at 115.09 aggregate output tok/s; R4 native MTP at 327K/C2 was 8/8 at 103.77 aggregate output tok/s and 4/4 single-request retrievals through 259,774 actual input tokens. Startup was 147.6s; preflight 5/5/tools 20/20; agentic/context/image evidence remains retained. Neither is simultaneous full-window capacity or a promotion decision; both strict C1 arms failed 20/20. [Finding](../../findings/2026-11-21-sage-s21-flash-qualification.md) · [Evidence](../../findings/2026-11-21-sage-s21-flash-qualification-evidence/README.md).
 
 **2026-11-13 Mia TensorFold functional checks:** two96GiB Max-Q cards at300W passed the [runtime delta](../../findings/2026-11-13-tensorfold-mia-runtime-functional.md): truncated Messages500 fixed,128-entry prompt scoring, tools/image, C4 canaries and cache restart.1164 coherent telemetry samples observed four active streams; this is not a speed or simultaneous-full-window capacity measurement.

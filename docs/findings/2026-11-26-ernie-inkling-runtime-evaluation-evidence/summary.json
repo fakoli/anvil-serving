@@ -1,0 +1,70 @@
+{
+  "campaign_id": "2026-11-26-ernie-inkling-runtime-evaluation",
+  "complete": true,
+  "decision": {
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "partial capacity"
+    ],
+    "next_gate": "Retain restored baselines; a separately selected future service requires its own qualification.",
+    "promotion_authorized": false
+  },
+  "evidence": [
+    "raw-request-receipts.json",
+    "ernie-fixed-60-summary.json",
+    "ernie-c16-summary.json",
+    "inkling-original-summary.json",
+    "inkling-q8-summary.json",
+    "restoration.json",
+    "identity.json",
+    "coverage-and-gaps.md"
+  ],
+  "headline_results": [
+    {
+      "condition": "paired local text cases; one length-limited response",
+      "metric": "fixed-set complete-correct, ERNIE",
+      "value": "46/60"
+    },
+    {
+      "condition": "44 items complete-correct for both; not a quality ranking",
+      "metric": "fixed-set complete-correct, retained baseline",
+      "value": "49/60"
+    },
+    {
+      "condition": "one target at one position; correct completion",
+      "metric": "single-target needle prompt",
+      "unit": "tokens",
+      "value": 999990
+    },
+    {
+      "condition": "bounded ~14K-15.5K input aggregate",
+      "metric": "C16 natural semantic matches",
+      "value": "16/16"
+    },
+    {
+      "condition": "one length-limited natural coding response; not a service-speed ranking",
+      "metric": "C1 16,384-token coding e2e rate",
+      "unit": "tokens/s",
+      "value": 223.0
+    }
+  ],
+  "identity": {
+    "engine": "managed local inference runtimes",
+    "hardware": "RTX PRO 6000 Blackwell Max-Q and RTX 5090 evaluation lanes",
+    "model": "ERNIE 5.5 Flash Preview; Inkling 2 Mini original-runtime and Q8 protocol lanes",
+    "quantization": "not comparable across lanes"
+  },
+  "limitations": [
+    "The two lanes remain non-comparable because hardware and runtime conditions differ.",
+    "No aggregate supports a general speed, capacity, quality, route, default, or promotion claim."
+  ],
+  "schema": "anvil-serving.sanitized-decision-summary/v1",
+  "workload": {
+    "comparison_scope": "closed bounded campaign; lanes are not pooled",
+    "name": "bounded local text protocol, fixed-set, and runtime-compatibility observations"
+  }
+}

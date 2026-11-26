@@ -1,0 +1,6 @@
+{
+  "schema": "anvil-serving.public-benchmark-identity/v1",
+  "ernie_lane": {"model": "ERNIE 5.5 Flash Preview", "hardware": "two RTX PRO 6000 Blackwell Max-Q GPUs", "scope": "managed text-only runtime evaluation"},
+  "inkling_lane": {"model": "Inkling 2 Mini", "hardware": "NVIDIA GeForce RTX 5090", "scope": "original mixed-precision runtime and a distinct Q8 protocol lane; results are not pooled"},
+  "privacy_boundary": "No host, endpoint, route, image digest, local path, user, credential, or private model-variant identifier is published."
+}

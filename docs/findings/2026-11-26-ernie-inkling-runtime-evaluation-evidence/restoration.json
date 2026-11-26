@@ -1,0 +1,21 @@
+{
+  "boundary": "Sanitized restoration receipt. It records continuity only and does not authorize a candidate route, default, or promotion change.",
+  "checks": [
+    {
+      "name": "managed primary owner transition",
+      "status": "success"
+    },
+    {
+      "name": "primary route readiness",
+      "status": "ready and admitting"
+    },
+    {
+      "elapsed_seconds": 0.344,
+      "name": "authenticated routed visible-string smoke",
+      "status": "passed"
+    }
+  ],
+  "schema": "anvil-serving.sanitized-restoration-summary/v1",
+  "scope": "retained primary local text service",
+  "status": "restored"
+}

@@ -1,0 +1,25 @@
+{
+  "schema": "anvil-serving.sanitized-aggregate/v1",
+  "kind": "quality",
+  "model": "ERNIE 5.5 Flash Preview",
+  "provenance": {"engine": "managed local inference runtime", "gpu": "two RTX PRO 6000 Blackwell Max-Q GPUs"},
+  "suites": {
+    "fixed-60-text": {
+      "status": "complete aggregate only",
+      "work_class": "text and reasoning",
+      "evidence_use": "diagnostic",
+      "validator_strength": "independent literal parser",
+      "checks": [
+        {"status": "passed", "attempt_count": 60, "pass_count": 46}
+      ]
+    }
+  },
+  "measurement": {
+    "ernie_completion_tokens": 95688,
+    "retained_baseline_completion_tokens": 36662,
+    "retained_baseline_complete_correct": 49,
+    "both_complete_correct": 44,
+    "candidate_length_limited_responses": 1,
+    "comparison_boundary": "Aggregate result only. Different completion-token totals and a candidate length limit preclude quality-equivalence and speed claims."
+  }
+}
