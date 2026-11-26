@@ -78,6 +78,8 @@ MAX_CUSTOM_PROFILES = 64
 _MAX_RESPONSE_BYTES = 1024 * 1024
 _MAX_JSON_BODY = 64 * 1024
 _MAX_MULTIPART_PARTS = 16  # uploads send audio, durationMs and an optional legacy mode
+# A part header declaring multipart/* or message/* (folded or not) that the email parser would expand.
+_NESTED_PART = re.compile(rb"(?im)^content-type:\s*(multipart|message)/")
 _MEMO_ID = re.compile(r"\d{8}T\d{6}Z-[0-9a-f]{6}\Z")
 _SLUG = re.compile(r"[a-z0-9][a-z0-9_-]{0,31}\Z")
 _PROFILES_FILE = "profiles.json"
@@ -347,10 +349,12 @@ def parse_multipart(content_type: Optional[str], body: bytes) -> dict:
     # The boundary the parser will split on, however the header spells it (quoted,
     # RFC 2231 `boundary*=`, or after a look-alike parameter).
     boundary = parser.parsebytes(head, headersonly=True).get_boundary()
-    if not boundary:
-        raise ValueError("multipart body has no boundary")
-    if body.count(b"--" + boundary.encode("latin-1", "replace")) > _MAX_MULTIPART_PARTS + 1:
+    if not boundary or not boundary.isascii():
+        raise ValueError("multipart body has no usable boundary")
+    if body.count(b"--" + boundary.encode("ascii")) > _MAX_MULTIPART_PARTS + 1:
         raise ValueError("too many multipart parts")
+    if _NESTED_PART.search(body):  # nested parts would be expanded beyond the count above
+        raise ValueError("nested multipart parts are not accepted")
     message = parser.parsebytes(head + body)
     if not message.is_multipart():
         raise ValueError("malformed multipart body")

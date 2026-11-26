@@ -160,6 +160,11 @@ def test_multipart_part_floods_are_refused_before_parsing():
     assert set(memo.parse_multipart(ctype, body)) == {"audio", "durationMs"}
     with pytest.raises(ValueError, match="boundary"):
         memo.parse_multipart("multipart/form-data", body)
+    for nested in (b"Content-Type: multipart/mixed; boundary=c", b"Content-Type:\r\n message/rfc822"):
+        inner = (b"--b\r\nContent-Disposition: form-data; name=\"audio\"\r\n" + nested + b"\r\n\r\n"
+                 + b"--c\r\n\r\nx\r\n" * 3 + b"--c--\r\n--b--\r\n")
+        with pytest.raises(ValueError, match="nested"):
+            memo.parse_multipart("multipart/form-data; boundary=b", inner)
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
