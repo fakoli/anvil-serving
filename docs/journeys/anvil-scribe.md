@@ -8,6 +8,10 @@ route-bound key.
 
 <!-- product-journey:anvil-scribe -->
 
+!!! info "Coming soon on MemoMind glasses"
+    The MemoMind web plugin for this family is not published yet. See
+    [MemoMind glasses](../MEMOMIND-GLASSES.md) for how to try it today.
+
 ## When to use it
 
 - You dictate from a phone, glasses or browser and want the words kept exactly.

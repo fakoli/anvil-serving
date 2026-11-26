@@ -150,7 +150,8 @@ the Capability Gateway's chat aliases through one route-bound device key.
    `anvil-serving serves status --manifest <OPERATOR_HOME>/serves.scribe.toml`.
 
 See [Scribe commands](cli/scribe.md) and
-[ADR-0048](adr/0048-anvil-scribe-record-first-dictation.md).
+[ADR-0048](adr/0048-anvil-scribe-record-first-dictation.md). Its first client is a MemoMind glasses plugin; see
+[MemoMind glasses](MEMOMIND-GLASSES.md) (coming soon).
 
 ## Anvil Agent
 
@@ -169,7 +170,8 @@ nothing is stored, and no microphone opens until the wearer presses.
    `anvil-serving serves status --manifest <OPERATOR_HOME>/serves.agent.toml`.
 
 See [Agent commands](cli/agent.md) and
-[ADR-0049](adr/0049-anvil-agent-glasses-bridge.md).
+[ADR-0049](adr/0049-anvil-agent-glasses-bridge.md). Its first client is a MemoMind glasses plugin; see
+[MemoMind glasses](MEMOMIND-GLASSES.md) (coming soon).
 
 ## Anvil Connect
 

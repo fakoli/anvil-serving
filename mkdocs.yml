@@ -69,7 +69,8 @@ hooks:
   - scripts/mkdocs_recipe_catalog.py
   - scripts/mkdocs_product_journeys.py
 
-# Six tabs: start, the seven product journeys in product_families.py order,
+# Six tabs: start, the product journeys in product_families.py order (Anvil
+# Scribe and Anvil Agent grouped under MemoMind glasses),
 # benchmarks, recipes, and reference. Each journey opens on its overview page.
 # Dated findings and internal planning records stay published and linked from
 # their index pages, but are not navigation entries. Every page a CLI command
@@ -114,12 +115,14 @@ nav:
           - Overview: journeys/anvil-media.md
           - Operator video workflows: VIDEO-MCP-WORKFLOWS.md
           - ComfyUI migration runbook: COMFYUI-MIGRATION-RUNBOOK.md
-      - Anvil Scribe:
-          - Overview: journeys/anvil-scribe.md
-          - Decision record: adr/0048-anvil-scribe-record-first-dictation.md
-      - Anvil Agent:
-          - Overview: journeys/anvil-agent.md
-          - Decision record: adr/0049-anvil-agent-glasses-bridge.md
+      - MemoMind glasses:
+          - Overview: MEMOMIND-GLASSES.md
+          - Anvil Scribe:
+              - Overview: journeys/anvil-scribe.md
+              - Decision record: adr/0048-anvil-scribe-record-first-dictation.md
+          - Anvil Agent:
+              - Overview: journeys/anvil-agent.md
+              - Decision record: adr/0049-anvil-agent-glasses-bridge.md
       - Anvil Connect:
           - Overview: journeys/anvil-connect.md
           - Why Anvil Connect: CONNECT-OVERVIEW.md

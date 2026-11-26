@@ -8,11 +8,26 @@ nothing is stored.
 
 <!-- product-journey:anvil-agent -->
 
+!!! info "Coming soon on MemoMind glasses"
+    The MemoMind web plugin for this family is not published yet. See
+    [MemoMind glasses](../MEMOMIND-GLASSES.md) for how to try it today.
+
 ## When to use it
 
 - You wear glasses with a small display and want your own agent a press away.
 - You want an agent to put a card, a script or a question in front of you.
 - Speech and agent credentials must stay on your own hosts.
+
+## What the wearer sees
+
+These screenshots come from the MemoMind Plugin Studio simulator, running the
+Anvil Agent web plugin against a live Anvil Agent service.
+
+![Plugin Studio with the Anvil Agent phone app on the left and the 600x350 glasses display on the right. Both show the same agent question, "The docs build passed. Publish the release notes now?", with "Press to answer, double press to decline" on the glasses.](../assets/agent/studio-ask.png)
+
+An agent's reply shows on the glasses in at most two short sentences:
+
+![Glasses display showing a Hermes reply: "Pick one concrete task, set a 25-minute timer, and keep the phone out of reach until it rings."](../assets/agent/hud-reply.png)
 
 ## Go deeper
 
