@@ -1,10 +1,13 @@
 """Actual admission, transport and worker accounting with synthetic owners."""
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+from dataclasses import replace
 from datetime import datetime
 import http.client
 import io
 import json
+import socket
+import struct
 import threading
 import time
 
@@ -15,7 +18,8 @@ from anvil_serving.router.config import ServerConfig
 from anvil_serving.router.decision_log import DecisionLog
 from anvil_serving.router.front_door import make_server
 from anvil_serving.router.identity import legacy_caller
-from anvil_serving.router.internal import UsageInvocation
+from anvil_serving.router.internal import UsageInvocation, usage_invocation
+from anvil_serving.router.request_control import RequestCancelledError, RequestDeadlineExceeded, request_control
 from anvil_serving.router.usage_store import Terminal, UsageError
 from anvil_serving.router.workloads import RouterWorkloadRegistry
 from tests.router.helpers import make_tier
@@ -393,12 +397,17 @@ def test_serve_wire_fallbacks_do_not_invent_consumed_usage(store,message):
     assert sum(r["measured_input"]+r["estimated_input"]+r["measured_output"]+r["estimated_output"] for r in rows(usage,"usage_cumulative"))==0
 
 
-def routed(backend, **options):
+def routed(backend, *, max_concurrency=None, **options):
     """The production chat seam: one configured alias routed to one backend."""
     from anvil_serving.router.config import load
     from anvil_serving.router.serve import RoutingBackend
     from tests.router.test_serve import _CONFIG
-    return RoutingBackend(load(_CONFIG), {"primary-local": backend}, **options)
+    config = load(_CONFIG)
+    if max_concurrency is not None:
+        config = replace(config, tiers=tuple(
+            replace(tier, max_concurrency=max_concurrency) if tier.id == "primary-local" else tier
+            for tier in config.tiers))
+    return RoutingBackend(config, {"primary-local": backend}, **options)
 
 
 @pytest.mark.parametrize("managed", [True, False])
@@ -422,27 +431,39 @@ def test_routed_chat_terminal_carries_the_generating_path_timings(store, managed
         assert type(value) is int and 15 <= value <= terminal.latency_ms, name
 
 
-@pytest.mark.parametrize("refusal,status,code", [("unready", 503, "unavailable"), ("over_context", 413, None)])
-def test_refusal_before_dispatch_names_only_an_unambiguous_cause(store, refusal, status, code):
+@pytest.mark.parametrize("refusal,status,code,reasons,readiness", [
+    ("unready", 503, "unavailable", ["unavailable"], "health_http"),
+    ("quiesced", 503, "unavailable", ["quiesced"], None),
+    ("replica", 503, "unavailable", [], None),
+    ("over_context", 413, None, ["over_context"], None),
+])
+def test_refusal_before_dispatch_names_only_an_unambiguous_cause(store, refusal, status, code, reasons, readiness):
     from anvil_serving.router.availability import AvailabilityResult
+    from tests.router.test_discovery import _ReplicaAvailability, _replica_config, _replica_routing
     usage, *_ = store
 
     class Unready:
         def check(self, tier):
             return AvailabilityResult(False, "unavailable", "health_http_503")
 
-    calls, log = [], DecisionLog()
-    options = {"availability": Unready()} if refusal == "unready" else {}
-    content = "hello" if refusal == "unready" else "x " * 300_000
-    with server(routed(relay(usage, calls), decision_log=log, **options), store) as conn:
+    calls = []
+    if refusal == "replica":
+        routing = _replica_routing(_replica_config(), _ReplicaAvailability(all_unavailable=True))
+    else:
+        routing = routed(relay(usage, calls), **({"availability": Unready()} if refusal == "unready" else {}))
+    if refusal == "quiesced":
+        routing._admission.quiesce("primary-local")
+    content = "x " * 300_000 if refusal == "over_context" else "hello"
+    with server(routing, store) as conn:
         assert post(conn, body={"model": "llm.primary", "messages": [{"role": "user", "content": content}]})[0] == status
     [terminal] = wait_details(usage)
     assert not calls and terminal.dispatched is False and terminal.generation_outcome == "rejected"
     assert terminal.error_code == code
     assert terminal.time_to_first_content_ms is terminal.upstream_duration_ms is None
-    assert log.last.attempts[0].reason == ("unavailable" if refusal == "unready" else "over_context")
-    # The closed readiness family is kept; the probe's status code is not.
-    assert log.last.readiness_reason == ("health_http" if refusal == "unready" else None)
+    log = routing._decision_log
+    assert [attempt.reason for attempt in log.last.attempts] == reasons
+    # Only a direct tier's readiness family is kept; the probe's status code is not.
+    assert log.last.readiness_reason == readiness
 
 
 def test_unknown_alias_raised_inside_generation_is_unknown_model(store):
@@ -507,9 +528,125 @@ def test_bad_measurement_is_counted_not_fatal_and_other_kinds_keep_no_error_code
     chat.measured(-1, None, None)
     chat.capture(None, "rejected", "unavailable")
     assert chat.finish("error") is True
-    assert chat.terminal.admission_wait_ms is chat.terminal.error_code is None
+    assert chat.terminal.admission_wait_ms is None and chat.terminal.error_code == "unavailable"
     assert usage.health("domain_fixture")["accounting_failures"] == 1
     audio = UsageInvocation(usage, run, scope, legacy_caller(), "stt", "local-stt", clock=CLOCK)
     audio.capture(None, "error")
     assert audio.finish("disconnected") is True and audio.terminal.error_code is None
     assert len(rows(usage, "usage_details")) == 2
+
+
+class Severed:
+    """A dispatched upstream that fails as a socket error once its request control closes it."""
+    usage_transport_boundary = True
+
+    def __init__(self):
+        self.started = threading.Event()
+
+    def generate(self, request):
+        usage_invocation(request).dispatch()
+        closed = threading.Event()
+        request_control(request).set_upstream_close(closed.set)
+        self.started.set()
+        assert closed.wait(5)
+        raise ConnectionResetError("synthetic upstream socket closed")
+        yield  # pragma: no cover - makes this a lazy stream like a real relay
+
+
+@pytest.mark.parametrize("ending,code", [("client_reset", "client_disconnected"), ("deadline", "request_timeout")])
+def test_delivery_outcome_outranks_the_upstream_error_it_caused(store, ending, code):
+    usage, *_ = store
+    backend = Severed()
+    routing = routed(backend)
+    config = ServerConfig(total_timeout_s=0.2) if ending == "deadline" else ServerConfig()
+    with server(routing, store, server_config=config) as conn:
+        if ending == "client_reset":
+            conn.request("POST", CHAT, json.dumps({"model": "llm.primary", "messages": [{"role": "user", "content": "hello"}]}),
+                         {"Content-Type": "application/json", "Authorization": "Bearer synthetic-token"})
+            assert backend.started.wait(5)
+            conn.sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+            conn.close()  # RST while the upstream is still generating
+        else:
+            assert post(conn)[0] == 504
+    [terminal] = wait_details(usage)
+    # The generating path saw only a failed upstream; delivery knows why it failed.
+    assert routing._decision_log.last.attempts[0].reason == "backend_error_ConnectionResetError"
+    assert terminal.dispatched is True and terminal.generation_outcome == "error"
+    assert terminal.outcome == terminal.delivery_outcome != "error"
+    assert terminal.error_code == code
+
+
+def test_cancelled_request_is_request_cancelled(store):
+    usage, *_ = store
+
+    class Cancelled:
+        usage_transport_boundary = True
+
+        def generate(self, request):
+            usage_invocation(request).dispatch()
+            raise RequestCancelledError()
+            yield  # pragma: no cover
+
+    with server(routed(Cancelled()), store) as conn:
+        assert post(conn)[0] == 499
+    [terminal] = wait_details(usage)
+    assert terminal.generation_outcome == terminal.delivery_outcome == terminal.outcome == "cancelled"
+    assert terminal.error_code == "request_cancelled"
+
+
+def test_generation_deadline_delivered_as_a_plain_error_keeps_request_timeout(store):
+    usage, *_ = store
+
+    class Expired:
+        usage_transport_boundary = True
+
+        def generate(self, request):
+            raise RequestDeadlineExceeded("idle_timeout")
+
+    # The unmanaged path renders every generation fault as HTTP 500.
+    with server(routed(Expired()), store, managed=False) as conn:
+        assert post(conn)[0] == 500
+    [terminal] = wait_details(usage)
+    assert (terminal.generation_outcome, terminal.outcome) == ("timeout", "error")
+    assert terminal.error_code == "request_timeout"
+
+
+@pytest.mark.parametrize("expires", [True, False], ids=["queue_timeout", "queued_then_served"])
+def test_admission_queue_wait_is_measured_and_is_upstream_time_only_after_dispatch(store, expires):
+    usage, *_ = store
+    entered, release = threading.Event(), threading.Event()
+
+    class Slow:
+        usage_transport_boundary = True
+
+        def generate(self, request):
+            usage_invocation(request).dispatch()
+            entered.set()
+            assert release.wait(5)
+            yield "ok"
+
+    config = ServerConfig(admission_timeout_s=0.15) if expires else ServerConfig()
+    with server(routed(Slow(), max_concurrency=1), store, server_config=config) as conn:
+        other = http.client.HTTPConnection(conn.host, conn.port, timeout=10)
+        try:
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                held = pool.submit(post, conn)
+                assert entered.wait(5)
+                if not expires:
+                    threading.Timer(0.1, release.set).start()
+                status = post(other)[0]  # Waits behind the one admitted request.
+                release.set()
+                assert held.result(timeout=5)[0] == 200
+        finally:
+            other.close()
+    held, queued = sorted(wait_details(usage, 2), key=lambda terminal: terminal.admission_wait_ms)
+    assert held.admission_wait_ms == 0 and held.error_code is None
+    if expires:
+        assert status == 503 and queued.dispatched is False and queued.error_code == "request_timeout"
+        assert queued.admission_wait_ms >= 100
+        assert queued.upstream_duration_ms is queued.time_to_first_content_ms is None
+    else:
+        assert status == 200 and queued.dispatched is True and queued.error_code is None
+        # Both later clocks start before the queue, so they include the wait.
+        assert 50 <= queued.admission_wait_ms <= queued.upstream_duration_ms <= queued.latency_ms
+        assert queued.admission_wait_ms <= queued.time_to_first_content_ms <= queued.latency_ms

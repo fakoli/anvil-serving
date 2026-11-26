@@ -376,20 +376,28 @@ class UsageInvocation:
                     coverage.append("usage_incomplete")
                 outcome = delivery if delivery != "success" else generation
                 at = self.clock().isoformat(timespec="microseconds").replace("+00:00", "Z")
-                # A chat error code refines the terminal outcome; the generating
-                # path's cause applies only where the outcome itself names none.
+                # A chat error code refines the terminal outcome. Delivery decides
+                # first, then a generation deadline, then the generating path's cause.
                 error_code = None if self.start.kind != "chat" or outcome == "success" else {
                     "timeout": "request_timeout", "cancelled": "request_cancelled",
-                    "disconnected": "client_disconnected"}.get(outcome, self.error_code)
+                    "disconnected": "client_disconnected"}.get(
+                        outcome, "request_timeout" if generation == "timeout" else self.error_code)
                 build = partial(Terminal, self.start.request_id, at, self.dispatched, generation, delivery, outcome,
                                 self.route, self.tokens, latency_ms=max(0, int((time.monotonic() - self.started) * 1000)),
                                 coverage=tuple(coverage))
+                # The generating clock starts before the admission queue, so a
+                # request that never dispatched has no upstream phase to report.
+                timings = self.timings if self.dispatched is not False else {
+                    "admission_wait_ms": self.timings.get("admission_wait_ms")}
                 try:
-                    self.terminal = build(error_code=error_code, **self.timings)
+                    self.terminal = build(error_code=error_code, **timings)
                 except Exception:
-                    # A bad optional measurement never costs the terminal row.
+                    # A bad optional measurement costs only itself, never the row.
                     self.failure()
-                    self.terminal = build()
+                    try:
+                        self.terminal = build(error_code=error_code)
+                    except Exception:
+                        self.terminal = build()
             try:
                 self.store.finalize(self.terminal)
                 self.terminal_persisted = True

@@ -58,6 +58,8 @@ All notable changes to this project are documented here. The format is based on
   and an `error_code` where the cause is unambiguous: `unavailable`,
   `unknown_model`, `backend_error`, `request_timeout`, `request_cancelled` or
   `client_disconnected`. Context, media and tools refusals keep a null code.
+  The upstream and first-content timings include the admission wait and are
+  null for a request that never dispatched.
   The reader also accepts `over_context`, `media_limit` and
   `unsupported_tools`, which nothing emits yet, so a later writer can be
   rolled back. The stored schema is unchanged.
