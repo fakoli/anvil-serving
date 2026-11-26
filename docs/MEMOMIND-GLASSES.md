@@ -34,7 +34,7 @@ covers every tab and profile.
 
 ![The Anvil Scribe phone app showing the rewrite profiles (Email, Technical doc, Clean note, Message, Meeting minutes, Task list, Say it better, Summary), the model picker, and the memo rewritten as an email.](assets/scribe/phone-rewrite.png)
 
-![The glasses display showing page 1 of the email, "Subject: Docs Site Shipping Update", with the footer "1/2 · hold: next page".](assets/scribe/hud-email.png)
+![The glasses display showing page 1 of the email, "Subject: Docs Site Shipping Update", with the footer "1/2 · press next · hold close".](assets/scribe/hud-email.png)
 
 **Anvil Agent.** An agent asks the wearer a question and waits for the answer.
 

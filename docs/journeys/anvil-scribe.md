@@ -24,6 +24,24 @@ These screenshots come from one session in the MemoMind Plugin Studio
 simulator, running against a live Scribe service. The app has three tabs:
 Record, History and Profiles. The glasses display is 600x350.
 
+### The glasses button
+
+The glasses button does different things depending on what the glasses are
+showing:
+
+| On the glasses | Press | Double-press | Hold |
+| --- | --- | --- | --- |
+| Ready | Start recording | Show the latest result | Close the glasses view |
+| Recording | Stop and save | Cancel; nothing is saved | Nothing, so a recording is never lost |
+| A result | Next page; after the last page, back to ready | Previous page | Close the glasses view |
+
+After Hold closes the view, the next press opens it again. Each result page
+has a footer showing which gestures apply, for example
+"2/3 · press next · double back · hold close".
+
+![The Record tab, ready to record, with the glasses-button hints: press to record or go to the next page, double-press to cancel or go back a page, hold to close the glasses view.](../assets/scribe/phone-ready.png)
+![The glasses ready card: "Scribe ready", "Press: record", "Double-press: latest result", "Hold: close".](../assets/scribe/hud-ready.png)
+
 ### Record
 
 Tap the mic, or press the glasses button, and speak. The transcript appears as
@@ -36,15 +54,14 @@ double-press to cancel, which saves nothing.
 Scribe saves the raw transcript first, exactly as you said it. Then pick a
 profile, choose a model and tap Rewrite. Each rewrite is added below the
 transcript with its own Copy button. The latest result also shows on the
-glasses. A long result is split into pages with a footer such as "1/2 · hold:
-next page". Holding the glasses button shows the next page; when no result is
-showing, it brings back the latest one.
+glasses, split into pages if it is long. Press to read on, and double-press to
+go back.
 
 ![The saved memo: the 0:27 recording, the raw transcript, and the eight rewrite profiles.](../assets/scribe/phone-saved.png)
 ![The rewrite panel with the model picker and two results, an email and a technical document.](../assets/scribe/phone-rewrite.png)
 
-![Page 1 of the email rewrite on the glasses: "Subject: Docs Site Shipping Update" and the opening of the message, with the footer "1/2 · hold: next page".](../assets/scribe/hud-email.png)
-![Page 2 of the email: the end of the message and "Best,", with the footer "2/2 · hold: back to start".](../assets/scribe/hud-email-page2.png)
+![Page 1 of the email rewrite on the glasses: "Subject: Docs Site Shipping Update" and the opening of the message, with the footer "1/2 · press next · hold close".](../assets/scribe/hud-email.png)
+![Page 2 of the email: the end of the message and "Best,", with the footer "2/2 · press done · double back · hold close".](../assets/scribe/hud-email-page2.png)
 
 The same memo, rewritten by each built-in profile. Each image shows the first
 page:
@@ -68,9 +85,7 @@ description, a prompt and a default model.
 ![The read-only view of the built-in Technical doc profile, showing its prompt and a "Duplicate as custom" button.](../assets/scribe/phone-builtin.png)
 ![A new custom profile, "Standup update", with a prompt asking for Yesterday, Today and Blockers headings.](../assets/scribe/phone-new-profile.png)
 
-A saved custom profile appears next to the built-ins as a rewrite option:
-
-![The glasses display showing the memo rewritten by the custom Standup update profile, with Yesterday and Today sections and the footer "1/2 · hold: next page".](../assets/scribe/hud-custom-profile.png)
+A saved custom profile appears next to the built-ins as a rewrite option.
 
 ## Go deeper
 
