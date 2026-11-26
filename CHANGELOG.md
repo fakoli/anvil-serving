@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- `router maintenance-console --assume-yes` runs a prepared STOP and OPEN
+  without the typed YES, for one explicit invocation. Previews are still
+  printed and must be fresh, native guards and authorizations still apply, the
+  acknowledgement is recorded as `ASSUMED-BY-FLAG`, and it is never on by
+  default or from configuration.
+
 ## [3.1.0] - 2026-11-23
 
 ### Added
