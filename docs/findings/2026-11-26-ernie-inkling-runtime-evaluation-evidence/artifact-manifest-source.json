@@ -17,9 +17,11 @@
       "no-promotion"
     ],
     "promotion_authorized": false,
-    "completion_note": "Both bounded lanes completed; public request-level projections retained, original native envelopes withheld, retained baselines restored, and no promotion authorized."
+    "completion_note": "Both bounded lanes completed with derivative public projections; native raw evidence is withheld, so the public artifact set does not claim raw-evidence auditability. Baseline restoration and no-promotion are separately scoped."
   },
-  "native_evidence_schemas": [],
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-decision-summary/v1"
+  ],
   "artifact_roles": [
     {
       "role": "evidence-index",
@@ -63,11 +65,9 @@
     },
     {
       "role": "raw-run-evidence",
-      "status": "retained",
-      "files": [
-        "raw-request-receipts.json"
-      ],
-      "reason": "Public-safe request-level projections; original native envelopes are withheld because they contain private request content and deployment metadata."
+      "status": "missing",
+      "reason": "Original native request and capacity envelopes are withheld because they contain protected request content and deployment metadata. Public-safe projections are derivative attachments under decision-summary and do not satisfy the native raw-evidence role.",
+      "files": []
     },
     {
       "role": "failures-and-friction",
@@ -90,21 +90,22 @@
       "status": "retained",
       "files": [
         "summary.json",
+        "raw-request-receipts.json",
+        "c8-c16-capacity-receipts.json",
+        "quality-scope-receipts.json",
         "ernie-fixed-60-summary.json",
         "ernie-long-context-c1.json",
         "ernie-c16-summary.json",
         "inkling-original-summary.json",
         "inkling-q8-summary.json"
       ],
-      "reason": "Sanitized derivative aggregate summaries, distinct from native evidence envelopes."
+      "reason": "Supported public decision summary with derivative public-safe request, capacity, quality, and aggregate attachments; distinct from withheld native evidence envelopes."
     },
     {
       "role": "publication-summary",
-      "status": "retained",
-      "files": [
-        "publication-summary.md"
-      ],
-      "reason": "Claim and closure boundary."
+      "status": "not-applicable",
+      "reason": "No platform-copy publication summary was requested; the dated finding is the public narrative.",
+      "files": []
     }
   ],
   "bundle_size_policy_verified": true,

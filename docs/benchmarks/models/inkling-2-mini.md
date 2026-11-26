@@ -7,8 +7,12 @@
 !!! info "Decision snapshot"
 
     - **Product role:** bounded RTX 5090 candidate; not selected.
+    - **Best-qualified configuration:** original mixed-precision C1/24K at a 16,384-token maximum output; Q8 is a separate incomplete fallback lane.
     - **Measured hardware:** NVIDIA GeForce RTX 5090, C1 original mixed-precision runtime.
+    - **Evidence and bounded result:** `functional`, `quality`; 44/60 correct and complete-correct, with four length stops.
     - **Decision:** `no-promotion`; original split-mode baseline restored.
+    - **Important limitation:** no fresh same-hardware Swift control was admitted; Q8 quality ended OOM.
+    - **Evidence cutoff:** 2026-11-26.
     - **Review date:** 2026-11-26.
 
 ## Immutable identity

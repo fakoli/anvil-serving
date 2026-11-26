@@ -16,9 +16,11 @@
       "no-promotion"
     ],
     "promotion_authorized": false,
-    "completion_note": "Both bounded lanes completed; public request-level projections retained, original native envelopes withheld, retained baselines restored, and no promotion authorized."
+    "completion_note": "Both bounded lanes completed with derivative public projections; native raw evidence is withheld, so the public artifact set does not claim raw-evidence auditability. Baseline restoration and no-promotion are separately scoped."
   },
-  "native_evidence_schemas": [],
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-decision-summary/v1"
+  ],
   "artifact_roles": [
     {
       "role": "evidence-index",
@@ -26,8 +28,8 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "c7599c8debc900cc816635db88855c1e1ba88fde793793978d71eb5bd1a6c245",
-          "bytes": 2407
+          "sha256": "0e11dcddb45d154257d5fdeb91544d43059fd05b59819efde1a6faf526a4a1ef",
+          "bytes": 2910
         }
       ],
       "reason": "Evidence index and measurement boundary."
@@ -38,8 +40,8 @@
       "files": [
         {
           "path": "source-registry.json",
-          "sha256": "8ee6cad03ca91df8f0242a443827e37e299f39396e5e383b9eabec3dfeb795f1",
-          "bytes": 2355
+          "sha256": "4cdd4d6e608e45c9b9e5f5afd68c1262032df0737d9b6bb9d3eed5e9d8d1c718",
+          "bytes": 4394
         }
       ],
       "reason": "Dated local observation provenance."
@@ -82,15 +84,9 @@
     },
     {
       "role": "raw-run-evidence",
-      "status": "retained",
-      "files": [
-        {
-          "path": "raw-request-receipts.json",
-          "sha256": "7bf20379eb86be649e88364c7ac5da6db0d3b88a281ab4af62d2a86ffef751f4",
-          "bytes": 90029
-        }
-      ],
-      "reason": "Public-safe request-level projections; original native envelopes are withheld because they contain private request content and deployment metadata."
+      "status": "missing",
+      "files": [],
+      "reason": "Original native request and capacity envelopes are withheld because they contain protected request content and deployment metadata. Public-safe projections are derivative attachments under decision-summary and do not satisfy the native raw-evidence role."
     },
     {
       "role": "failures-and-friction",
@@ -110,8 +106,8 @@
       "files": [
         {
           "path": "restoration.json",
-          "sha256": "2432c1b48fef54f01ca0bfc969ba5c963b2bd9d1433ee3e72dce93f2a6fc02c1",
-          "bytes": 614
+          "sha256": "ffbc0e92d046951dd343903882d1116429694737a6c9c7b2cb1a1b74a47402c4",
+          "bytes": 1309
         }
       ],
       "reason": "Sanitized derivative retained-primary continuity summary; original native restoration records are not retained publicly."
@@ -122,8 +118,23 @@
       "files": [
         {
           "path": "summary.json",
-          "sha256": "028ec1090642400a7c85345a19e037185617664cbcd02daadc76476fa460519f",
-          "bytes": 2313
+          "sha256": "79b16abeaa237691f028e3318a28615c437d24afb357c3593c559b2e47d0bb12",
+          "bytes": 2953
+        },
+        {
+          "path": "raw-request-receipts.json",
+          "sha256": "7bf20379eb86be649e88364c7ac5da6db0d3b88a281ab4af62d2a86ffef751f4",
+          "bytes": 90029
+        },
+        {
+          "path": "c8-c16-capacity-receipts.json",
+          "sha256": "c9a6e8dac342ffe2447ac51d6be7a53759ce43478ca036374d53649b1de2c52c",
+          "bytes": 2561
+        },
+        {
+          "path": "quality-scope-receipts.json",
+          "sha256": "4c780733741e2949ab1076bd3e4603bf50aca079744c22d12422f94e9b92385b",
+          "bytes": 1738
         },
         {
           "path": "ernie-fixed-60-summary.json",
@@ -151,19 +162,13 @@
           "bytes": 853
         }
       ],
-      "reason": "Sanitized derivative aggregate summaries, distinct from native evidence envelopes."
+      "reason": "Supported public decision summary with derivative public-safe request, capacity, quality, and aggregate attachments; distinct from withheld native evidence envelopes."
     },
     {
       "role": "publication-summary",
-      "status": "retained",
-      "files": [
-        {
-          "path": "publication-summary.md",
-          "sha256": "792430b16c8f81fe751e893f3776c1f92841e40c0ae95ce429a56d1098828b2c",
-          "bytes": 266
-        }
-      ],
-      "reason": "Claim and closure boundary."
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No platform-copy publication summary was requested; the dated finding is the public narrative."
     }
   ],
   "bundle_size_policy_verified": true,

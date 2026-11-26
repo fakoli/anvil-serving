@@ -265,9 +265,10 @@ def build_record(stem: str, finding: Path | None, directory: Path | None, root: 
         or _labels(evidence._mapping(decision).get("decision_labels"))
         or _labels(decision if isinstance(decision, str) else None)
     )
+    summary_workload = evidence._mapping(summary.get("workload"))
     workload = {
-        "context_tokens": sorted(scan["context"]) or NOT_RECORDED,
-        "concurrency": sorted(scan["concurrency"]) or NOT_RECORDED,
+        "context_tokens": sorted(scan["context"]) or _text(summary_workload.get("context_tokens")) or NOT_RECORDED,
+        "concurrency": sorted(scan["concurrency"]) or _text(summary_workload.get("concurrency")) or NOT_RECORDED,
     }
     limitations = [text for text in (_text(item) for item in evidence._list(summary.get("limitations"))) if text]
     failures = evidence._list(summary.get("failures"))

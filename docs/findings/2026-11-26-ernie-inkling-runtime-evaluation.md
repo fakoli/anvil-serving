@@ -15,10 +15,15 @@
 | ERNIE 5.5 Flash Preview | Managed text protocol checks; fixed 60-case local comparison; bounded C1, C8, and C16 observations | Text-only; no broad quality or full-window reliability conclusion |
 | Inkling 2 Mini | Original mixed-precision runtime completed 60 matched-cap cases; Q8 completed separate short protocol checks | Separate RTX 5090 lane; no cross-lane comparison |
 
-**Exact setup:** direct local requests. ERNIE used the pinned `gb202` runtime
-at `974db22`, TP2, MTP7 with alpha 0.6, and a 16 GiB prefix cache; the quality
-gate was C4 and the scale observations were C16. Original Inkling used
-checkpoint `c9d028` with vLLM `5aea305`, TP1 DSpark, and a 24K context window.
+**Exact setup:** direct local requests. ERNIE used a managed two-GPU TP2
+runtime with a 16 GiB prefix cache; the quality workload was sequential C1
+(the managed concurrency limit was configured C4), and the candidate-only
+scale observations were C8/C16. Original Inkling used the public
+[Inkling 2 Mini model card](https://huggingface.co/thinkingmachines/Inkling-2-Mini)
+in a one-GPU, TP1, 24K-context original-runtime lane.
+
+**Measured hardware:** two NVIDIA RTX PRO 6000 Blackwell Max-Q GPUs for the
+ERNIE/AZ-Focus lane; one NVIDIA GeForce RTX 5090 for the separate Inkling lane.
 The C1 fixed-set cache state was not retained publicly; the C8/C16 cells have
 their separately recorded cache conditions. Reproduction controls, source
 hashes, and public-safe per-request receipts are in the [evidence index](2026-11-26-ernie-inkling-runtime-evaluation-evidence/README.md).
@@ -68,9 +73,13 @@ historical record. The three sequential sums were 215/448/766 seconds and
 observation is not itself a useful-work ranking.
 
 ERNIE passed independent agentic 3/3 and Aider 2/2 checks. Its five-issue SWE
-scout had one resolved issue, two unresolved issues, and two call-budget
-exhaustions before grading. The restored AZ-Focus direct smoke, JSON, tools,
-tool-result, streaming-tools, and image checks passed; ERNIE is text-only.
+scout had one graded resolution, two graded unresolved issues, and two
+call-budget exhaustions before grading; it is incomplete rather than a suite
+score. The scorer sensitivity, these bounded checks, and their public-safe
+source hashes are retained in
+[`quality-scope-receipts.json`](2026-11-26-ernie-inkling-runtime-evaluation-evidence/quality-scope-receipts.json).
+The restored AZ-Focus direct smoke, JSON, tools, tool-result, streaming-tools,
+and image checks passed; ERNIE is text-only.
 
 The C8/C16 fixed-output cells measured 616/815 tokens/s from first output to
 last completion and 353/359 tokens/s over the entire batch. Natural-output
@@ -78,6 +87,10 @@ cells returned 8/8 and 16/16 semantic matches. Local Inference Lab reports
 about 919/1,340 tokens/s for nominal C8/C16, but its workload, timing boundary,
 GPU product, cache setting, and driver setting differ. It is a reference, not a
 reproduction or a causal comparison.
+
+The public-safe per-cell timing, context range, output count, cache-state gap,
+and source hash are retained in
+[`c8-c16-capacity-receipts.json`](2026-11-26-ernie-inkling-runtime-evaluation-evidence/c8-c16-capacity-receipts.json).
 
 ## Inkling and restoration
 

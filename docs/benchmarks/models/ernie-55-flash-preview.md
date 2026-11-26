@@ -7,8 +7,12 @@
 !!! info "Decision snapshot"
 
     - **Product role:** measured long-document candidate; not selected for the retained primary route.
+    - **Best-qualified configuration:** Not retained; public evidence records only a managed TP2 text-runtime class.
     - **Measured hardware:** two NVIDIA RTX PRO 6000 Blackwell Max-Q GPUs, TP2.
+    - **Evidence and bounded result:** `functional`, `quality`, `partial capacity`; 46/60 fixed sequential-C1 complete-correct versus 49/60 for AZ-Focus, plus one correct 999,990-token retrieval.
     - **Decision:** `no-promotion`; retained primary route restored.
+    - **Important limitation:** native raw evidence is withheld; public records are sanitized projections, and C8/C16 are candidate-only aggregates.
+    - **Evidence cutoff:** 2026-11-26.
     - **Review date:** 2026-11-26.
 
 ## Immutable identity

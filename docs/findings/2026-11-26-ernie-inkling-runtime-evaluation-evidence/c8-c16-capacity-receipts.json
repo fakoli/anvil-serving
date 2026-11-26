@@ -1,0 +1,67 @@
+{
+  "cache_state": "not retained in the public projection",
+  "cells": [
+    {
+      "batch_seconds": 39.900568236,
+      "completion_p50_seconds": 38.516042052418925,
+      "completion_p95_seconds_nearest_rank": 39.893718477804214,
+      "concurrency": 16,
+      "end_to_end_tps": 359.29312873959145,
+      "first_output_to_last_completion_tps": 815.1501590347913,
+      "mode": "length",
+      "output_tokens": 14336,
+      "prompt_max": 15489,
+      "prompt_min": 13991,
+      "prompt_sum": 235882,
+      "semantic_matches": null
+    },
+    {
+      "batch_seconds": 26.077748091,
+      "completion_p50_seconds": 24.749539925018325,
+      "completion_p95_seconds_nearest_rank": 26.070515556959435,
+      "concurrency": 16,
+      "end_to_end_tps": 60.396319287383825,
+      "first_output_to_last_completion_tps": 379.12773559021804,
+      "mode": "natural",
+      "output_tokens": 1575,
+      "prompt_max": 15498,
+      "prompt_min": 14000,
+      "prompt_sum": 235914,
+      "semantic_matches": 16
+    },
+    {
+      "batch_seconds": 20.286120065,
+      "completion_p50_seconds": 19.821590697974898,
+      "completion_p95_seconds_nearest_rank": 20.281938835978508,
+      "concurrency": 8,
+      "end_to_end_tps": 353.34504464296634,
+      "first_output_to_last_completion_tps": 615.5813367679594,
+      "mode": "length",
+      "output_tokens": 7168,
+      "prompt_max": 10995,
+      "prompt_min": 10995,
+      "prompt_sum": 87960,
+      "semantic_matches": null
+    },
+    {
+      "batch_seconds": 10.923374677,
+      "completion_p50_seconds": 10.188236837508157,
+      "completion_p95_seconds_nearest_rank": 10.922378750052303,
+      "concurrency": 8,
+      "end_to_end_tps": 79.5541694481785,
+      "first_output_to_last_completion_tps": 348.9783656925739,
+      "mode": "natural",
+      "output_tokens": 869,
+      "prompt_max": 10990,
+      "prompt_min": 10990,
+      "prompt_sum": 87920,
+      "semantic_matches": 8
+    }
+  ],
+  "limitations": "Natural and length-controlled outputs are distinct populations. These candidate-only aggregates are not a matched service-speed or saturation comparison.",
+  "measurement_path": "direct local candidate-only C8/C16 batches; aggregate batch timing.",
+  "privacy_boundary": "No prompts, completions, reasoning, endpoint, host, or local source paths are retained.",
+  "purpose": "Public-safe C8/C16 aggregate timing projection from retained local runtime outputs.",
+  "schema": "anvil-serving.sanitized-capacity-receipts/v1",
+  "source_sha256": "67af24d75cd53c51945886c90d97e18ca81f09c833fcebdface99760b80ad1bd"
+}

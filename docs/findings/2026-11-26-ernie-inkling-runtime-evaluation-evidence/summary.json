@@ -15,6 +15,8 @@
   },
   "evidence": [
     "raw-request-receipts.json",
+    "c8-c16-capacity-receipts.json",
+    "quality-scope-receipts.json",
     "ernie-fixed-60-summary.json",
     "ernie-c16-summary.json",
     "inkling-original-summary.json",
@@ -25,36 +27,37 @@
   ],
   "headline_results": [
     {
-      "condition": "paired local text cases; one length-limited response",
-      "metric": "fixed-set complete-correct, ERNIE",
-      "value": "46/60"
+      "condition": "same 60 cases; frozen scorer",
+      "metric": "fixed sequential C1 complete-correct",
+      "value": "AZ-Focus 49/60; ERNIE 46/60"
     },
     {
-      "condition": "44 items complete-correct for both; not a quality ranking",
-      "metric": "fixed-set complete-correct, retained baseline",
-      "value": "49/60"
-    },
-    {
-      "condition": "one target at one position; correct completion",
-      "metric": "single-target needle prompt",
-      "unit": "tokens",
+      "condition": "ERNIE C1; one target and one position",
+      "metric": "single-target retrieval",
+      "unit": "input tokens",
       "value": 999990
     },
     {
-      "condition": "bounded ~14K-15.5K input aggregate",
-      "metric": "C16 natural semantic matches",
-      "value": "16/16"
+      "condition": "first output to last completion; candidate-only aggregate",
+      "metric": "C8 length-controlled batch rate",
+      "unit": "tokens/s",
+      "value": 615.5813
     },
     {
-      "condition": "one length-limited natural coding response; not a service-speed ranking",
-      "metric": "C1 16,384-token coding e2e rate",
+      "condition": "first output to last completion; candidate-only aggregate",
+      "metric": "C16 length-controlled batch rate",
       "unit": "tokens/s",
-      "value": 223.0
+      "value": 815.1502
+    },
+    {
+      "condition": "RTX 5090 C1/24K; 16,384 maximum output",
+      "metric": "original Inkling complete-correct",
+      "value": "44/60"
     }
   ],
   "identity": {
     "engine": "managed local inference runtimes",
-    "hardware": "RTX PRO 6000 Blackwell Max-Q and RTX 5090 evaluation lanes",
+    "hardware": "two NVIDIA RTX PRO 6000 Blackwell Max-Q GPUs and one NVIDIA GeForce RTX 5090 across distinct lanes",
     "model": "ERNIE 5.5 Flash Preview; Inkling 2 Mini original-runtime and Q8 protocol lanes",
     "quantization": "not comparable across lanes"
   },
@@ -62,9 +65,16 @@
     "The two lanes remain non-comparable because hardware and runtime conditions differ.",
     "No aggregate supports a general speed, capacity, quality, route, default, or promotion claim."
   ],
-  "schema": "anvil-serving.sanitized-decision-summary/v1",
+  "measurement": {
+    "path": "direct local requests; fixed comparison sequential C1; candidate-only scale aggregates at C8/C16",
+    "sample_count": 60,
+    "warm_cold_state": "not retained publicly for the fixed C1 comparison; not asserted for candidate-only C8/C16 aggregates"
+  },
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
   "workload": {
     "comparison_scope": "closed bounded campaign; lanes are not pooled",
+    "concurrency": "quality comparison C1; candidate-only capacity C8 and C16; managed maximum configured C4",
+    "context_tokens": "fixed comparison: variable; long retrieval: 999,990; candidate-only C8/C16: approximately 11K-15.5K",
     "name": "bounded local text protocol, fixed-set, and runtime-compatibility observations"
   }
 }
