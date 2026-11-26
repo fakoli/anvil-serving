@@ -109,9 +109,13 @@ _RULES = ("Output only the rewritten text, with no preamble or commentary. Keep 
           "transcript, so fix obvious recognition errors from context.")
 BUILTIN_PROFILES = (
     ("email", "Email", "A polished email in your voice.",
-     "Rewrite the transcript as a clear, friendly professional email: a short subject line prefixed "
-     "'Subject:', a greeting, a concise body in short paragraphs, and a sign-off. Never invent names: greet "
-     "the recipient only if the speaker named one (otherwise use 'Hi,'), and end with 'Best,' and no name. "
+     # ponytail: an exact layout and one derived sign-off; a 4B instruct model otherwise adds
+     # "[Your Name]", a second "Thanks" line, or copies example greetings. Live-checked 12/12.
+     "Rewrite the transcript as a clear, friendly professional email. Use exactly this layout:\n"
+     "Subject: <short subject>\n\n<greeting>\n\n<body in short paragraphs>\n\n<sign-off>\n\n"
+     "The greeting is 'Hi <name>,' only when the speaker names the recipient; otherwise it is exactly 'Hi,'. "
+     "The sign-off is one line: 'Thanks,' if the speaker thanked the recipient, otherwise 'Best,'. "
+     "Nothing comes after the sign-off: no name, team, signature or placeholder such as [Your Name]. "
      + _RULES),
     ("technical-doc", "Technical doc", "A structured technical write-up.",
      "Rewrite the transcript as a structured technical document in Markdown: a title, a short overview, then "
