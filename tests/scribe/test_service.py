@@ -1,4 +1,4 @@
-"""Voice memo capture: record first, rewrite later, history (ADR-0048)."""
+"""Anvil Scribe: record first, rewrite later, history (ADR-0048)."""
 import base64
 import io
 import json
@@ -16,7 +16,9 @@ from pathlib import Path
 
 import pytest
 
-from anvil_serving.voice import corpus, memo
+from anvil_serving.scribe import cli as scribe_cli
+from anvil_serving.scribe import service as memo
+from anvil_serving.voice import corpus
 
 LOGIN = "owner@example.test"
 STUDIO = "http://127.0.0.1:51358"
@@ -38,12 +40,12 @@ def config(tmp_path, **overrides):
     values = dict(router_url="http://127.0.0.1:9", router_key="ask_synthetic",
                   allowed_logins=frozenset({LOGIN}), data_dir=tmp_path / "memos", listen_port=0)
     values.update(overrides)
-    return memo.MemoConfig(**values)
+    return memo.ScribeConfig(**values)
 
 
 def write_manifest(tmp_path, table, extra=""):
     table = {"data_dir": str(tmp_path / "memos"), **table}  # absolute on every platform
-    lines = ["[voice.memo]"] + [f"{k} = {json.dumps(v)}" for k, v in table.items()]
+    lines = ["[scribe]"] + [f"{k} = {json.dumps(v)}" for k, v in table.items()]
     path = tmp_path / "voice.toml"
     path.write_text("\n".join(lines) + "\n" + extra, encoding="utf-8")
     return str(path)
@@ -57,9 +59,9 @@ ENV = {"MEMO_KEY": "ask_synthetic", "MEMO_LOGINS": f"{LOGIN}, second@example.tes
 # --- configuration --------------------------------------------------------
 
 def test_config_resolves_references_targets_and_strips_v1(tmp_path):
-    extra = ('[voice.memo.targets.voice]\nlabel = "Voice"\nmodel = "llm.voice"\ndefault = true\n'
-             '[voice.memo.targets.primary]\nmodel = "llm.primary"\ndetail = "big"\n')
-    loaded = memo.load_memo_config(write_manifest(tmp_path, {**BASE, "route": "dark-stt"}, extra), env=ENV)
+    extra = ('[scribe.targets.voice]\nlabel = "Voice"\nmodel = "llm.voice"\ndefault = true\n'
+             '[scribe.targets.primary]\nmodel = "llm.primary"\ndetail = "big"\n')
+    loaded = memo.load_config(write_manifest(tmp_path, {**BASE, "route": "dark-stt"}, extra), env=ENV)
     assert loaded.router_url == "http://127.0.0.1:8000"
     assert loaded.allowed_logins == {LOGIN, "second@example.test"}
     assert loaded.route == "dark-stt" and loaded.listen_host == "127.0.0.1"
@@ -69,7 +71,7 @@ def test_config_resolves_references_targets_and_strips_v1(tmp_path):
 
 
 def test_single_target_becomes_the_default(tmp_path):
-    loaded = memo.load_memo_config(write_manifest(tmp_path, BASE, '[voice.memo.targets.voice]\nmodel = "llm.voice"\n'),
+    loaded = memo.load_config(write_manifest(tmp_path, BASE, '[scribe.targets.voice]\nmodel = "llm.voice"\n'),
                                    env=ENV)
     assert loaded.targets["voice"].default is True
 
@@ -83,45 +85,45 @@ def test_single_target_becomes_the_default(tmp_path):
     ({**BASE, "segment_seconds": 600}, ENV, "segment_seconds"),
     ({**BASE, "router_url": "ftp://127.0.0.1"}, ENV, "router_url"),
     ({**BASE, "upstream_url": "http://127.0.0.1:30010"}, ENV, "unknown"),
-    ({**BASE, "router_key_file": "/run/secrets/voice-memo.key"}, ENV, "exactly one"),
+    ({**BASE, "router_key_file": "/run/secrets/scribe.key"}, ENV, "exactly one"),
     ({k: v for k, v in BASE.items() if k != "router_key_env"}, ENV, "exactly one"),
     ({**{k: v for k, v in BASE.items() if k != "router_key_env"}, "router_key_file": "relative.key"}, ENV,
      "router_key_file"),
 ])
 def test_config_fails_closed(tmp_path, table, env, message):
     with pytest.raises(memo.ConfigError, match=message):
-        memo.load_memo_config(write_manifest(tmp_path, table), env=env)
+        memo.load_config(write_manifest(tmp_path, table), env=env)
 
 
 @pytest.mark.parametrize("extra", [
-    '[voice.memo.targets.Voice]\nmodel = "llm.voice"\n',
-    '[voice.memo.targets.voice]\nlabel = "no model"\n',
-    '[voice.memo.targets.voice]\nmodel = "llm.voice"\nurl = "http://127.0.0.1:1"\n',
-    '[voice.memo.targets.a]\nmodel = "llm.voice"\n[voice.memo.targets.b]\nmodel = "llm.primary"\n',
+    '[scribe.targets.Voice]\nmodel = "llm.voice"\n',
+    '[scribe.targets.voice]\nlabel = "no model"\n',
+    '[scribe.targets.voice]\nmodel = "llm.voice"\nurl = "http://127.0.0.1:1"\n',
+    '[scribe.targets.a]\nmodel = "llm.voice"\n[scribe.targets.b]\nmodel = "llm.primary"\n',
 ])
 def test_bad_targets_are_refused(tmp_path, extra):
     with pytest.raises(memo.ConfigError, match="targets"):
-        memo.load_memo_config(write_manifest(tmp_path, BASE, extra), env=ENV)
+        memo.load_config(write_manifest(tmp_path, BASE, extra), env=ENV)
 
 
 def test_reference_example_targets_are_valid():
     import tomllib
-    example = Path(__file__).resolve().parents[2] / "examples" / "primary-node" / "voice.toml"
-    targets = memo._targets(tomllib.loads(example.read_text(encoding="utf-8"))["voice"]["memo"])
+    example = Path(__file__).resolve().parents[2] / "examples" / "primary-node" / "scribe.toml"
+    targets = memo._targets(tomllib.loads(example.read_text(encoding="utf-8"))["scribe"])
     assert [t for t, v in targets.items() if v.default] == ["voice"]
 
 
 @pytest.mark.skipif(os.name != "posix", reason="owner-only file mode is the POSIX privacy contract")
 def test_config_reads_protected_key_file(tmp_path):
-    key = tmp_path / "voice-memo.key"
+    key = tmp_path / "scribe.key"
     key.write_text("ask_from_file\n", encoding="utf-8")
     key.chmod(0o600)
     table = {k: v for k, v in BASE.items() if k != "router_key_env"}
-    loaded = memo.load_memo_config(write_manifest(tmp_path, {**table, "router_key_file": str(key)}), env=ENV)
+    loaded = memo.load_config(write_manifest(tmp_path, {**table, "router_key_file": str(key)}), env=ENV)
     assert loaded.router_key == "ask_from_file"
     key.chmod(0o644)
     with pytest.raises(memo.ConfigError, match="private"):
-        memo.load_memo_config(write_manifest(tmp_path, {**table, "router_key_file": str(key)}), env=ENV)
+        memo.load_config(write_manifest(tmp_path, {**table, "router_key_file": str(key)}), env=ENV)
 
 
 # --- audio and gateway ----------------------------------------------------
@@ -234,7 +236,7 @@ class Rewriter:
 
 
 def start(cfg, **kwargs):
-    server = memo.make_memo_server(cfg, transcribe=lambda ogg: f"heard {len(ogg)} bytes", **kwargs)
+    server = memo.make_server(cfg, transcribe=lambda ogg: f"heard {len(ogg)} bytes", **kwargs)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server, f"http://127.0.0.1:{server.server_port}"
 
@@ -300,7 +302,7 @@ def test_failed_transcription_keeps_audio_and_a_visible_record(tmp_path):
     def broken(ogg):
         raise memo.TranscriptionError("gateway returned HTTP 503")
     cfg = config(tmp_path)
-    server = memo.make_memo_server(cfg, transcribe=broken)
+    server = memo.make_server(cfg, transcribe=broken)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{server.server_port}"
     try:
@@ -471,3 +473,22 @@ def test_store_is_marked_and_refused_by_corpus_validation(service):
     assert (store / corpus.EVALUATION_EXCLUDED_MARKER).is_file()
     with pytest.raises(corpus.CorpusError, match="evaluation-excluded"):
         corpus._safe_audio_path(store / "cases.jsonl", "memo.wav")
+
+
+def test_validate_reports_presence_without_secrets(tmp_path, capsys):
+    path = write_manifest(tmp_path, BASE, '[scribe.targets.voice]\nmodel = "llm.voice"\n')
+    import os as _os
+    old = {k: _os.environ.get(k) for k in ENV}
+    _os.environ.update(ENV)
+    try:
+        assert scribe_cli.main(["validate", "--config", path]) == 0
+    finally:
+        for k, v in old.items():
+            _os.environ.pop(k, None) if v is None else _os.environ.__setitem__(k, v)
+    out = capsys.readouterr().out
+    report = json.loads(out.split("scribe validate: ", 1)[1])
+    assert report["ok"] is True and report["logins"] == 2 and report["targets"] == ["voice"]
+    assert report["builtin_profiles"] == 8
+    for secret in ("ask_synthetic", LOGIN, "llm.voice"):
+        assert secret not in out
+    assert scribe_cli.main(["validate", "--config", str(tmp_path / "missing.toml")]) == 2

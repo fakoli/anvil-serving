@@ -114,6 +114,9 @@ nav:
           - Overview: journeys/anvil-media.md
           - Operator video workflows: VIDEO-MCP-WORKFLOWS.md
           - ComfyUI migration runbook: COMFYUI-MIGRATION-RUNBOOK.md
+      - Anvil Scribe:
+          - Overview: journeys/anvil-scribe.md
+          - Decision record: adr/0048-anvil-scribe-record-first-dictation.md
       - Anvil Connect:
           - Overview: journeys/anvil-connect.md
           - Why Anvil Connect: CONNECT-OVERVIEW.md
@@ -183,6 +186,7 @@ nav:
           - Evaluation and benchmarks: cli/eval.md
           - Voice: cli/voice.md
           - Media: cli/media.md
+          - Scribe: cli/scribe.md
           - Anvil Connect: cli/connect.md
           - Control Plane and Fleet: cli/control-plane.md
           - Host and setup: cli/host.md

@@ -66,4 +66,4 @@ people and the chat logs.
 | [0045](0045-media-recipe-planning.md) | Media recipes compile briefs into bounded execution requests | Accepted |
 | [0046](0046-scoped-live-route-reconfiguration.md) | Scoped live route reconfiguration without restarting the gateway | Accepted for implementation |
 | [0047](0047-gateway-socket-recovery.md) | Recover gateway crash sockets under exclusive ownership | Accepted for implementation |
-| [0048](0048-voice-memo-capture-through-scoped-audio-gateway.md) | Voice memo capture through the scoped audio gateway | Accepted for implementation |
+| [0048](0048-anvil-scribe-record-first-dictation.md) | Anvil Scribe: record-first dictation as a product family | Accepted for implementation |

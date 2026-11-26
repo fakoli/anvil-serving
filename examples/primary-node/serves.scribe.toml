@@ -1,0 +1,16 @@
+# Anvil Scribe (ADR-0048): `anvil-serving scribe run` in the repository
+# Dockerfile's `scribe` target. No GPU. Kept apart from serves.toml so generic
+# serve hygiene over the model manifest never stops it.
+#   anvil-serving serves up scribe --manifest serves.scribe.toml --dry-run
+[[serve]]
+name = "scribe"
+gpu_inference = false
+stack = "scribe"
+container = "anvil-scribe"
+runtime = "docker"
+port = 8790
+model = "anvil-scribe"
+engine = "audio"
+health = "/healthz"
+groups = ["scribe"]
+up = "docker compose --project-name anvil-scribe -f {dir}/docker-compose.scribe.yml up -d scribe"

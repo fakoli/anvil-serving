@@ -280,6 +280,47 @@ PRODUCT_FAMILIES = (
         ),
     ),
     ProductFamily(
+        id="anvil-scribe",
+        name="Anvil Scribe",
+        promise=(
+            "Record dictation first, then rewrite it on demand with saved profiles, keeping the "
+            "raw transcript and every rewrite in a private history."
+        ),
+        boundary=(
+            "Owns the capture API, the memo store, rewrite profiles and the target allowlist; it "
+            "transcribes and rewrites only through the gateway with a route-bound key, never calls "
+            "a model serve directly, and its store never feeds training or evaluation."
+        ),
+        commands=("scribe",),
+        docs_anchor="docs/PRODUCT-FAMILIES.md#anvil-scribe",
+        journey=(
+            JourneyStep(
+                "validate",
+                "Check the Scribe config and its references offline.",
+                "anvil-serving scribe validate",
+                "A missing key or login allowlist, or a non-loopback bind, fails before anything binds.",
+            ),
+            JourneyStep(
+                "grant",
+                "Review the route-bound device key Scribe needs.",
+                "anvil-serving router keys create --help",
+                "The key names one STT route and the chat aliases its rewrite targets use.",
+            ),
+            JourneyStep(
+                "preview",
+                "Review the managed Scribe container start.",
+                "anvil-serving serves up scribe --manifest <OPERATOR_HOME>/serves.scribe.toml --dry-run",
+                "The exact Compose action is visible before the loopback service starts.",
+            ),
+            JourneyStep(
+                "observe",
+                "Inspect the running Scribe container.",
+                "anvil-serving serves status --manifest <OPERATOR_HOME>/serves.scribe.toml",
+                "Container state and health are reported without reading memos.",
+            ),
+        ),
+    ),
+    ProductFamily(
         id="anvil-connect",
         name="Anvil Connect",
         promise=(
@@ -403,6 +444,7 @@ _ALIASES = {
     "eval": "evaluation-evidence",
     "voice": "anvil-voice",
     "media": "anvil-media",
+    "scribe": "anvil-scribe",
     "connect": "anvil-connect",
     "control": "control-plane-fleet",
     "fleet": "control-plane-fleet",

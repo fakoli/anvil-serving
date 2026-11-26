@@ -1,0 +1,42 @@
+# Anvil Scribe as a Docker-MANAGED CONTAINER (ADR-0048). Runs the package CLI
+# verb `anvil-serving scribe run` from the repository Dockerfile's `scribe`
+# target (the shared runtime plus ffmpeg). Managed via
+# `anvil-serving serves up scribe --manifest serves.scribe.toml`; do not
+# docker-run by hand.
+#
+# Host networking is deliberate: the service refuses a non-loopback bind, the
+# gateway listens on host loopback, and `tailscale serve` proxies the tailnet
+# edge to the same 127.0.0.1 listener. Nothing else publishes this port.
+#
+# Build: docker build --target scribe -t anvil-serving-scribe:3.1.0 .
+# SCRIBE_IMAGE is a per-invocation candidate override.
+name: anvil-scribe
+
+services:
+  scribe:
+    image: ${SCRIBE_IMAGE:-anvil-serving-scribe:3.1.0}
+    container_name: anvil-scribe
+    restart: unless-stopped
+    network_mode: host
+    command: ["--config", "/etc/anvil/scribe.toml"]
+    environment:
+      # Resolved by env-var NAME from [scribe]; values come from the operator's
+      # protected environment file, never from this file.
+      ANVIL_SCRIBE_ROUTER_KEY: ${ANVIL_SCRIBE_ROUTER_KEY:?set ANVIL_SCRIBE_ROUTER_KEY}
+      ANVIL_SCRIBE_LOGINS: ${ANVIL_SCRIBE_LOGINS:?set ANVIL_SCRIBE_LOGINS}
+    volumes:
+      - "./scribe.toml:/etc/anvil/scribe.toml:ro"
+      # Recordings, transcripts, rewrites and custom profiles: user content, evaluation-excluded.
+      - "${SCRIBE_DATA:-./scribe-data}:/var/lib/anvil-scribe"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8790/healthz', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3

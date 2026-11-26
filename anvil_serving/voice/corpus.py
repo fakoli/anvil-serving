@@ -24,7 +24,7 @@ LIBRISPEECH_ARCHIVES = {
 }
 LIBRISPEECH_MD5_URL = "https://www.openslr.org/resources/12/md5sum.txt"
 # Written at the root of stores whose audio must never train, tune, or evaluate
-# a model (for example captured voice memos, ADR-0048).
+# a model (for example Anvil Scribe memos, ADR-0048).
 EVALUATION_EXCLUDED_MARKER = "EVALUATION-EXCLUDED.txt"
 SYNTHETIC_PHRASES = (
     ("weather", "What is the weather in Seattle tomorrow morning?"),

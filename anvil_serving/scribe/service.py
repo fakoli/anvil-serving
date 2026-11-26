@@ -1,5 +1,7 @@
-"""Anvil Voice memo capture over the Capability Gateway (ADR-0048).
+"""Anvil Scribe: record-first dictation over the Capability Gateway (ADR-0048).
 
+Anvil Scribe is its own product family. It consumes Anvil Voice speech-to-text
+and the gateway's chat aliases, and never talks to a model serve directly.
 Record first, rewrite later. A browser or WebView client posts an Ogg Opus memo.
 The service converts it to 16 kHz mono PCM16 WAV with ffmpeg, transcribes it in
 gateway-sized segments through ``POST /v1/audio/transcriptions`` with a
@@ -42,10 +44,20 @@ from pathlib import Path
 from typing import Callable, Mapping, Optional
 
 from ..control_plane.mcp.auth_file import AuthFileError, read_private_auth_file
-from . import config as voice_config
-from .corpus import EVALUATION_EXCLUDED_MARKER
+from ..paths import config_path
+from ..voice.corpus import EVALUATION_EXCLUDED_MARKER
 
-ConfigError = voice_config.ConfigError
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - requires-python >= 3.11
+    tomllib = None
+
+CONFIG_NAME = "scribe.toml"
+_MAX_CONFIG_BYTES = 256 * 1024
+
+
+class ConfigError(ValueError):
+    """A fail-closed, secret-free Scribe configuration error."""
 
 MEMOS_PATH = "/v1/memos"
 PREVIEW_PATH = "/v1/memos/preview"
@@ -74,35 +86,44 @@ _KEYS = frozenset({
 })
 _TARGET_KEYS = frozenset({"label", "detail", "model", "default"})
 _MARKER_TEXT = (
-    "Captured voice memos: user content, not evidence.\n"
+    "Anvil Scribe memos: user content, not evidence.\n"
     "Never use this audio, these transcripts, outputs or saved prompts to train,\n"
     "fine-tune, or evaluate a model.\n"
     "anvil-serving STT corpus validation refuses audio under this directory (ADR-0048).\n"
 )
 
-_KEEP = "Keep every fact and the speaker's meaning; add nothing. Reply with the result only."
+# Verified against a small non-thinking instruct model: it invents names unless told
+# not to, and follows an exact line prefix only when the prompt spells it out.
+_RULES = ("Output only the rewritten text, with no preamble or commentary. Keep the speaker's meaning, "
+          "facts, names and numbers exactly. Do not invent details. The input is a speech-to-text "
+          "transcript, so fix obvious recognition errors from context.")
 BUILTIN_PROFILES = (
     ("email", "Email", "A polished email in your voice.",
-     "Rewrite this dictated transcript as a polished email in the speaker's voice: a greeting, a clear "
-     "body and a sign-off. " + _KEEP),
+     "Rewrite the transcript as a clear, friendly professional email: a short subject line prefixed "
+     "'Subject:', a greeting, a concise body in short paragraphs, and a sign-off. Never invent names: greet "
+     "the recipient only if the speaker named one (otherwise use 'Hi,'), and end with 'Best,' and no name. "
+     + _RULES),
     ("technical-doc", "Technical doc", "A structured technical write-up.",
-     "Rewrite this dictated transcript as a structured technical document: short headings, numbered "
-     "steps where order matters, and code, commands, names and numbers kept exactly as said. " + _KEEP),
+     "Rewrite the transcript as a structured technical document in Markdown: a title, a short overview, then "
+     "sections with headings, numbered steps where there is a procedure, and code identifiers in backticks "
+     "exactly as said. " + _RULES),
     ("note", "Clean note", "Filler removed, punctuation fixed, meaning unchanged.",
-     "Clean up this dictated transcript into a note: remove filler words, false starts and repetitions, "
-     "and fix punctuation and capitalization. Keep the speaker's wording. " + _KEEP),
+     "Clean up the transcript into a readable note: remove filler words and false starts, fix punctuation "
+     "and casing, and break it into paragraphs. Do not change wording beyond that. " + _RULES),
     ("message", "Message", "A short chat or Slack message.",
-     "Rewrite this dictated transcript as a short, friendly chat message ready to send. " + _KEEP),
-    ("minutes", "Meeting minutes", "Attendees, decisions and action items.",
-     "Turn this dictated transcript into meeting minutes with sections for attendees, decisions, and "
-     "action items with owners and dates when stated. Use only what was said; omit empty sections. " + _KEEP),
+     "Rewrite the transcript as a short, casual chat message suitable for Slack or iMessage: one to three "
+     "sentences. " + _RULES),
+    ("minutes", "Meeting minutes", "Summary, decisions and action items.",
+     "Turn the transcript into meeting minutes in Markdown with sections: Summary, Decisions, Action items "
+     "(each as '- [ ] owner: task' when an owner is mentioned). " + _RULES),
     ("tasks", "Task list", "Checkbox tasks, one per line.",
-     "Turn this dictated transcript into a task list: one '- [ ] ' line per task, starting with a verb, "
-     "with any stated person or due date. Do not invent tasks. " + _KEEP),
+     "Extract every actionable task from the transcript as a Markdown checklist. Start every line with "
+     "exactly '- [ ] ' followed by the task, imperative and concise. " + _RULES),
     ("clarify", "Say it better", "A clearer, tighter version of what you meant.",
-     "Say what the speaker meant more clearly and concisely, in their own voice. " + _KEEP),
+     "Rewrite the transcript to say the same thing more clearly and concisely, in the first person, keeping "
+     "the tone. " + _RULES),
     ("summary", "Summary", "A two- or three-sentence TL;DR.",
-     "Summarize this dictated transcript in two or three sentences. " + _KEEP),
+     "Summarise the transcript in two or three sentences. " + _RULES),
 )
 
 
@@ -125,7 +146,7 @@ class Target:
 
 
 @dataclass(frozen=True)
-class MemoConfig:
+class ScribeConfig:
     router_url: str
     router_key: str = field(repr=False)
     allowed_logins: frozenset = field(repr=False)
@@ -145,63 +166,77 @@ class MemoConfig:
 def _int(table, key, default, low, high):
     value = table.get(key, default)
     if type(value) is not int or not low <= value <= high:
-        raise ConfigError("voice.memo.%s must be an integer from %d through %d" % (key, low, high))
+        raise ConfigError("scribe.%s must be an integer from %d through %d" % (key, low, high))
     return value
 
 
 def _str(table, key, default=None):
     value = table.get(key, default)
     if value is not None and (not isinstance(value, str) or not value.strip()):
-        raise ConfigError("voice.memo.%s must be a non-empty string" % key)
+        raise ConfigError("scribe.%s must be a non-empty string" % key)
     return value.strip() if value is not None else None
 
 
 def _seconds(table, key, default):
     value = table.get(key, default)
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not 1 <= value <= 600:
-        raise ConfigError("voice.memo.%s must be from 1 through 600" % key)
+        raise ConfigError("scribe.%s must be from 1 through 600" % key)
     return float(value)
 
 
 def _targets(table):
     raw = table.get("targets", {})
     if not isinstance(raw, dict) or len(raw) > 16:
-        raise ConfigError("voice.memo.targets must be a table of at most 16 targets")
+        raise ConfigError("scribe.targets must be a table of at most 16 targets")
     targets = {}
     for target_id, spec in raw.items():
         if (_SLUG.fullmatch(target_id) is None or not isinstance(spec, dict)
                 or set(spec) - _TARGET_KEYS or not isinstance(spec.get("model"), str)
                 or not spec["model"].strip() or not isinstance(spec.get("default", False), bool)):
-            raise ConfigError("voice.memo.targets.%s needs a lowercase id and a model alias" % target_id)
+            raise ConfigError("scribe.targets.%s needs a lowercase id and a model alias" % target_id)
         detail = spec.get("detail", "")
         if not isinstance(detail, str):
-            raise ConfigError("voice.memo.targets.%s.detail must be a string" % target_id)
+            raise ConfigError("scribe.targets.%s.detail must be a string" % target_id)
         targets[target_id] = Target(label=_str(spec, "label", target_id), model=spec["model"].strip(),
                                     detail=detail.strip(), default=spec.get("default", False))
     defaults = [t for t in targets.values() if t.default]
     if len(targets) > 1 and len(defaults) != 1:
-        raise ConfigError("voice.memo.targets needs exactly one default = true")
+        raise ConfigError("scribe.targets needs exactly one default = true")
     if len(targets) == 1 and not defaults:
         (only,) = targets
         targets[only] = Target(targets[only].label, targets[only].model, targets[only].detail, True)
     return targets
 
 
-def load_memo_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] = None) -> MemoConfig:
-    """Load ``[voice.memo]`` and resolve its environment references, failing closed."""
+def default_config_path() -> str:
+    return config_path(CONFIG_NAME)
+
+
+def load_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] = None) -> ScribeConfig:
+    """Load ``[scribe]`` and resolve its environment references, failing closed."""
     environ = os.environ if env is None else env
-    data = voice_config.load_raw_manifest(path)
-    table = (data.get("voice") or {}).get("memo")
+    path = path or default_config_path()
+    try:
+        with open(path, "rb") as handle:
+            payload = handle.read(_MAX_CONFIG_BYTES + 1)
+        if len(payload) > _MAX_CONFIG_BYTES:
+            raise ConfigError("Scribe config exceeds %d bytes: %s" % (_MAX_CONFIG_BYTES, path))
+        data = tomllib.loads(payload.decode("utf-8"))
+    except FileNotFoundError:
+        raise ConfigError("Scribe config not found: %s" % path) from None
+    except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
+        raise ConfigError("cannot parse Scribe config %s: %s" % (path, exc)) from None
+    table = data.get("scribe")
     if not isinstance(table, dict):
-        raise ConfigError("voice manifest has no [voice.memo] table")
+        raise ConfigError("Scribe config has no [scribe] table: %s" % path)
     unknown = sorted(set(table) - _KEYS)
     if unknown:
-        raise ConfigError("unknown voice.memo keys: %s" % ", ".join(unknown))
+        raise ConfigError("unknown scribe keys: %s" % ", ".join(unknown))
 
     router_url = _str(table, "router_url")
     parsed = urllib.parse.urlsplit(router_url or "")
     if parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.query or parsed.fragment:
-        raise ConfigError("voice.memo.router_url must be an http(s) gateway base URL")
+        raise ConfigError("scribe.router_url must be an http(s) gateway base URL")
     router_url = router_url.rstrip("/")
     if router_url.endswith("/v1"):
         router_url = router_url[:-3]
@@ -209,31 +244,31 @@ def load_memo_config(path: Optional[str] = None, *, env: Optional[Mapping[str, s
     def secret_reference(key):
         name = _str(table, key)
         if name is None:
-            raise ConfigError("voice.memo.%s is required" % key)
+            raise ConfigError("scribe.%s is required" % key)
         value = (environ.get(name) or "").strip()
         if not value:
-            raise ConfigError("voice.memo.%s names %s, which is unset or empty" % (key, name))
+            raise ConfigError("scribe.%s names %s, which is unset or empty" % (key, name))
         return value
 
     key_file = _str(table, "router_key_file")
     if (key_file is None) == (table.get("router_key_env") is None):
-        raise ConfigError("voice.memo needs exactly one of router_key_env or router_key_file")
+        raise ConfigError("scribe needs exactly one of router_key_env or router_key_file")
     if key_file is None:
         router_key = secret_reference("router_key_env")
     else:
         try:  # the protected file written by `router keys create --out`
             router_key = read_private_auth_file(key_file, max_bytes=4096).decode("utf-8").strip()
         except (AuthFileError, UnicodeDecodeError):
-            raise ConfigError("voice.memo.router_key_file must be a private, non-empty key file") from None
+            raise ConfigError("scribe.router_key_file must be a private, non-empty key file") from None
         if not router_key:
-            raise ConfigError("voice.memo.router_key_file must be a private, non-empty key file")
+            raise ConfigError("scribe.router_key_file must be a private, non-empty key file")
     logins = frozenset(s.strip() for s in secret_reference("allowed_logins_env").split(",") if s.strip())
     if not logins:
-        raise ConfigError("voice.memo.allowed_logins_env resolves to no logins")
+        raise ConfigError("scribe.allowed_logins_env resolves to no logins")
 
     data_dir = _str(table, "data_dir")
     if data_dir is None or not os.path.isabs(os.path.expanduser(data_dir)):
-        raise ConfigError("voice.memo.data_dir must be an absolute path")
+        raise ConfigError("scribe.data_dir must be an absolute path")
 
     listen_host = _str(table, "listen_host", "127.0.0.1")
     try:
@@ -242,15 +277,15 @@ def load_memo_config(path: Optional[str] = None, *, env: Optional[Mapping[str, s
         loopback = False
     if not loopback:
         # The identity header is only trustworthy when tailscale serve is the sole path in.
-        raise ConfigError("voice.memo.listen_host must be a loopback address")
+        raise ConfigError("scribe.listen_host must be a loopback address")
 
     pattern = _str(table, "allowed_origin_pattern", DEFAULT_ORIGIN_PATTERN)
     try:
         origin_pattern = re.compile(pattern)
     except re.error as exc:
-        raise ConfigError("voice.memo.allowed_origin_pattern is not a valid regex") from exc
+        raise ConfigError("scribe.allowed_origin_pattern is not a valid regex") from exc
 
-    return MemoConfig(
+    return ScribeConfig(
         router_url=router_url,
         router_key=router_key,
         allowed_logins=logins,
@@ -340,7 +375,7 @@ def _gateway_json(config, path, payload, timeout):
         raise TranscriptionError("gateway returned invalid JSON") from None
 
 
-def transcribe_segment(config: MemoConfig, wav: bytes) -> str:
+def transcribe_segment(config: ScribeConfig, wav: bytes) -> str:
     """Transcribe one WAV segment through the gateway's normalized STT endpoint."""
     payload = {"purpose": "stt", "format": "wav", "is_final": True,
                "audio_b64": base64.b64encode(wav).decode("ascii")}
@@ -352,12 +387,12 @@ def transcribe_segment(config: MemoConfig, wav: bytes) -> str:
     return text.strip()
 
 
-def transcribe_memo(config: MemoConfig, ogg: bytes) -> str:
+def transcribe_memo(config: ScribeConfig, ogg: bytes) -> str:
     segments = split_wav(ogg_to_wav(ogg), config.segment_seconds)
     return " ".join(t for t in (transcribe_segment(config, s) for s in segments) if t)
 
 
-def rewrite_transcript(config: MemoConfig, prompt: str, alias: str, transcript: str):
+def rewrite_transcript(config: ScribeConfig, prompt: str, alias: str, transcript: str):
     """Rewrite a raw transcript through the gateway's chat path; returns ``(text, model)``."""
     reply = _gateway_json(config, CHAT_PATH, {"model": alias, "stream": False, "messages": [
         {"role": "system", "content": prompt}, {"role": "user", "content": transcript}]},
@@ -493,7 +528,7 @@ def _profile_fields(body, targets, *, partial):
     return fields
 
 
-def make_memo_server(config: MemoConfig, *,
+def make_server(config: ScribeConfig, *,
                      transcribe: Optional[Callable[[bytes], str]] = None,
                      rewrite: Optional[Callable[[str, str, str], tuple]] = None) -> ThreadingHTTPServer:
     """Bind the memo listener; ``transcribe`` and ``rewrite`` are injectable for hermetic tests."""
@@ -546,7 +581,7 @@ def make_memo_server(config: MemoConfig, *,
         return output
 
     class Handler(BaseHTTPRequestHandler):
-        server_version = "anvil-voice-memo/2"
+        server_version = "anvil-scribe/2"
 
         def log_message(self, fmt, *args):  # default request lines can carry query strings
             pass
