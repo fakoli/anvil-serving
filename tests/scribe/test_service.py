@@ -492,3 +492,37 @@ def test_validate_reports_presence_without_secrets(tmp_path, capsys):
     for secret in ("ask_synthetic", LOGIN, "llm.voice"):
         assert secret not in out
     assert scribe_cli.main(["validate", "--config", str(tmp_path / "missing.toml")]) == 2
+
+
+def test_malformed_content_length_is_refused_and_logged_safely(service, capfd):
+    import http.client
+    base, _, _ = service
+    host, port = base.split("//", 1)[1].split(":")
+    conn = http.client.HTTPConnection(host, int(port), timeout=5)
+    conn.putrequest("POST", "/v1/memos")
+    for name, value in {**AUTH, "Content-Type": "multipart/form-data; boundary=x", "Content-Length": "abc"}.items():
+        conn.putheader(name, value)
+    conn.endheaders()
+    assert conn.getresponse().status == 413
+    conn.close()
+    assert request(base, "GET", "/healthz")[0] == 200  # the server keeps serving
+    err = capfd.readouterr().err
+    assert '"bytes_in": -1' in err and "Traceback" not in err
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
+def test_recordings_longer_than_the_bound_are_refused():
+    ogg = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=5",
+         "-ac", "1", "-ar", "16000", "-c:a", "libopus", "-f", "ogg", "pipe:1"],
+        capture_output=True, check=True, timeout=60).stdout
+    with pytest.raises(ValueError, match="longer than 2 seconds"):
+        memo.ogg_to_wav(ogg, max_seconds=2)
+    assert len(memo.ogg_to_wav(ogg, max_seconds=10)) > 44 + 4 * memo.BYTES_PER_SECOND
+
+
+def test_recording_bound_is_configurable_and_bounded(tmp_path):
+    assert memo.load_config(write_manifest(tmp_path, {**BASE, "max_recording_seconds": 300}), env=ENV
+                            ).max_recording_seconds == 300
+    with pytest.raises(memo.ConfigError, match="max_recording_seconds"):
+        memo.load_config(write_manifest(tmp_path, {**BASE, "max_recording_seconds": 7200}), env=ENV)

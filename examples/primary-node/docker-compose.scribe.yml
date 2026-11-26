@@ -27,7 +27,9 @@ services:
     volumes:
       - "./scribe.toml:/etc/anvil/scribe.toml:ro"
       # Recordings, transcripts, rewrites and custom profiles: user content, evaluation-excluded.
-      - "${SCRIBE_DATA:-./scribe-data}:/var/lib/anvil-scribe"
+      # A named volume inherits the image's anvil-owned directory; a host bind path
+      # (SCRIBE_DATA) must already be writable by the container user.
+      - "${SCRIBE_DATA:-anvil-scribe-data}:/var/lib/anvil-scribe"
     read_only: true
     tmpfs:
       - /tmp
@@ -40,3 +42,7 @@ services:
       timeout: 5s
       start_period: 10s
       retries: 3
+
+volumes:
+  anvil-scribe-data:
+    name: anvil-scribe-data

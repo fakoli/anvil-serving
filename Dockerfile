@@ -140,7 +140,8 @@ FROM runtime AS scribe
 USER root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && install -d -o anvil -g anvil -m 700 /var/lib/anvil-scribe
 USER anvil
 
 # Loopback bind is enforced by the service; the reference Compose file uses host
