@@ -407,6 +407,7 @@ def test_agent_turn_with_audio_text_and_hermes_alias(live):
     ctype, body = multipart({"text": (None, b"x" * (agent.MAX_TEXT_CHARS + 1))})
     assert live.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})[0] == 400
     assert live.request("POST", "/v1/agent/turn", b"", {"Content-Type": ctype, **OWNER})[0] == 413
+    assert agent._length({"Content-Length": "²"}) == 0 and agent._length({"Content-Length": "12"}) == 12
 
 
 @pytest.mark.parametrize("error, expected", [

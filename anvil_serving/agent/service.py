@@ -591,7 +591,7 @@ def _field(fields, name):
 
 def _length(headers) -> int:
     value = headers.get("Content-Length") or ""
-    return int(value) if value.isdigit() else 0
+    return int(value) if value.isascii() and value.isdigit() else 0
 
 
 def make_server(config: AgentConfig, *,
@@ -701,11 +701,11 @@ def make_server(config: AgentConfig, *,
                 self.close_connection = True  # never read an unbounded or unannounced body
                 return self._send(413, {"error": "upload missing or too large"}, started)
             body = self.rfile.read(length)
-            if path == NOTIFY_PATH:
-                return self._notify(body, started)
-            if path == MCP_PATH:
-                return self._mcp(body, started)
             try:
+                if path == NOTIFY_PATH:
+                    return self._notify(body, started)
+                if path == MCP_PATH:
+                    return self._mcp(body, started)
                 fields = parse_multipart(self.headers.get("Content-Type"), body)
                 audio = fields.get("audio", (None, b""))[1]
                 if path == ANSWER_PATH:
