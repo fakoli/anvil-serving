@@ -181,6 +181,25 @@ def test_nested_parts_stay_raw_bytes_and_parse_fast():
         assert fields["audio"][1] == payload
 
 
+def test_oversized_part_headers_and_transfer_encodings_are_refused_cheaply():
+    import time as _time
+    huge = b"Content-Disposition: form-data; name=\"text\"" + b"; a=b" * 100000  # ~0.5 MiB of parameters
+    body = b"--b\r\n" + huge + b"\r\n\r\nx\r\n--b--\r\n"
+    started = _time.monotonic()
+    with pytest.raises(ValueError, match="too long"):
+        memo.parse_multipart("multipart/form-data; boundary=b", body)
+    assert _time.monotonic() - started < 1
+    with pytest.raises(ValueError, match="too long"):
+        memo.parse_multipart("multipart/form-data; boundary=b" + "; a=b" * 5000, b"--b--\r\n")
+    for cte in (b"base64", b"quoted-printable"):
+        encoded = (b"--b\r\nContent-Disposition: form-data; name=\"audio\"\r\nContent-Transfer-Encoding: " + cte
+                   + b"\r\n\r\neA==\r\n--b--\r\n")
+        with pytest.raises(ValueError, match="transfer encoding"):
+            memo.parse_multipart("multipart/form-data; boundary=b", encoded)
+    plain = b"--b\r\nContent-Disposition: form-data; name=\"n\"\r\nContent-Transfer-Encoding: 8bit\r\n\r\nv\r\n--b--\r\n"
+    assert memo.parse_multipart("multipart/form-data; boundary=b", plain) == {"n": (None, b"v")}
+
+
 def test_flat_parts_keep_binary_payloads_exactly():
     data = bytes(range(256)) * 8 + b"\r\n--testboundary1234\r\nnot-a-delimiter --testboundary123 mid-line"
     ctype, body = multipart({"audio": ("m.ogg", data), "durationMs": (None, b"7")})

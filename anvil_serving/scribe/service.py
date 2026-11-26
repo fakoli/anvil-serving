@@ -78,6 +78,7 @@ MAX_CUSTOM_PROFILES = 64
 _MAX_RESPONSE_BYTES = 1024 * 1024
 _MAX_JSON_BODY = 64 * 1024
 _MAX_MULTIPART_PARTS = 16  # uploads send audio, durationMs and an optional legacy mode
+_MAX_PART_HEADER_BYTES = 8192  # a browser part header is about 150 bytes
 _MEMO_ID = re.compile(r"\d{8}T\d{6}Z-[0-9a-f]{6}\Z")
 _SLUG = re.compile(r"[a-z0-9][a-z0-9_-]{0,31}\Z")
 _PROFILES_FILE = "profiles.json"
@@ -374,6 +375,8 @@ def parse_multipart(content_type: Optional[str], body: bytes) -> dict:
     """
     if not content_type or not content_type.lower().startswith("multipart/form-data"):
         raise ValueError("expected multipart/form-data")
+    if len(content_type) > _MAX_PART_HEADER_BYTES:  # header parsing cost grows with the value
+        raise ValueError("multipart content type is too long")
     parser = email.parser.BytesParser(policy=email.policy.HTTP)
     # The boundary as an email parser reads it, however the header spells it (quoted,
     # RFC 2231 `boundary*=`, or after a look-alike parameter).
@@ -387,11 +390,30 @@ def parse_multipart(content_type: Optional[str], body: bytes) -> dict:
         raise ValueError("too many multipart parts")
     fields = {}
     for chunk in _form_parts(body, delimiter):
-        part = parser.parsebytes(chunk, headersonly=True)
+        # Parse only a small header block: the header parser builds a token tree for the
+        # whole value, so a megabyte of parameters would cost a gigabyte of memory.
+        split = _part_header_end(chunk)
+        part = parser.parsebytes(chunk[:split], headersonly=True)
+        encoding = (part.get("Content-Transfer-Encoding") or "binary").strip().lower()
+        if encoding not in ("7bit", "8bit", "binary"):
+            raise ValueError("multipart transfer encodings are not accepted")
         name = part.get_param("name", header="content-disposition")
         if name:
-            fields[name] = (part.get_filename(), part.get_payload(decode=True) or b"")
+            fields[name] = (part.get_filename(), chunk[split:])  # the exact payload bytes
     return fields
+
+
+def _part_header_end(chunk: bytes) -> int:
+    """Offset just past the blank line that ends a part's headers, within the header limit."""
+    window = chunk[:_MAX_PART_HEADER_BYTES + 4]
+    for blank in (b"\r\n", b"\n", b"\r"):  # a part with no headers starts with its blank line
+        if window.startswith(blank):
+            return len(blank)
+    ends = [(at, len(sep)) for sep in (b"\r\n\r\n", b"\n\n", b"\r\r") if (at := window.find(sep)) >= 0]
+    if not ends:
+        raise ValueError("multipart part headers are missing or too long")
+    at, size = min(ends)
+    return at + size
 
 
 def ogg_to_wav(ogg: bytes, max_seconds: int = 900) -> bytes:
