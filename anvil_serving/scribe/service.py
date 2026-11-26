@@ -576,8 +576,10 @@ class MemoStore:
                 if refusal.status == 404:  # deleted between listing and reading
                     continue
                 # Keep an unreadable record visible so its audio can still be found and deleted.
-                memos.append({"id": memo_id, "createdAt": None, "durationMs": 0, "transcript": None,
-                              "outputs": [], "unreadable": True})
+                # The id starts with its UTC creation time, so clients still sort and label it.
+                created = datetime.strptime(memo_id[:16], "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+                memos.append({"id": memo_id, "createdAt": created.isoformat(timespec="seconds"),
+                              "durationMs": 0, "transcript": None, "outputs": [], "unreadable": True})
         return memos, (ids[limit - 1] if len(ids) > limit else None)
 
     def custom_profiles(self):

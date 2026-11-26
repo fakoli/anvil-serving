@@ -149,7 +149,6 @@ def test_split_wav_preserves_samples_within_gateway_limit():
     assert memo.MAX_SEGMENT_SECONDS * memo.BYTES_PER_SECOND + 44 <= 4 * 1024 * 1024  # gateway default
 
 
-@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
 def test_multipart_part_floods_are_refused_before_parsing():
     many = b"".join(b"--b\r\nContent-Disposition: form-data; name=\"f%d\"\r\n\r\nx\r\n" % i for i in range(17))
     with pytest.raises(ValueError, match="too many"):
@@ -167,6 +166,7 @@ def test_ogg_decode_pins_the_demuxer():
         memo.ogg_to_wav(wav)
 
 
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
 def test_ogg_to_wav_rejects_garbage():
     with pytest.raises(ValueError):
         memo.ogg_to_wav(b"not audio")
@@ -377,7 +377,7 @@ def test_an_unreadable_record_stays_listed_and_deletable(tmp_path):
     (tmp_path / "memos" / "20000101T000000Z-abcdef.json").write_text("{", encoding="utf-8")
     memos, _ = store.page(10, None)
     assert [m["id"] for m in memos] == [good["id"], "20000101T000000Z-abcdef"]
-    assert memos[1]["unreadable"] is True
+    assert memos[1]["unreadable"] is True and memos[1]["createdAt"] == "2000-01-01T00:00:00+00:00"
     store.delete("20000101T000000Z-abcdef")
     assert [m["id"] for m in store.page(10, None)[0]] == [good["id"]]
 
