@@ -347,6 +347,15 @@ def test_builtin_profiles_are_listed_and_read_only(service):
     assert request(base, "DELETE", "/v1/memos/profiles/email", headers=AUTH)[0] == 403
 
 
+def test_email_prompt_pins_one_sign_off_and_no_invented_names():
+    prompt = next(p for pid, _, _, p in memo.BUILTIN_PROFILES if pid == "email")
+    assert "Subject: <short subject>\n\n<greeting>\n\n<body in short paragraphs>\n\n<sign-off>" in prompt
+    assert "otherwise it is exactly 'Hi,'" in prompt
+    assert "'Thanks,' if the speaker thanked the recipient, otherwise 'Best,'" in prompt
+    assert "Nothing comes after the sign-off" in prompt and "[Your Name]" in prompt
+    assert "for example" not in prompt  # a small model copies example greetings into every email
+
+
 def test_custom_profile_lifecycle_persists_in_the_store(service, tmp_path):
     base, store, _ = service
     status, _, created = request(base, "POST", "/v1/memos/profiles",
