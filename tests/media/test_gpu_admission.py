@@ -375,6 +375,74 @@ class TestGpuAdmission(unittest.TestCase):
                 self.prep()
         self.assertEqual(error.exception.code, "gpu_telemetry_unavailable")
 
+    def test_read_timeout_during_planned_containment_quarantines_pool_run(self):
+        sampler = self.p._nvml
+        self.p.mode = "images"
+        self.assertFalse(self.prep()["ready"])  # Queue a switch to exclusive mode.
+        helper = sampler._process
+        request_read_started = threading.Event()
+        request_errors = Queue()
+        request_thread = None
+        started_modes = []
+        contained_epochs = []
+        healthy_epoch = sampler.epoch
+
+        def start_children(mode):
+            if started_modes:
+                sampler.start()  # The actual restart attempted by drive().
+            started_modes.append(mode)
+
+        def read_request():
+            try:
+                self.prep()
+            except Exception as error:
+                request_errors.put(error)
+
+        def refresh_after_healthy_sample():
+            nonlocal request_thread, healthy_epoch
+            self.assertGreater(sampler.epoch, healthy_epoch)
+            healthy_epoch = sampler.epoch
+            sampler._timeout = .2
+            (self.path / "hold").touch()
+            original_socket = sampler._socket
+
+            def recv(size):
+                request_read_started.set()
+                self.assertTrue(sampler._frozen.wait(2), "planned containment did not begin")
+                return original_socket.recv(size)  # Real read timeout while contain() waits.
+
+            sampler._socket = SimpleNamespace(
+                settimeout=original_socket.settimeout, sendall=original_socket.sendall,
+                recv=recv, close=original_socket.close)
+            request_thread = threading.Thread(target=read_request, daemon=True)
+            request_thread.start()
+            self.assertTrue(request_read_started.wait(2))
+
+        def reap_helper():
+            self.assertTrue(sampler._evidence.contained)
+            contained_epochs.append(sampler.epoch)
+            helper.wait(timeout=1)
+            self.p.children.clear()
+
+        with patch.object(self.p, "_start_children", start_children), \
+                patch.object(self.p, "refresh", refresh_after_healthy_sample), \
+                patch.object(self.p, "_stop_render_children", reap_helper), \
+                patch.object(self.p.stop, "wait", side_effect=[False, True]):
+            try:
+                self.p.drive()
+            finally:
+                if request_thread is not None:
+                    request_thread.join(3)
+
+        self.assertIsNotNone(request_thread)
+        self.assertFalse(request_thread.is_alive())
+        self.assertEqual(request_errors.get_nowait().code, "gpu_telemetry_unavailable")
+        self.assertEqual(contained_epochs[0], healthy_epoch + 2)  # Failure, then containment.
+        self.assertIsNotNone(helper.returncode)
+        self.assertEqual(started_modes, ["images"], "provider failure must refuse the same-run restart")
+        self.assertEqual(self.p.fault, "gpu_telemetry_unavailable")
+        self.assertEqual(self.posts, 0)
+
     def test_mode_switch_containment_does_not_mask_sticky_low_reserve(self):
         sampler = self.p._nvml
         original = sampler.sample_with_revision

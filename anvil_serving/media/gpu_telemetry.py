@@ -66,6 +66,7 @@ class _Evidence:
     started: float | None = None
     breached: bool = False
     contained: bool = False
+    provider_failed: bool = False
 
 
 class NvmlSampler:
@@ -99,7 +100,7 @@ class NvmlSampler:
         with self._lock:
             if self._evidence.breached:
                 raise _reserve_breached()
-            if self._closed or self._socket is not None:
+            if self._closed or self._evidence.provider_failed or self._socket is not None:
                 raise _unavailable()
             try:
                 self._start()
@@ -124,7 +125,10 @@ class NvmlSampler:
 
     def _discard(self, *, contained=False):
         previous = self._evidence
-        self._evidence = _Evidence(previous.epoch + 1, breached=previous.breached, contained=contained)
+        self._evidence = _Evidence(
+            previous.epoch + 1, breached=previous.breached, contained=contained,
+            provider_failed=previous.provider_failed or not contained,
+        )
         sock, self._socket = self._socket, None
         if sock is not None:
             sock.close()
