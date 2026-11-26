@@ -35,10 +35,13 @@ the reference file is `examples/primary-node/agent.toml`.
 | `GET /healthz` | Token-free liveness. |
 
 A turn that cannot be transcribed returns 502, and silence returns 422.
-Two limits bound memory, as in Scribe: `max_recording_seconds` (300 by
+Three limits bound memory. As in Scribe, `max_recording_seconds` (300 by
 default) refuses longer recordings while decoding, and
 `max_concurrent_transcriptions` (2 by default) caps decodes in flight. A
-spoken turn that finds no free slot within 30 seconds returns 503. A
+spoken turn that finds no free slot within 30 seconds returns 503. At most
+eight request bodies are held at once, because an agent turn or `ASK` keeps
+its body until it finishes. A ninth concurrent `POST` gets 503 before its body
+is read. A
 backend that answers with an error status returns 502 naming only that status;
 its body is never forwarded or logged. A backend that does not finish within
 `turn_timeout_seconds` returns 504 with `unconfirmed: true`, because the agent

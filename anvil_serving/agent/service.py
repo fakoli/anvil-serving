@@ -76,6 +76,10 @@ _KEYS = frozenset({
     "turn_timeout_seconds", "max_recording_seconds", "max_concurrent_transcriptions", "backends",
 })
 _SLOT_WAIT_SECONDS = 30  # a spoken turn waits this long for a decode slot, then gets 503
+# Request bodies held in memory at once. An agent turn or ASK keeps its body for up to its timeout,
+# so this caps memory at MAX_INFLIGHT_POSTS x max_upload_bytes. ponytail: fixed; make it config if
+# several glasses or agents share one service.
+MAX_INFLIGHT_POSTS = 8
 _BACKEND_KEYS = frozenset({"kind", "label", "url", "key_env", "key_file", "session"})
 
 HUD_HINT = ("The user is talking to you through MemoMind smart glasses with a tiny text display. "
@@ -609,6 +613,7 @@ def make_server(config: AgentConfig, *,
     The returned server carries its session state as ``server.glasses``."""
     glasses = Glasses()
     decode_slots = threading.BoundedSemaphore(config.max_concurrent_transcriptions)
+    intake = threading.BoundedSemaphore(MAX_INFLIGHT_POSTS)
     transcriber = transcribe or (lambda ogg: transcribe_memo(config, ogg))
     asker = ask or (lambda agent_id, text: ask_backend(config, agent_id, text))
     agents_view = {"agents": [{"id": bid, "label": b.label} for bid, b in config.backends.items()]}
@@ -709,7 +714,15 @@ def make_server(config: AgentConfig, *,
             if not 0 < length <= config.max_upload_bytes:
                 self.close_connection = True  # never read an unbounded or unannounced body
                 return self._send(413, {"error": "upload missing or too large"}, started)
-            body = self.rfile.read(length)
+            if not intake.acquire(blocking=False):  # bound buffered bodies, not just decodes
+                self.close_connection = True  # the unread body stays on this socket
+                return self._send(503, {"error": "busy"}, started, "intake busy")
+            try:
+                return self._handle_post(path, self.rfile.read(length), started)
+            finally:
+                intake.release()
+
+        def _handle_post(self, path, body, started):
             try:
                 if path == NOTIFY_PATH:
                     return self._notify(body, started)

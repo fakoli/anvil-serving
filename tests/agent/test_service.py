@@ -615,6 +615,37 @@ def test_spoken_turn_transcribes_through_the_gateway(monkeypatch):
         gateway.shutdown()
 
 
+def test_posts_beyond_the_inflight_cap_get_503_before_their_body_is_read(monkeypatch):
+    monkeypatch.setattr(agent, "MAX_INFLIGHT_POSTS", 1)
+    release = threading.Event()
+
+    def slow_agent(agent_id, text):
+        release.wait(5)
+        return ("late reply", "s", "stop")
+    server = agent.make_server(make_config(), ask=slow_agent)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    client = Client(server)
+    ctype, body = multipart({"text": (None, b"hold the slot")})
+    first = {}
+    holder = threading.Thread(target=lambda: first.update(zip(("status", "headers", "data"), client.request(
+        "POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER}))))
+    try:
+        holder.start()
+        time.sleep(0.2)  # the first turn now holds the only intake slot while its agent thinks
+        status, _, data = client.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})
+        assert (status, json.loads(data)) == (503, {"error": "busy"})
+        release.set()
+        holder.join(5)
+        assert first["status"] == 200 and json.loads(first["data"])["reply"] == "late reply"
+        # the slot is free again once the first request finished
+        release.set()
+        assert client.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})[0] == 200
+    finally:
+        release.set()
+        server.shutdown()
+        server.server_close()
+
+
 def test_spoken_turn_gets_503_when_every_decode_slot_is_busy(monkeypatch):
     monkeypatch.setattr(agent, "_SLOT_WAIT_SECONDS", 0.1)
     release = threading.Event()
