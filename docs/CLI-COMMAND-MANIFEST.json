@@ -42410,6 +42410,15 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Scribe config TOML; defaults to $ANVIL_SERVING_HOME/scribe.toml.",
+          "value_name": "PATH"
         }
       ],
       "output_policy": "foreground",
@@ -42540,6 +42549,15 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Scribe config TOML; defaults to $ANVIL_SERVING_HOME/scribe.toml.",
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",

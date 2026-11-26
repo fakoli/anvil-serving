@@ -252,7 +252,12 @@ def load_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] 
 
     router_url = _str(table, "router_url")
     parsed = urllib.parse.urlsplit(router_url or "")
-    if parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.query or parsed.fragment:
+    try:
+        port_ok = parsed.port != 0  # .port raises for a non-numeric or out-of-range port
+    except ValueError:
+        port_ok = False
+    if (parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.query or parsed.fragment
+            or not port_ok):
         raise ConfigError("scribe.router_url must be an http(s) gateway base URL")
     router_url = router_url.rstrip("/")
     if router_url.endswith("/v1"):
@@ -294,12 +299,13 @@ def load_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] 
 
     listen_host = _str(table, "listen_host", "127.0.0.1")
     try:
-        loopback = ipaddress.ip_address(listen_host).is_loopback
+        address = ipaddress.ip_address(listen_host)
+        loopback = address.version == 4 and address.is_loopback  # the server binds AF_INET
     except ValueError:
         loopback = False
     if not loopback:
         # The identity header is only trustworthy when tailscale serve is the sole path in.
-        raise ConfigError("scribe.listen_host must be a loopback address")
+        raise ConfigError("scribe.listen_host must be an IPv4 loopback address")
 
     pattern = _str(table, "allowed_origin_pattern", DEFAULT_ORIGIN_PATTERN)
     try:
@@ -400,9 +406,12 @@ def _gateway_json(config, path, payload, timeout):
     if len(raw) > _MAX_RESPONSE_BYTES:
         raise TranscriptionError("gateway response too large")
     try:
-        return json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError):
+        value = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError, RecursionError):
         raise TranscriptionError("gateway returned invalid JSON") from None
+    if not isinstance(value, dict):
+        raise TranscriptionError("gateway returned a non-object JSON body")
+    return value
 
 
 def transcribe_segment(config: ScribeConfig, wav: bytes) -> str:
@@ -456,12 +465,11 @@ def _now():
 def _write_private(path: Path, data: bytes) -> None:
     """Write one owner-only (0600) file, whatever the process umask."""
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0), 0o600)
-    try:
+    # A buffered writer retries short writes and raises on failure (a bare os.write may not).
+    with os.fdopen(fd, "wb") as out:
         if hasattr(os, "fchmod"):
             os.fchmod(fd, 0o600)  # a pre-existing file keeps its old mode otherwise
-        os.write(fd, data)
-    finally:
-        os.close(fd)
+        out.write(data)
 
 
 def _write_json(path: Path, value) -> None:
@@ -709,9 +717,10 @@ def make_server(config: ScribeConfig, *,
             if not 0 < length <= _MAX_JSON_BODY:
                 self.close_connection = True
                 raise _Refusal(413 if length > _MAX_JSON_BODY else 400, "a JSON body is required")
+            body = self._read_body(length)  # the same wall-clock deadline as uploads
             try:
-                return json.loads(self.rfile.read(length).decode("utf-8"))
-            except (UnicodeDecodeError, ValueError):
+                return json.loads(body.decode("utf-8"))
+            except (UnicodeDecodeError, ValueError, RecursionError):
                 raise _Refusal(400, "body must be JSON") from None
 
         def _dispatch(self, handler):

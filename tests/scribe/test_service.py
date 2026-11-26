@@ -84,6 +84,9 @@ def test_single_target_becomes_the_default(tmp_path):
     ({**BASE, "data_dir": "relative/memos"}, ENV, "absolute"),
     ({**BASE, "segment_seconds": 600}, ENV, "segment_seconds"),
     ({**BASE, "router_url": "ftp://127.0.0.1"}, ENV, "router_url"),
+    ({**BASE, "router_url": "http://127.0.0.1:notaport"}, ENV, "router_url"),
+    ({**BASE, "router_url": "http://127.0.0.1:70000"}, ENV, "router_url"),
+    ({**BASE, "listen_host": "::1"}, ENV, "IPv4 loopback"),
     ({**BASE, "upstream_url": "http://127.0.0.1:30010"}, ENV, "unknown"),
     ({**BASE, "router_key_file": "/run/secrets/scribe.key"}, ENV, "exactly one"),
     ({k: v for k, v in BASE.items() if k != "router_key_env"}, ENV, "exactly one"),
@@ -206,6 +209,26 @@ def test_gateway_denial_is_a_transcription_error(tmp_path, fake_gateway):
     FakeGateway.status = 403
     with pytest.raises(memo.TranscriptionError, match="403"):
         memo.transcribe_segment(config(tmp_path, router_url=fake_gateway), memo.wav_header(2) + b"\x00\x00")
+
+
+@pytest.mark.parametrize("raw", [b"[]", b"null", b"\"text\"", b"[" * 100000])
+def test_non_object_gateway_json_is_a_transcription_error(tmp_path, monkeypatch, raw):
+    monkeypatch.setattr(memo, "_post_json", lambda *args: (200, raw))
+    with pytest.raises(memo.TranscriptionError):
+        memo.transcribe_segment(config(tmp_path), memo.wav_header(2) + b"\x00\x00")
+    with pytest.raises(memo.TranscriptionError):
+        memo.rewrite_transcript(config(tmp_path), "Rewrite.", "llm.voice", "text")
+
+
+def test_cli_help_lists_the_config_option(capsys):
+    from anvil_serving import cli as root
+    for action in ("run", "validate"):
+        try:
+            code = root.main(["scribe", action, "--help"])
+        except SystemExit as exc:
+            code = exc.code
+        assert code in (0, None)
+        assert "--config PATH" in capsys.readouterr().out
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
@@ -670,7 +693,9 @@ def test_buffered_uploads_are_admitted_before_any_body_is_read(tmp_path, monkeyp
         server.server_close()
 
 
-def test_a_slowly_dripped_body_is_refused(tmp_path, monkeypatch):
+@pytest.mark.parametrize("path,ctype", [("/v1/memos/preview", "multipart/form-data; boundary=b"),
+                                        ("/v1/memos/profiles", "application/json")])
+def test_a_slowly_dripped_body_is_refused(tmp_path, monkeypatch, path, ctype):
     import socket
     import time as _time
     monkeypatch.setattr(memo, "_BODY_DEADLINE_SECONDS", 0.3)
@@ -678,8 +703,8 @@ def test_a_slowly_dripped_body_is_refused(tmp_path, monkeypatch):
     port = int(base.rsplit(":", 1)[1])
     conn = socket.create_connection(("127.0.0.1", port), timeout=5)
     try:
-        head = ("POST /v1/memos/preview HTTP/1.1\r\nHost: x\r\nTailscale-User-Login: %s\r\n"
-                "Content-Type: multipart/form-data; boundary=b\r\nContent-Length: 100\r\n\r\n" % LOGIN)
+        head = ("POST %s HTTP/1.1\r\nHost: x\r\nTailscale-User-Login: %s\r\n"
+                "Content-Type: %s\r\nContent-Length: 100\r\n\r\n" % (path, LOGIN, ctype))
         conn.sendall(head.encode() + b"x" * 10)
         _time.sleep(0.5)
         conn.sendall(b"x" * 10)

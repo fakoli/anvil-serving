@@ -378,8 +378,8 @@ required operands, choices, and defaults.
 | `media artifact` | Inspect authenticated media artifacts. | `read` / `bounded` | - |
 | `media artifact inspect` | Inspect opaque artifact metadata. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal` |
 | `scribe` | Record-first dictation: raw transcripts, saved rewrite profiles, history. | `read` / `bounded` | - |
-| `scribe run` | Run the loopback Scribe service in the foreground. | `process` / `foreground` | - |
-| `scribe validate` | Check the Scribe config and its references offline. | `read` / `bounded` | - |
+| `scribe run` | Run the loopback Scribe service in the foreground. | `process` / `foreground` | `--config` |
+| `scribe validate` | Check the Scribe config and its references offline. | `read` / `bounded` | `--config` |
 | `fleet` | Cross-host visibility across the declared operator topology. | `read` / `bounded` | - |
 | `fleet workloads` | Read a bounded canonical workload snapshot from one fleet controller. | `read` / `bounded` | `--controller-url`<br>`--auth-env`<br>`--expected-node`<br>`--owner`<br>`--kind`<br>`--state`<br>`--host`<br>`--active-only`<br>`--recent-seconds`<br>`--limit` |
 | `fleet version` | Report anvil-serving version skew across declared fleet hosts. | `read` / `bounded` | `--host`<br>`--timeout` |
