@@ -673,6 +673,14 @@ def test_a_form_with_too_many_parts_is_refused_before_parsing(live, monkeypatch)
                       ctype.replace("boundary=", "boundary*=utf-8''")):
         status, _, data = live.request("POST", "/v1/agent/turn", body, {"Content-Type": disguised, **OWNER})
         assert (status, json.loads(data), parsed) == (400, {"error": "too many form fields"}, []), disguised
+    inner = b"".join(b"--c\r\n\r\nx\r\n" for _ in range(agent.MAX_FORM_PARTS * 4)) + b"--c--\r\n"
+    for nested_type in (b"multipart/mixed; boundary=c", b"\r\n\tmessage/rfc822"):  # the second is folded
+        nested = (b"--testboundary123\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nhi\r\n"
+                  b"--testboundary123\r\nContent-Disposition: form-data; name=\"x\"\r\nContent-Type: "
+                  + nested_type + b"\r\n\r\n" + inner + b"\r\n--testboundary123--\r\n")
+        status, _, data = live.request("POST", "/v1/agent/turn", nested, {
+            "Content-Type": "multipart/form-data; boundary=testboundary123", **OWNER})
+        assert (status, json.loads(data), parsed) == (400, {"error": "nested form parts are not accepted"}, [])
     for unparseable in ("multipart/form-data", "text/plain; boundary=testboundary123"):
         status, _, data = live.request("POST", "/v1/agent/turn", body, {"Content-Type": unparseable, **OWNER})
         assert (status, parsed) == (400, []), unparseable
