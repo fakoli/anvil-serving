@@ -40,8 +40,8 @@
       "files": [
         {
           "path": "source-registry.json",
-          "sha256": "4cdd4d6e608e45c9b9e5f5afd68c1262032df0737d9b6bb9d3eed5e9d8d1c718",
-          "bytes": 4394
+          "sha256": "d79c216e4d08c30d184cb5bb1fa89e0fa40d2637e980ebfe76891d966c1ece2c",
+          "bytes": 4479
         }
       ],
       "reason": "Dated local observation provenance."
@@ -88,8 +88,8 @@
       "files": [
         {
           "path": "coverage-and-gaps.md",
-          "sha256": "343d99946051b7adcfa4c7e58c40a73a4eb4b0436d479bd1c00acd922a91b9e7",
-          "bytes": 989
+          "sha256": "53c9b09f155e917ca5f4cd8eb4b83056a31ae758c5db32648d8da94b17ce8fed",
+          "bytes": 1759
         }
       ],
       "reason": "Closed limitations, refused controls, and Q8 OOM boundary."
@@ -112,8 +112,8 @@
       "files": [
         {
           "path": "summary.json",
-          "sha256": "827b219c5764721dd939a56ae3bdb1e9951db8b9bc05c5d66809023fd1737363",
-          "bytes": 3349
+          "sha256": "02465707d38d58a8de8923da81a345204e7a89c85a8d273aefda595506cb4851",
+          "bytes": 3408
         },
         {
           "path": "raw-request-receipts.json",
@@ -122,8 +122,8 @@
         },
         {
           "path": "c8-c16-capacity-receipts.json",
-          "sha256": "87bdaf40802e6821dd6689ccebc12b57a22ef3e71036fafb43860500388780a1",
-          "bytes": 4007
+          "sha256": "50ef44b88411f738739ee01c50321d8070091e1e32539502c212589f7a46707f",
+          "bytes": 4501
         },
         {
           "path": "quality-scope-receipts.json",
@@ -152,8 +152,8 @@
         },
         {
           "path": "inkling-original-summary.json",
-          "sha256": "65ad3402f0d625a30220c1af65bf035d873581638677b7fd4e94249a7a5a0ec5",
-          "bytes": 1318
+          "sha256": "9f8bcc9fe5127097293e5b4a0f555d6be7bf862932398eff34966a6929503dd9",
+          "bytes": 1358
         },
         {
           "path": "inkling-q8-summary.json",

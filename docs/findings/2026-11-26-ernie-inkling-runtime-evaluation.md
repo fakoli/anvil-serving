@@ -6,8 +6,8 @@
 <!-- benchmark-result-card/v1 -->
 ## Result card
 
-> ERNIE demonstrated a single correct 999,990-token retrieval, while AZ-Focus
-> led the matched quality set. Inkling completed bounded original-runtime work,
+> ERNIE demonstrated a single correct 999,990-token retrieval; the bounded
+> fixed-set scores were AZ-Focus 49/60 and ERNIE 46/60. Inkling completed bounded original-runtime work,
 > but neither lane changed a route, default, or deployment decision.
 
 | Lane | Verified scope so far | Boundary |
@@ -15,18 +15,16 @@
 | ERNIE 5.5 Flash Preview | Managed text protocol checks; fixed 60-case local comparison; bounded C1, C8, and C16 observations | Text-only; no broad quality or full-window reliability conclusion |
 | Inkling 2 Mini | Original mixed-precision runtime completed 60 matched-cap cases; Q8 completed separate short protocol checks | Separate RTX 5090 lane; no cross-lane comparison |
 
-**Exact setup:** direct local requests. ERNIE used a managed two-GPU TP2
-runtime with a 16 GiB prefix cache; the quality workload was sequential C1
+**Measured setup:** direct local requests. ERNIE ran on Flare with the signed gb202 package, TP2, seven draft tokens, a 1,048,576-token per-request context limit and a 16 GiB host prefix cache; the quality workload was sequential C1
 (the managed concurrency limit was configured C4), and the candidate-only
 scale observations were C8/C16. Original Inkling used the public
 [Inkling 2 Mini model card](https://huggingface.co/thinkingmachines/Inkling-2-Mini)
-in a one-GPU, TP1, 24K-context original-runtime lane.
+with vLLM, publisher mixed NVFP4/MXFP8 weights, DSpark, TP1 and 24,576 tokens of configured context. ERNIE’s detailed weight and KV-cache formats and both exact managed recipe revisions are absent from the public bundle. The linked public model cards describe the upstream packages.
 
 **Measured hardware:** two NVIDIA RTX PRO 6000 Blackwell Max-Q GPUs for the
 ERNIE/AZ-Focus lane; one NVIDIA GeForce RTX 5090 for the separate Inkling lane.
 The C1 fixed-set cache state was not retained publicly. The C8/C16 receipt
-records its per-cell cached-prompt and engine-reuse deltas, but does not infer a
-cold or warm population. Reproduction controls, source
+records unique per-request prompts, a distinct expected marker per request and measured cache counters. The natural-output batches retrieved 8/8 and 16/16 exact markers. The fixed-length batches measured timing only. Cache reset and cold/warm state were unverified. Reproduction controls, source
 hashes, and public-safe per-request receipts are in the [evidence index](2026-11-26-ernie-inkling-runtime-evaluation-evidence/README.md).
 
 | Headline measurement | Result | Condition |
@@ -97,7 +95,9 @@ counter deltas, and source hashes are retained in
 
 At C1/24K with a matched 16,384-token maximum output, the original Inkling
 runtime transported 60 requests; 44/60 were correct and complete-correct, four
-stopped at the limit, and complete-correct median time was 4.274 seconds. Fresh
-same-hardware Swift C1 and C2 controls were refused before creation by the host
-memory guard, so no matched comparison was fabricated. The primary text service
+stopped at the limit, and complete-correct median time was 4.274 seconds. Inkling
+C2/8K was refused before creation by the host memory guard (38.6 GiB available
+versus 45.1 GiB required). A separate existing Swift on-demand recipe was also
+refused before creation (41.3 GiB available versus 58.0 GiB required), so no
+matched comparison was fabricated. The primary text service
 and RTX 5090 split-mode baseline were restored; no candidate was selected.

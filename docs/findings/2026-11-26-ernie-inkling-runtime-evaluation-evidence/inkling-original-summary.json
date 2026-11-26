@@ -26,6 +26,6 @@
     "local_output_cap_tokens": 4096,
     "median_time_to_correct_seconds": 3.883,
     "matched_16384_output": {"transported": 60, "correct": 44, "complete_correct": 44, "length_stops": 4, "median_complete_correct_seconds": 4.274},
-    "comparison_boundary": "The 16,384-output run is bounded C1 evidence. Fresh Swift controls were refused before creation by host-memory admission, so no matched comparison exists."
+    "comparison_boundary": "The 16,384-output run is bounded C1 evidence. Inkling C2/8K and a separate existing Swift on-demand recipe were refused before creation by host-memory admission, so no matched comparison exists."
   }
 }

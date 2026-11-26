@@ -101,5 +101,12 @@
     "c16-stress-8-length.json": "b5da199ead960ca477d176e77b1cfc68883fe9a7868e3bd9013a06bb1cf256bd",
     "c16-stress-8-natural.json": "514c5274aaaa72ebcff784fa149a23c95e795e73eebf18b66dc06fdb600858ee",
     "concurrency_comparison": "67af24d75cd53c51945886c90d97e18ca81f09c833fcebdface99760b80ad1bd"
+  },
+  "prompt_cache_mode": "unique",
+  "prompt_policy_evidence": "Each request began with its own batch, item and mode label and used a separately seeded needle. The runtime shared the chat template. Native prefix counters are recorded per cell.",
+  "canary_validation": {
+    "natural": "Independent exact marker checks passed 8/8 and 16/16.",
+    "fixed_length": "896-token capped timing cells checked transport and usage only; no semantic score.",
+    "cache_reset_or_warmth": "unverified"
   }
 }

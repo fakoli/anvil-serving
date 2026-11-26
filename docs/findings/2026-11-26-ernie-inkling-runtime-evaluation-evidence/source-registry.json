@@ -23,7 +23,7 @@
     },
     {
       "age_class": "current local measurement",
-      "decision_impact": "supports the stated 44/60 bounded result; no matched Swift comparison exists",
+      "decision_impact": "supports the stated 44/60 bounded result; Inkling C2/8K and a separate Swift on-demand recipe were refused before creation, so no matched Swift comparison exists",
       "evidence_type": "sanitized original-runtime C1/24K fixed-set aggregate at 16,384 maximum output",
       "hardware_runtime_relevance": "separate RTX 5090 lane",
       "id": "local-inkling-original-matched-output",

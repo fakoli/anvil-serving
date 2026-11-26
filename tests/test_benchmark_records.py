@@ -157,6 +157,20 @@ def test_decision_summary_numeric_workload_fills_generated_record_gaps(tmp_path)
     assert record["workload"] == {"context_tokens": 32768, "concurrency": [1, 4]}
 
 
+def test_decision_summary_workload_rejects_malformed_values():
+    assert records._workload_value(1.0) == 1
+    assert records._workload_value([1, 4.0]) == [1, 4]
+    assert records._workload_value(True) is None
+    assert records._workload_value(1.5) is None
+    assert records._workload_value(-1) is None
+    assert records._workload_value("C1\u2028C4") is None
+    assert records._workload_value(float("nan")) is None
+    assert records._workload_value(float("inf")) is None
+    assert records._workload_value([1, [4]]) is None
+    assert records._workload_value(list(range(1, records.MAX_WORKLOAD_COUNTS + 2))) is None
+    assert records._workload_value("configured\nC4") is None
+
+
 def test_repository_findings_build_and_discover():
     index = records.build_index(REPO / "docs" / "findings")
     assert index["counts"]["records"] > 100

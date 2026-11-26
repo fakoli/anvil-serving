@@ -77,7 +77,7 @@ two call-budget exhaustion outcomes before grading; it is not a full-suite
 score. The retained AZ-Focus direct smoke, JSON, tools, tool-result, streaming
 tools, and image checks all passed after restoration; ERNIE itself is text-only.
 
-## Published Local Inference Lab reference
+### Published Local Inference Lab reference
 
 Local Inference Lab [reported](https://huggingface.co/local-inference-lab/ERNIE-5.5-Flash-Preview-FLARE/blob/235cd708d006dbea3fc39fe05c26e774e1c4ce8a/README.md) approximately 919 tokens/s at C8 and 1,340
 tokens/s at C16 for a pinned public package. Its prompt/completion workload and
@@ -96,7 +96,7 @@ Evidence is retained in the [dated finding](../../findings/2026-11-26-ernie-inkl
 
 ## Failures and gotchas
 
-The fixed set favors AZ-Focus; ERNIE is text-only, and external LIL figures are not comparable.
+ERNIE is text-only. The Local Inference Lab reference uses a different GPU power profile and timing boundary.
 
 ## Dated run history
 

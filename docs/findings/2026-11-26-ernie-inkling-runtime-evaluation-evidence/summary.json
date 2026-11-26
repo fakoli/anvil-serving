@@ -28,7 +28,7 @@
   ],
   "failures": [
     "Q8 quality run ended OOM; no Q8 fixed-set result.",
-    "Fresh Swift C1 and C2 controls were refused by host-memory admission before creation.",
+    "Inkling C2/8K was refused by host-memory admission before creation; a separate existing Swift on-demand recipe was also refused before creation.",
     "ERNIE SWE scout: two call-budget exhaustions before grading."
   ],
   "headline_results": [

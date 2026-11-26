@@ -49,11 +49,12 @@ checks passed in their stated bounded scopes. The distinct Q8 lane passed short
 coding, structured JSON, and 20/20 shared-prefix tools, but its quality run
 ended OOM and it supplies no fixed-set or throughput result.
 
-## Controls and limits
+### Controls and limits
 
-A fresh same-hardware Swift control was refused before container creation after
-cache reclaim (41.3 GiB available versus 58.0 GiB required); C2 was likewise
-refused (38.6 versus 45.1 GiB). No matched Swift comparison was fabricated.
+Inkling C2/8K was refused before container creation (38.6 GiB available versus
+45.1 GiB required). A separate existing Swift on-demand recipe was also refused
+before creation after cache reclaim (41.3 GiB available versus 58.0 GiB
+required). No matched Swift comparison was fabricated.
 The original split-mode baseline was restored with no active Swift or media
 owner and 22 MiB observed GPU use.
 
@@ -63,7 +64,8 @@ owner and 22 MiB observed GPU use.
 
 ## Failures and gotchas
 
-Fresh Swift controls were refused by host-memory admission; Q8 quality ended OOM.
+Inkling C2/8K and a separate existing Swift on-demand recipe were refused by
+host-memory admission; Q8 quality ended OOM.
 
 ## Dated run history
 

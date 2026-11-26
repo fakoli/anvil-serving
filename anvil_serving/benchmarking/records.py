@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 from collections import Counter
@@ -24,6 +25,7 @@ DEFAULT_ROOT = "docs/findings"
 NOT_RECORDED = "not recorded"
 CORE_FIELDS = ("model", "engine", "quantization", "hardware", "context_tokens", "concurrency", "decision")
 MAX_HEADLINES = 6
+MAX_WORKLOAD_COUNTS = 64
 
 _DATE = re.compile(r"^(\d{4}-\d{2}(?:-\d{2})?)-")
 _H1 = re.compile(r"^#\s+(.+?)\s*$", re.MULTILINE)
@@ -72,13 +74,28 @@ def _text(value: object) -> str | None:
 
 def _workload_value(value: object) -> object | None:
     """Keep valid structured summary workload values when no native point exists."""
-    if isinstance(value, bool) or value is None:
+    def positive_count(candidate: object) -> int | None:
+        if isinstance(candidate, bool):
+            return None
+        if isinstance(candidate, int):
+            return candidate if candidate > 0 else None
+        if isinstance(candidate, float) and math.isfinite(candidate) and candidate > 0 and candidate.is_integer():
+            return int(candidate)
         return None
-    if isinstance(value, (str, int, float)):
-        return value if not isinstance(value, str) or value.strip() else None
-    if isinstance(value, list):
-        return value
-    return None
+
+    if isinstance(value, str):
+        normalized = value.strip()
+        if (not normalized or len(normalized) > evidence.MAX_TEXT_CHARS
+                or not normalized.isprintable()):
+            return None
+        return normalized
+    count = positive_count(value)
+    if count is not None:
+        return count
+    if not isinstance(value, list) or not value or len(value) > MAX_WORKLOAD_COUNTS:
+        return None
+    counts = [positive_count(item) for item in value]
+    return counts if all(item is not None for item in counts) else None
 
 
 def _labels(value: object) -> list[str]:
