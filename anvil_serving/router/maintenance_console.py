@@ -50,9 +50,29 @@ def _expiry(preview):
             else preview['expires_at'])
 
 
+def _visible_stdout():
+    """Under --assume-yes the previews must reach a terminal, pipe or file.
+
+    A discarded stream (``--quiet``'s capture buffer or /dev/null) would run STOP and
+    OPEN with nobody able to read what was approved.
+    """
+    if sys.stdout.isatty():
+        return True
+    try:
+        observed = os.fstat(sys.stdout.fileno())
+    except (AttributeError, OSError, ValueError):
+        return False
+    null = os.stat(os.devnull)
+    return (observed.st_dev, observed.st_ino) != (null.st_dev, null.st_ino)
+
+
+def _interactive():
+    return os.name == 'posix' and sys.stdin.isatty() and sys.stdout.isatty()
+
+
 def _acknowledge(preview, phase, assume_yes=False):
     """A fresh local human reply is required for each native preview, unless opted out."""
-    require(assume_yes is True or (os.name == 'posix' and sys.stdin.isatty() and sys.stdout.isatty()))
+    require(_visible_stdout() if assume_yes is True else _interactive())
     remaining = _expiry(preview) - int(time.time())
     require(0 < remaining <= 60)
     if assume_yes is True:
@@ -213,7 +233,7 @@ def _operate(plan, state, assume_yes=False):
 
 
 def run(config, assume_yes=False):
-    require(os.name == 'posix' and (assume_yes is True or (sys.stdin.isatty() and sys.stdout.isatty())))
+    require(os.name == 'posix' and (_visible_stdout() if assume_yes is True else _interactive()))
     path = _absolute_path(config)
     plan = _read(path)
     require(type(plan) is dict and set(plan) == {'schema', 'stop_config', 'state_dir'}
@@ -236,7 +256,8 @@ def run(config, assume_yes=False):
 
 
 def dispatch(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+    # No abbreviations: '--assume' must never switch the bypass on.
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument('--config', required=True)
     parser.add_argument('--assume-yes', action='store_true',
                         help='skip the typed YES for STOP and OPEN for this invocation only; '

@@ -158,10 +158,16 @@ def test_post_stop_resume_starts_receipt_bound_successor_without_replaying_stop(
                         lambda *args, **kwargs: {'container_id': 'f' * 64, 'image_id': 'sha256:' + 'd' * 64})
     phases = []
     monkeypatch.setattr(console, '_authorize_and_confirm',
-                        lambda directory, config, phase, assume_yes=False: phases.append(phase) or {'readmitted': True, 'state': 'admitting'})
+                        lambda directory, config, phase, assume_yes=False: phases.append((phase, assume_yes)) or {'readmitted': True, 'state': 'admitting'})
     assert console._operate(plan, tmp_path)['readmitted'] is True
-    assert phases == ['OPEN']
+    assert phases == [('OPEN', False)]
     assert starts[0][1]['current_stop_receipt'] == str(directory / 'stop-receipt.json')
+    # A resumed OPEN under --assume-yes carries the flag too.
+    console.maintenance._publish(directory / 'readmit-current.json', {'operation_id': 'c' * 64},
+                                 expected=digest(console._read(directory / 'readmit-current.json')))
+    phases.clear()
+    assert console._operate(plan, tmp_path, True)['readmitted'] is True
+    assert phases == [('OPEN', True)]
 
 
 def test_uncertain_stop_attempt_is_not_replayed(tmp_path, monkeypatch):
@@ -245,17 +251,93 @@ def test_assume_yes_skips_only_the_typed_reply(monkeypatch):
         console._acknowledge(value, 'OPEN', assume_yes=True)
 
 
-def test_assume_yes_is_never_the_default(monkeypatch):
+def test_assume_yes_is_never_the_default(monkeypatch, tmp_path):
     monkeypatch.setattr(console.sys, 'stdin', io.StringIO())
     with pytest.raises(ValueError):
         console._acknowledge(preview(), 'STOP')
     reached = []
     monkeypatch.setattr(console, '_read', lambda *_: reached.append(True) or pytest.fail('stop here'))
-    with pytest.raises(BaseException):
-        console.run('/protected/plan.json', assume_yes=True)  # passes the terminal check
+    with open(tmp_path / 'cutover.log', 'w') as log:  # an unattended run logging to a file
+        monkeypatch.setattr(console.sys, 'stdout', log)
+        with pytest.raises(BaseException):
+            console.run('/protected/plan.json', assume_yes=True)  # passes the terminal check
     assert reached == [True]
     args = []
     monkeypatch.setattr(console, 'run', lambda config, assume_yes=False: args.append(assume_yes) or {})
     console.dispatch(['--config', '/protected/plan.json'])
     console.dispatch(['--config', '/protected/plan.json', '--assume-yes'])
     assert args == [False, True]
+
+
+def test_assume_yes_refuses_a_discarded_output_stream(monkeypatch, tmp_path):
+    monkeypatch.setattr(console.sys, 'stdin', io.StringIO())
+    monkeypatch.setattr(console, '_read', lambda *_: pytest.fail('read with nobody able to see the previews'))
+    monkeypatch.setattr(console.time, 'time', lambda: 100)
+    with open(os.devnull, 'w') as null:
+        for sink in (io.StringIO(), null):  # --quiet's capture buffer, then > /dev/null
+            monkeypatch.setattr(console.sys, 'stdout', sink)
+            with pytest.raises(ValueError):
+                console.run('/protected/plan.json', assume_yes=True)
+            with pytest.raises(ValueError):
+                console._acknowledge(preview(), 'OPEN', assume_yes=True)
+    with open(tmp_path / 'cutover.log', 'w') as log:  # a log file or pipe is readable
+        monkeypatch.setattr(console.sys, 'stdout', log)
+        assert console._acknowledge(preview(), 'OPEN', assume_yes=True)['acknowledgement'] == 'ASSUMED-BY-FLAG'
+
+
+@pytest.mark.parametrize('flag', ['--a', '--assume', '--assume-y'])
+def test_assume_yes_cannot_be_abbreviated(monkeypatch, flag):
+    monkeypatch.setattr(console, 'run', lambda *a, **k: pytest.fail('ran with an abbreviated flag'))
+    with pytest.raises(SystemExit):
+        console.dispatch(['--config', '/protected/plan.json', flag])
+
+
+def test_assume_yes_reaches_stop_and_open_through_run(tmp_path, monkeypatch):
+    plan = {'schema': 'router-maintenance-console/v1', 'stop_config': str(tmp_path / 'stop.json'),
+            'state_dir': str(tmp_path / 'state')}
+    console.maintenance._publish(tmp_path / 'plan.json', plan)
+    receipt = {'authorization': {'successor': {'compose': '/protected/successor.json',
+                'compose_sha256': 'c' * 64, 'image_id': 'sha256:' + 'd' * 64,
+                'configuration_revision': 'b' * 64}}, 'preview': {}, 'legacy_receipt_sha256': 'e' * 64}
+    monkeypatch.setattr(console.sys, 'stdin', io.StringIO())
+    # Owner-only state checks have their own tests; pytest's tmp_path is not 0700.
+    monkeypatch.setattr(console, '_secure_directory', lambda *args, **kwargs: None)
+    (tmp_path / 'state').mkdir(mode=0o700)
+    monkeypatch.setattr(console, '_private_created_descriptor', lambda *args, **kwargs: None)
+    monkeypatch.setattr(console, '_prepare_stop',
+                        lambda template, directory, binding: console.maintenance._publish(directory / 'config.json', {}))
+    monkeypatch.setattr(console, 'completed_receipt', lambda path: receipt)
+    monkeypatch.setattr(console.lifecycle, 'cmd_up', lambda *args, **kwargs: 0)
+    monkeypatch.setattr(console.lifecycle, '_container_incarnation',
+                        lambda *args, **kwargs: {'container_id': 'f' * 64, 'image_id': 'sha256:' + 'd' * 64})
+    phases = []
+
+    def confirm(directory, config, phase, assume_yes=False):
+        phases.append((phase, assume_yes))
+        return {'stopped': True} if phase == 'STOP' else {'readmitted': True, 'state': 'admitting'}
+
+    monkeypatch.setattr(console, '_authorize_and_confirm', confirm)
+    with open(tmp_path / 'cutover.log', 'w') as log:
+        monkeypatch.setattr(console.sys, 'stdout', log)
+        assert console.run(str(tmp_path / 'plan.json'), assume_yes=True)['readmitted'] is True
+    assert phases == [('STOP', True), ('OPEN', True)]
+
+
+def test_authorize_and_confirm_forwards_assume_yes(tmp_path, monkeypatch):
+    auth = {'authorization_sha256': 'a' * 64, 'preview_sha256': None, 'expected_container_id': 'b' * 64}
+    console.maintenance._publish(tmp_path / 'authorization.json', auth)
+    console.maintenance._publish(tmp_path / 'config.json', {'authorization': str(tmp_path / 'authorization.json')})
+    monkeypatch.setattr(console.time, 'time', lambda: 100)
+    seen = []
+    monkeypatch.setattr(console, '_acknowledge',
+                        lambda value, phase, assume_yes=False: seen.append(assume_yes) or {'acknowledged_at': 100})
+
+    def native(*args, confirm=False, **kwargs):
+        if confirm:
+            return {'readmitted': True}
+        console.maintenance._publish(tmp_path / 'preview.json', preview())
+        return preview()
+
+    monkeypatch.setattr(console.maintenance, 'run', native)
+    assert console._authorize_and_confirm(tmp_path, tmp_path / 'config.json', 'OPEN', True) == {'readmitted': True}
+    assert seen == [True]
