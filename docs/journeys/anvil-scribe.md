@@ -8,11 +8,84 @@ route-bound key.
 
 <!-- product-journey:anvil-scribe -->
 
+!!! info "Coming soon on MemoMind glasses"
+    The MemoMind web plugin for this family is not published yet. See
+    [MemoMind glasses](../MEMOMIND-GLASSES.md) for how to try it today.
+
 ## When to use it
 
 - You dictate from a phone, glasses or browser and want the words kept exactly.
 - You want the same memo as an email, a task list or minutes, on demand.
 - Recordings and transcripts must stay on your own hosts and out of evaluation.
+
+## A walk through the glasses app
+
+These screenshots come from one session in the MemoMind Plugin Studio
+simulator, running against a live Scribe service. The app has three tabs:
+Record, History and Profiles. The glasses display is 600x350.
+
+### The glasses button
+
+The glasses button does different things depending on what the glasses are
+showing:
+
+| On the glasses | Press | Double-press | Hold |
+| --- | --- | --- | --- |
+| Ready | Start recording | Show the latest result | Close the glasses view |
+| Recording | Stop and save | Cancel; nothing is saved | Nothing, so a recording is never lost |
+| A result | Next page; after the last page, back to ready | Previous page | Close the glasses view |
+
+After Hold closes the view, the next press opens it again. Each result page
+has a footer showing which gestures apply, for example
+"2/3 · press next · double back · hold close".
+
+![The Record tab, ready to record, with the glasses-button hints: press to record or go to the next page, double-press to cancel or go back a page, hold to close the glasses view.](../assets/scribe/phone-ready.png)
+![The glasses ready card: "Scribe ready", "Press: record", "Double-press: latest result", "Hold: close".](../assets/scribe/hud-ready.png)
+
+### Record
+
+Tap the mic, or press the glasses button, and speak. The transcript appears as
+you talk, on the phone and on the glasses. Press again to stop and save, or
+double-press to cancel, which saves nothing.
+
+![The Record tab while recording: a red stop button, the 0:22 timer, and the live transcript of a planning update.](../assets/scribe/phone-recording.png)
+![The glasses display while recording, showing "REC" and the same live transcript.](../assets/scribe/hud-recording.png)
+
+Scribe saves the raw transcript first, exactly as you said it. Then pick a
+profile, choose a model and tap Rewrite. Each rewrite is added below the
+transcript with its own Copy button. The latest result also shows on the
+glasses, split into pages if it is long. Press to read on, and double-press to
+go back.
+
+![The saved memo: the 0:27 recording, the raw transcript, and the eight rewrite profiles.](../assets/scribe/phone-saved.png)
+![The rewrite panel with the model picker and two results, an email and a technical document.](../assets/scribe/phone-rewrite.png)
+
+![Page 1 of the email rewrite on the glasses: "Subject: Docs Site Shipping Update" and the opening of the message, with the footer "1/2 · press next · hold close".](../assets/scribe/hud-email.png)
+![Page 2 of the email: the end of the message and "Best,", with the footer "2/2 · press done · double back · hold close".](../assets/scribe/hud-email-page2.png)
+
+The same memo, rewritten by each built-in profile. Each image shows the first
+page:
+
+![Eight glasses displays, one per built-in profile: Email (page 1 of 2), Technical doc (page 1 of 9), Clean note, Message, Meeting minutes, Task list, Say it better and Summary.](../assets/scribe/hud-profiles.png)
+
+### History
+
+Every recording is kept with its length and rewrite count. Tap one to see the
+original transcript and every rewrite made from it.
+
+![The History tab with the planning memo expanded: the original transcript, then the email rewrite.](../assets/scribe/phone-history.png)
+
+### Profiles
+
+The eight built-in profiles are read-only. Open one to read its prompt, or
+duplicate it as a custom profile and adjust it. "New profile" takes a name, a
+description, a prompt and a default model.
+
+![The Profiles tab listing the eight built-in profiles, each with a one-line description.](../assets/scribe/phone-profiles.png)
+![The read-only view of the built-in Technical doc profile, showing its prompt and a "Duplicate as custom" button.](../assets/scribe/phone-builtin.png)
+![A new custom profile, "Standup update", with a prompt asking for Yesterday, Today and Blockers headings.](../assets/scribe/phone-new-profile.png)
+
+A saved custom profile appears next to the built-ins as a rewrite option.
 
 ## Go deeper
 

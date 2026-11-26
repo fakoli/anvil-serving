@@ -79,6 +79,13 @@ result says whether the glasses app is open; `ASK` returns `not_open` at once
 instead of waiting for nobody. The queue lives in memory, and a restart drops
 it.
 
+A `TP` teleprompter page and a `NOTIFY` task card on the 600x350 glasses
+display, as shown in the Plugin Studio simulator:
+
+![Glasses display showing teleprompter page 1 of 2, with "press: next, hold: close" below the text.](../assets/agent/hud-teleprompter.png)
+
+![Glasses display showing a task card titled "Release" that reads "Docs build finished. Review the changelog before 5 pm."](../assets/agent/hud-task.png)
+
 Register the tool with an MCP-capable agent by its URL. A Hermes example:
 
 ```bash
