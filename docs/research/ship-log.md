@@ -63,6 +63,18 @@ These rulings set the plan below.
   pre-dispatch refusals exceed 8%, median latency exceeds 3.5 s, or 95th
   percentile latency exceeds 55 s.
 
+## Deploy constraint found on 2026-11-26
+
+The supported gateway cutover stages protected, root-owned files and runs the
+maintenance console. This run's session cannot become root: `sudo` is blocked
+by the session sandbox. Stopping and starting the gateway container directly
+would bypass the custody procedure, so it was not attempted.
+
+Consequence: this run can take each change through branch, tests, pull request,
+review and merge, but **cannot deploy to the live gateway**. Deploys and the
+watch period after each one are left for the owner. The backlog table marks
+them. Nothing in this log has been deployed unless an entry says so.
+
 ## Backlog and status
 
 | # | Item | Status |
@@ -93,4 +105,8 @@ These rulings set the plan below.
   note now says no member is reselected once one is selected, credits the
   capacity strategy to its own design document rather than the 2026-09-05
   amendment, and cites the change as PR 472.
+- **CI.** Second run failed a different test in the same module, on macOS:
+  `tests/agent/test_service.py::test_logs_carry_no_content`. It reads captured
+  log output before the server has written its line, so it is also
+  timing-sensitive. The failed job was rerun.
 - **Status.** Ready for review, waiting on CI. Not merged.
