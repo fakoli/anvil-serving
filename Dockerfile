@@ -145,8 +145,9 @@ USER anvil
 
 # Loopback bind is enforced by the service; the reference Compose file uses host
 # networking so tailscale serve, the service and the gateway share 127.0.0.1.
-ENTRYPOINT ["anvil-serving", "scribe", "run"]
-CMD ["--config", "/etc/anvil/scribe.toml"]
+# `docker compose run --rm scribe validate --config /etc/anvil/scribe.toml` checks a deployment.
+ENTRYPOINT ["anvil-serving", "scribe"]
+CMD ["run", "--config", "/etc/anvil/scribe.toml"]
 
 # Preserve the historical `docker build .` behavior: the default final image is
 # still the router. Build the controller explicitly with `--target controller`.

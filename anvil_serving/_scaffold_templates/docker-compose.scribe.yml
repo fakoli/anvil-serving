@@ -18,7 +18,7 @@ services:
     container_name: anvil-scribe
     restart: unless-stopped
     network_mode: host
-    command: ["--config", "/etc/anvil/scribe.toml"]
+    command: ["run", "--config", "/etc/anvil/scribe.toml"]
     environment:
       # Resolved by env-var NAME from [scribe]; values come from the operator's
       # protected environment file, never from this file.
