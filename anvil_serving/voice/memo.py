@@ -1,21 +1,22 @@
 """Anvil Voice memo capture over the Capability Gateway (ADR-0048).
 
-A browser or WebView client posts an Ogg Opus memo. The service converts it to
-16 kHz mono PCM16 WAV with ffmpeg, transcribes it in gateway-sized segments
-through ``POST /v1/audio/transcriptions`` with a route-bound device key, stores
-the audio and transcript, and returns the transcript. ``/v1/memos/preview``
-transcribes a trailing window for live text and stores nothing.
+Record first, rewrite later. A browser or WebView client posts an Ogg Opus memo.
+The service converts it to 16 kHz mono PCM16 WAV with ffmpeg, transcribes it in
+gateway-sized segments through ``POST /v1/audio/transcriptions`` with a
+route-bound device key, and stores the audio and raw transcript. Live preview
+transcribes a trailing window and stores nothing.
 
-A memo may name a conversion mode (``[voice.memo.modes.<id>]``: a label, a chat
-alias and instructions). After transcription the raw text is rewritten through
-the gateway's ``POST /v1/chat/completions`` with the same device key, and both
-the raw transcript and the converted text are stored. ``GET /v1/memos/modes``
-lists mode ids and labels only; prompts and aliases stay server-side.
+Afterwards the client may rewrite a stored memo with a profile (a saved prompt)
+on an allowlisted target (a gateway chat alias). Each result is appended to the
+memo's ``outputs``; the raw transcript is never replaced. Built-in profiles are
+read-only; custom profiles live in the memo store so every device sees them.
+History lists, reads and deletes memos.
 
 Trust model: the listener binds loopback only, and the ``Tailscale-User-Login``
 header is trusted because ``tailscale serve`` is the only remote path to it.
 Logs carry method, path, status, sizes, timing and allow decisions only; never
-audio, transcript text, or identity values. Memo stores are evaluation-excluded.
+audio, transcripts, prompts, outputs or identity values. Memo stores are
+evaluation-excluded.
 """
 from __future__ import annotations
 
@@ -31,6 +32,7 @@ import secrets
 import struct
 import subprocess
 import sys
+import threading
 import time
 import urllib.parse
 from dataclasses import dataclass, field
@@ -47,7 +49,8 @@ ConfigError = voice_config.ConfigError
 
 MEMOS_PATH = "/v1/memos"
 PREVIEW_PATH = "/v1/memos/preview"
-MODES_PATH = "/v1/memos/modes"
+PROFILES_PATH = "/v1/memos/profiles"
+TARGETS_PATH = "/v1/memos/targets"
 CHAT_PATH = "/v1/chat/completions"
 HEALTH_PATH = "/healthz"
 TRANSCRIPTIONS_PATH = "/v1/audio/transcriptions"
@@ -58,30 +61,67 @@ SAMPLE_RATE = 16_000
 BYTES_PER_SECOND = SAMPLE_RATE * 2
 # 130 s of PCM16 plus a header stays under the gateway's default 4 MiB decoded-input limit.
 MAX_SEGMENT_SECONDS = 130
+MAX_CUSTOM_PROFILES = 64
 _MAX_RESPONSE_BYTES = 1024 * 1024
+_MAX_JSON_BODY = 64 * 1024
+_MEMO_ID = re.compile(r"\d{8}T\d{6}Z-[0-9a-f]{6}\Z")
+_SLUG = re.compile(r"[a-z0-9][a-z0-9_-]{0,31}\Z")
+_PROFILES_FILE = "profiles.json"
 _KEYS = frozenset({
     "router_url", "router_key_env", "router_key_file", "route", "allowed_logins_env", "allowed_origin_pattern",
     "data_dir", "listen_host", "listen_port", "segment_seconds", "max_upload_bytes",
-    "timeout_seconds", "conversion_timeout_seconds", "modes",
+    "timeout_seconds", "conversion_timeout_seconds", "targets",
 })
-_MODE_ID = re.compile(r"[a-z0-9][a-z0-9_-]{0,31}\Z")
-_MODE_KEYS = frozenset({"label", "model", "prompt"})
+_TARGET_KEYS = frozenset({"label", "detail", "model", "default"})
 _MARKER_TEXT = (
     "Captured voice memos: user content, not evidence.\n"
-    "Never use this audio or these transcripts to train, fine-tune, or evaluate a model.\n"
+    "Never use this audio, these transcripts, outputs or saved prompts to train,\n"
+    "fine-tune, or evaluate a model.\n"
     "anvil-serving STT corpus validation refuses audio under this directory (ADR-0048).\n"
+)
+
+_KEEP = "Keep every fact and the speaker's meaning; add nothing. Reply with the result only."
+BUILTIN_PROFILES = (
+    ("email", "Email", "A polished email in your voice.",
+     "Rewrite this dictated transcript as a polished email in the speaker's voice: a greeting, a clear "
+     "body and a sign-off. " + _KEEP),
+    ("technical-doc", "Technical doc", "A structured technical write-up.",
+     "Rewrite this dictated transcript as a structured technical document: short headings, numbered "
+     "steps where order matters, and code, commands, names and numbers kept exactly as said. " + _KEEP),
+    ("note", "Clean note", "Filler removed, punctuation fixed, meaning unchanged.",
+     "Clean up this dictated transcript into a note: remove filler words, false starts and repetitions, "
+     "and fix punctuation and capitalization. Keep the speaker's wording. " + _KEEP),
+    ("message", "Message", "A short chat or Slack message.",
+     "Rewrite this dictated transcript as a short, friendly chat message ready to send. " + _KEEP),
+    ("minutes", "Meeting minutes", "Attendees, decisions and action items.",
+     "Turn this dictated transcript into meeting minutes with sections for attendees, decisions, and "
+     "action items with owners and dates when stated. Use only what was said; omit empty sections. " + _KEEP),
+    ("tasks", "Task list", "Checkbox tasks, one per line.",
+     "Turn this dictated transcript into a task list: one '- [ ] ' line per task, starting with a verb, "
+     "with any stated person or due date. Do not invent tasks. " + _KEEP),
+    ("clarify", "Say it better", "A clearer, tighter version of what you meant.",
+     "Say what the speaker meant more clearly and concisely, in their own voice. " + _KEEP),
+    ("summary", "Summary", "A two- or three-sentence TL;DR.",
+     "Summarize this dictated transcript in two or three sentences. " + _KEEP),
 )
 
 
 class TranscriptionError(RuntimeError):
-    """A content-free gateway transcription or conversion failure."""
+    """A content-free gateway transcription or rewrite failure."""
+
+
+class _Refusal(Exception):
+    def __init__(self, status, message):
+        super().__init__(message)
+        self.status, self.message = status, message
 
 
 @dataclass(frozen=True)
-class Mode:
+class Target:
     label: str
     model: str = field(repr=False)
-    prompt: str = field(repr=False)
+    detail: str = ""
+    default: bool = False
 
 
 @dataclass(frozen=True)
@@ -97,32 +137,9 @@ class MemoConfig:
     segment_seconds: int = 110
     max_upload_bytes: int = 8 * 1024 * 1024
     timeout_seconds: float = 60.0
-    # The client waits about 90 s for STT plus conversion; a slow LLM returns the raw transcript.
+    # The client waits about 90 s; a rewrite past this bound fails with 504.
     conversion_timeout_seconds: float = 45.0
-    modes: Mapping = field(default_factory=dict)
-
-
-def _seconds(table, key, default):
-    value = table.get(key, default)
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 1 <= value <= 600:
-        raise ConfigError("voice.memo.%s must be from 1 through 600" % key)
-    return float(value)
-
-
-def _modes(table):
-    raw = table.get("modes", {})
-    if not isinstance(raw, dict) or len(raw) > 16:
-        raise ConfigError("voice.memo.modes must be a table of at most 16 modes")
-    modes = {}
-    for mode_id, spec in raw.items():
-        if (_MODE_ID.fullmatch(mode_id) is None or not isinstance(spec, dict)
-                or set(spec) - _MODE_KEYS or "model" not in spec):
-            raise ConfigError("voice.memo.modes.%s needs a lowercase id, a model and a prompt" % mode_id)
-        prompt = spec.get("prompt")
-        if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 8000:
-            raise ConfigError("voice.memo.modes.%s.prompt must be 1 to 8000 characters" % mode_id)
-        modes[mode_id] = Mode(label=_str(spec, "label", mode_id), model=_str(spec, "model"), prompt=prompt.strip())
-    return modes
+    targets: Mapping = field(default_factory=dict)
 
 
 def _int(table, key, default, low, high):
@@ -137,6 +154,37 @@ def _str(table, key, default=None):
     if value is not None and (not isinstance(value, str) or not value.strip()):
         raise ConfigError("voice.memo.%s must be a non-empty string" % key)
     return value.strip() if value is not None else None
+
+
+def _seconds(table, key, default):
+    value = table.get(key, default)
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 1 <= value <= 600:
+        raise ConfigError("voice.memo.%s must be from 1 through 600" % key)
+    return float(value)
+
+
+def _targets(table):
+    raw = table.get("targets", {})
+    if not isinstance(raw, dict) or len(raw) > 16:
+        raise ConfigError("voice.memo.targets must be a table of at most 16 targets")
+    targets = {}
+    for target_id, spec in raw.items():
+        if (_SLUG.fullmatch(target_id) is None or not isinstance(spec, dict)
+                or set(spec) - _TARGET_KEYS or not isinstance(spec.get("model"), str)
+                or not spec["model"].strip() or not isinstance(spec.get("default", False), bool)):
+            raise ConfigError("voice.memo.targets.%s needs a lowercase id and a model alias" % target_id)
+        detail = spec.get("detail", "")
+        if not isinstance(detail, str):
+            raise ConfigError("voice.memo.targets.%s.detail must be a string" % target_id)
+        targets[target_id] = Target(label=_str(spec, "label", target_id), model=spec["model"].strip(),
+                                    detail=detail.strip(), default=spec.get("default", False))
+    defaults = [t for t in targets.values() if t.default]
+    if len(targets) > 1 and len(defaults) != 1:
+        raise ConfigError("voice.memo.targets needs exactly one default = true")
+    if len(targets) == 1 and not defaults:
+        (only,) = targets
+        targets[only] = Target(targets[only].label, targets[only].model, targets[only].detail, True)
+    return targets
 
 
 def load_memo_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] = None) -> MemoConfig:
@@ -215,7 +263,7 @@ def load_memo_config(path: Optional[str] = None, *, env: Optional[Mapping[str, s
         max_upload_bytes=_int(table, "max_upload_bytes", 8 * 1024 * 1024, 1024, 32 * 1024 * 1024),
         timeout_seconds=_seconds(table, "timeout_seconds", 60),
         conversion_timeout_seconds=_seconds(table, "conversion_timeout_seconds", 45),
-        modes=_modes(table),
+        targets=_targets(table),
     )
 
 
@@ -266,7 +314,7 @@ def split_wav(wav: bytes, seconds: int) -> list:
 
 
 def _post_json(url: str, payload: dict, token: str, timeout: float):
-    """POST without proxy discovery or redirects, so audio reaches only the configured gateway."""
+    """POST without proxy discovery or redirects, so content reaches only the configured gateway."""
     parts = urllib.parse.urlsplit(url)
     connection_cls = http.client.HTTPSConnection if parts.scheme == "https" else http.client.HTTPConnection
     # ponytail: per-socket-operation timeout, not a wall-clock deadline; the gateway bounds upstream time.
@@ -280,46 +328,28 @@ def _post_json(url: str, payload: dict, token: str, timeout: float):
         connection.close()
 
 
+def _gateway_json(config, path, payload, timeout):
+    status, raw = _post_json(config.router_url + path, payload, config.router_key, timeout)
+    if status != 200:
+        raise TranscriptionError("gateway returned HTTP %d" % status)
+    if len(raw) > _MAX_RESPONSE_BYTES:
+        raise TranscriptionError("gateway response too large")
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        raise TranscriptionError("gateway returned invalid JSON") from None
+
+
 def transcribe_segment(config: MemoConfig, wav: bytes) -> str:
     """Transcribe one WAV segment through the gateway's normalized STT endpoint."""
     payload = {"purpose": "stt", "format": "wav", "is_final": True,
                "audio_b64": base64.b64encode(wav).decode("ascii")}
     if config.route:
         payload["route"] = config.route
-    status, raw = _post_json(config.router_url + TRANSCRIPTIONS_PATH, payload,
-                             config.router_key, config.timeout_seconds)
-    if status != 200:
-        raise TranscriptionError("gateway returned HTTP %d" % status)
-    if len(raw) > _MAX_RESPONSE_BYTES:
-        raise TranscriptionError("gateway response too large")
-    try:
-        text = json.loads(raw.decode("utf-8"))["text"]
-    except (UnicodeDecodeError, ValueError, KeyError, TypeError):
-        raise TranscriptionError("gateway returned an invalid transcript") from None
+    text = _gateway_json(config, TRANSCRIPTIONS_PATH, payload, config.timeout_seconds).get("text")
     if not isinstance(text, str):
         raise TranscriptionError("gateway returned an invalid transcript")
     return text.strip()
-
-
-def convert_transcript(config: MemoConfig, mode: Mode, transcript: str) -> str:
-    """Rewrite a raw transcript with one mode through the gateway's chat path."""
-    payload = {"model": mode.model, "stream": False, "messages": [
-        {"role": "system", "content": mode.prompt},
-        {"role": "user", "content": transcript}]}
-    status, raw = _post_json(config.router_url + CHAT_PATH, payload,
-                             config.router_key, config.conversion_timeout_seconds)
-    if status != 200:
-        raise TranscriptionError("gateway returned HTTP %d" % status)
-    if len(raw) > _MAX_RESPONSE_BYTES:
-        raise TranscriptionError("gateway response too large")
-    try:
-        text = json.loads(raw.decode("utf-8"))["choices"][0]["message"]["content"]
-    except (UnicodeDecodeError, ValueError, KeyError, IndexError, TypeError):
-        raise TranscriptionError("gateway returned an invalid completion") from None
-    if not isinstance(text, str):
-        raise TranscriptionError("gateway returned an invalid completion")
-    # ponytail: drops inline reasoning a model may emit; the gateway normally separates it.
-    return text.rsplit("</think>", 1)[-1].strip()
 
 
 def transcribe_memo(config: MemoConfig, ogg: bytes) -> str:
@@ -327,7 +357,34 @@ def transcribe_memo(config: MemoConfig, ogg: bytes) -> str:
     return " ".join(t for t in (transcribe_segment(config, s) for s in segments) if t)
 
 
+def rewrite_transcript(config: MemoConfig, prompt: str, alias: str, transcript: str):
+    """Rewrite a raw transcript through the gateway's chat path; returns ``(text, model)``."""
+    reply = _gateway_json(config, CHAT_PATH, {"model": alias, "stream": False, "messages": [
+        {"role": "system", "content": prompt}, {"role": "user", "content": transcript}]},
+        config.conversion_timeout_seconds)
+    try:
+        text = reply["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError):
+        raise TranscriptionError("gateway returned an invalid completion") from None
+    if not isinstance(text, str):
+        raise TranscriptionError("gateway returned an invalid completion")
+    model = reply.get("model") if isinstance(reply.get("model"), str) else alias
+    # ponytail: drops inline reasoning a model may emit; the gateway normally separates it.
+    return text.rsplit("</think>", 1)[-1].strip(), model
+
+
 _FAILURES = (TranscriptionError, ValueError, OSError, http.client.HTTPException, subprocess.TimeoutExpired)
+
+
+def _now():
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _write_json(path: Path, value) -> None:
+    """Replace one JSON record atomically; callers hold the store lock."""
+    staged = path.with_name(path.name + ".tmp")
+    staged.write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
+    os.replace(staged, path)
 
 
 def prepare_store(data_dir: Path) -> None:
@@ -337,28 +394,166 @@ def prepare_store(data_dir: Path) -> None:
         marker.write_text(_MARKER_TEXT, encoding="utf-8")
 
 
+class MemoStore:
+    """Memo records, outputs and custom profiles in one evaluation-excluded directory."""
+
+    # ponytail: one process-wide lock; single-owner stores never contend enough to need more.
+    def __init__(self, data_dir: Path):
+        self.root = data_dir
+        self.lock = threading.Lock()
+        prepare_store(data_dir)
+
+    def _memo_path(self, memo_id):
+        if not isinstance(memo_id, str) or _MEMO_ID.fullmatch(memo_id) is None:
+            raise _Refusal(404, "memo not found")
+        return self.root / (memo_id + ".json")
+
+    @staticmethod
+    def _complete(memo):
+        memo.setdefault("outputs", [])
+        return memo
+
+    def get(self, memo_id):
+        try:
+            return self._complete(json.loads(self._memo_path(memo_id).read_text(encoding="utf-8")))
+        except FileNotFoundError:
+            raise _Refusal(404, "memo not found") from None
+        except (UnicodeDecodeError, ValueError):
+            raise _Refusal(500, "memo record is unreadable") from None
+
+    def create(self, audio, duration_ms):
+        memo_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(3)
+        (self.root / (memo_id + ".ogg")).write_bytes(audio)  # keep audio even if STT fails
+        memo = {"id": memo_id, "createdAt": _now(), "durationMs": duration_ms, "transcript": None, "outputs": []}
+        with self.lock:
+            _write_json(self.root / (memo_id + ".json"), memo)
+        return memo
+
+    def update(self, memo_id, change):
+        with self.lock:
+            memo = self.get(memo_id)
+            change(memo)
+            _write_json(self._memo_path(memo_id), memo)
+            return memo
+
+    def delete(self, memo_id):
+        path = self._memo_path(memo_id)
+        with self.lock:
+            if not path.exists():
+                raise _Refusal(404, "memo not found")
+            path.unlink()
+            (self.root / (memo_id + ".ogg")).unlink(missing_ok=True)
+
+    def page(self, limit, before):
+        ids = sorted((p.stem for p in self.root.glob("*.json") if _MEMO_ID.fullmatch(p.stem)), reverse=True)
+        if before:
+            ids = [memo_id for memo_id in ids if memo_id < before]
+        memos = []
+        for memo_id in ids[:limit]:
+            try:
+                memos.append(self.get(memo_id))
+            except _Refusal:  # deleted between listing and reading
+                continue
+        return memos, (ids[limit - 1] if len(ids) > limit else None)
+
+    def custom_profiles(self):
+        try:
+            value = json.loads((self.root / _PROFILES_FILE).read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return []
+        return value.get("profiles", []) if isinstance(value, dict) else []
+
+    def save_custom_profiles(self, profiles):
+        _write_json(self.root / _PROFILES_FILE, {"profiles": profiles})
+
+
+def _builtin_profiles():
+    return [{"id": pid, "label": label, "description": description, "builtin": True,
+             "prompt": prompt, "target": None} for pid, label, description, prompt in BUILTIN_PROFILES]
+
+
+def _profile_fields(body, targets, *, partial):
+    """Validate the editable custom-profile fields from a JSON body."""
+    if not isinstance(body, dict) or set(body) - {"label", "prompt", "description", "target"}:
+        raise _Refusal(400, "profile fields are label, prompt, description and target")
+    limits = {"label": 80, "prompt": 8000, "description": 280}
+    fields = {}
+    for name, limit in limits.items():
+        if name in body:
+            value = body[name]
+            if not isinstance(value, str) or len(value) > limit or (name != "description" and not value.strip()):
+                raise _Refusal(400, "%s must be text of at most %d characters" % (name, limit))
+            fields[name] = value.strip()
+        elif not partial and name != "description":
+            raise _Refusal(400, "%s is required" % name)
+    if "target" in body:
+        if body["target"] is not None and body["target"] not in targets:
+            raise _Refusal(400, "unknown target")
+        fields["target"] = body["target"]
+    return fields
+
+
 def make_memo_server(config: MemoConfig, *,
                      transcribe: Optional[Callable[[bytes], str]] = None,
-                     convert: Optional[Callable[[Mode, str], str]] = None) -> ThreadingHTTPServer:
-    """Bind the memo listener; ``transcribe`` and ``convert`` are injectable for hermetic tests."""
-    prepare_store(config.data_dir)
+                     rewrite: Optional[Callable[[str, str, str], tuple]] = None) -> ThreadingHTTPServer:
+    """Bind the memo listener; ``transcribe`` and ``rewrite`` are injectable for hermetic tests."""
+    store = MemoStore(config.data_dir)
     transcriber = transcribe or (lambda ogg: transcribe_memo(config, ogg))
-    converter = convert or (lambda mode, text: convert_transcript(config, mode, text))
-    mode_list = {"modes": [{"id": mode_id, "label": mode.label} for mode_id, mode in config.modes.items()]}
+    rewriter = rewrite or (lambda prompt, alias, text: rewrite_transcript(config, prompt, alias, text))
+    targets_view = {"targets": [{"id": tid, "label": t.label, "detail": t.detail, "default": t.default}
+                                for tid, t in config.targets.items()]}
 
     def origin_allowed(origin):
         return bool(origin) and config.origin_pattern.fullmatch(origin) is not None
 
+    def all_profiles():
+        return _builtin_profiles() + [{**p, "builtin": False} for p in store.custom_profiles()]
+
+    def find_profile(profile_id):
+        for profile in all_profiles():
+            if profile["id"] == profile_id:
+                return profile
+        return None
+
+    def process(memo_id, profile_id, target_id=None):
+        """Rewrite one stored memo; appends one output or raises without appending."""
+        memo = store.get(memo_id)
+        if memo.get("transcript") is None:
+            raise _Refusal(409, "memo has no transcript")
+        profile = find_profile(profile_id) if isinstance(profile_id, str) else None
+        if profile is None:
+            raise _Refusal(400, "unknown profile")
+        if not config.targets:
+            raise _Refusal(400, "no rewrite targets are configured")
+        target_id = target_id or profile.get("target") or next(t for t, v in config.targets.items() if v.default)
+        if target_id not in config.targets:
+            raise _Refusal(400, "unknown target")
+        target = config.targets[target_id]
+        started = time.monotonic()
+        if memo["transcript"]:
+            try:
+                text, model = rewriter(profile["prompt"], target.model, memo["transcript"])
+            except TimeoutError:
+                raise _Refusal(504, "rewrite timed out") from None
+            except _FAILURES:
+                raise _Refusal(502, "rewrite failed") from None
+        else:
+            text, model = "", target.model  # silence: nothing to rewrite
+        output = {"id": "out-" + secrets.token_hex(4), "profile": profile["id"], "profileLabel": profile["label"],
+                  "target": target_id, "model": model, "text": text, "createdAt": _now(),
+                  "ms": round((time.monotonic() - started) * 1000)}
+        store.update(memo_id, lambda m: m["outputs"].append(output))  # 404 if deleted meanwhile
+        return output
+
     class Handler(BaseHTTPRequestHandler):
-        server_version = "anvil-voice-memo/1"
+        server_version = "anvil-voice-memo/2"
 
         def log_message(self, fmt, *args):  # default request lines can carry query strings
             pass
 
         def _log(self, status, started, note=""):
             print(json.dumps({
-                "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                "method": self.command, "path": self.path.split("?", 1)[0], "status": status,
+                "ts": _now(), "method": self.command, "path": self.path.split("?", 1)[0], "status": status,
                 "bytes_in": int(self.headers.get("Content-Length") or 0),
                 "ms": round((time.monotonic() - started) * 1000),
                 "login_ok": self.headers.get(IDENTITY_HEADER) in config.allowed_logins,
@@ -366,37 +561,135 @@ def make_memo_server(config: MemoConfig, *,
             }), file=sys.stderr, flush=True)
 
         def _send(self, status, payload, started, note=""):
-            data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            data = b"" if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
             self.send_response(status)
             origin = self.headers.get("Origin")
             if origin_allowed(origin):
                 self.send_header("Access-Control-Allow-Origin", origin)
                 self.send_header("Vary", "Origin")
-            self.send_header("Content-Type", "application/json")
+            if payload is not None:
+                self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(data)))
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(data)
             self._log(status, started, note)
 
-        def do_GET(self):
+        def _route(self):
+            path, _, query = self.path.partition("?")
+            parts = path.rstrip("/").split("/")
+            return path.rstrip("/") or "/", parts, urllib.parse.parse_qs(query)
+
+        def _allowed(self, started):
+            if self.headers.get(IDENTITY_HEADER) not in config.allowed_logins:
+                self.close_connection = True
+                self._send(403, {"error": "tailnet identity not allowed"}, started, "login refused")
+                return False
+            origin = self.headers.get("Origin")
+            if origin and not origin_allowed(origin):
+                self.close_connection = True
+                self._send(403, {"error": "origin not allowed"}, started, "origin refused")
+                return False
+            return True
+
+        def _json_body(self):
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                length = -1
+            if not 0 < length <= _MAX_JSON_BODY:
+                self.close_connection = True
+                raise _Refusal(413 if length > _MAX_JSON_BODY else 400, "a JSON body is required")
+            try:
+                return json.loads(self.rfile.read(length).decode("utf-8"))
+            except (UnicodeDecodeError, ValueError):
+                raise _Refusal(400, "body must be JSON") from None
+
+        def _dispatch(self, handler):
             started = time.monotonic()
-            if self.path == HEALTH_PATH:
+            path, parts, query = self._route()
+            if self.command == "GET" and path == HEALTH_PATH:
                 return self._send(200, {"ok": True}, started)
-            if self.path == MODES_PATH:
-                if self.headers.get(IDENTITY_HEADER) not in config.allowed_logins:
-                    return self._send(403, {"error": "tailnet identity not allowed"}, started, "login refused")
-                return self._send(200, mode_list, started)
-            self._send(404, {"error": "not found"}, started)
+            if path != MEMOS_PATH and not path.startswith(MEMOS_PATH + "/"):
+                return self._send(404, {"error": "not found"}, started)
+            if not self._allowed(started):
+                return
+            try:
+                status, payload, note = handler(path, parts, query)
+            except _Refusal as refusal:
+                self.close_connection = True  # a refused request may leave an unread body
+                status, payload, note = refusal.status, {"error": refusal.message}, ""
+            except Exception as error:  # noqa: BLE001 - never echo content into logs or replies
+                self.close_connection = True
+                status, payload, note = 500, {"error": "internal error"}, type(error).__name__
+            self._send(status, payload, started, note)
+
+        def do_GET(self):
+            def handle(path, parts, query):
+                if path == MEMOS_PATH:
+                    try:
+                        limit = max(1, min(100, int((query.get("limit") or ["50"])[0])))
+                    except ValueError:
+                        raise _Refusal(400, "limit must be an integer") from None
+                    before = (query.get("before") or [None])[0]
+                    memos, cursor = store.page(limit, before)
+                    return 200, {"memos": memos, "next": cursor}, ""
+                if path == PROFILES_PATH:
+                    return 200, {"profiles": all_profiles()}, ""
+                if path == TARGETS_PATH:
+                    return 200, targets_view, ""
+                if len(parts) == 4:
+                    return 200, store.get(parts[3]), ""
+                raise _Refusal(404, "not found")
+            self._dispatch(handle)
+
+        def do_DELETE(self):
+            def handle(path, parts, query):
+                if len(parts) == 5 and path.startswith(PROFILES_PATH + "/"):
+                    if find_profile(parts[4]) and find_profile(parts[4])["builtin"]:
+                        raise _Refusal(403, "built-in profiles are read-only")
+                    with store.lock:
+                        custom = store.custom_profiles()
+                        kept = [p for p in custom if p.get("id") != parts[4]]
+                        if len(kept) == len(custom):
+                            raise _Refusal(404, "profile not found")
+                        store.save_custom_profiles(kept)
+                    return 204, None, ""
+                if len(parts) == 4 and path not in (PROFILES_PATH, TARGETS_PATH, PREVIEW_PATH):
+                    store.delete(parts[3])
+                    return 204, None, ""
+                raise _Refusal(404, "not found")
+            self._dispatch(handle)
+
+        def do_PUT(self):
+            def handle(path, parts, query):
+                if not (len(parts) == 5 and path.startswith(PROFILES_PATH + "/")):
+                    raise _Refusal(404, "not found")
+                existing = find_profile(parts[4])
+                if existing is None:
+                    raise _Refusal(404, "profile not found")
+                if existing["builtin"]:
+                    raise _Refusal(403, "built-in profiles are read-only")
+                fields = _profile_fields(self._json_body(), config.targets, partial=True)
+                with store.lock:
+                    custom = store.custom_profiles()
+                    for profile in custom:
+                        if profile.get("id") == parts[4]:
+                            profile.update(fields)
+                            store.save_custom_profiles(custom)
+                            return 200, {"profile": {**profile, "builtin": False}}, ""
+                raise _Refusal(404, "profile not found")
+            self._dispatch(handle)
 
         def do_OPTIONS(self):
             started = time.monotonic()
-            path = self.path.split("?", 1)[0]
-            if path not in (MEMOS_PATH, PREVIEW_PATH, MODES_PATH) or not origin_allowed(self.headers.get("Origin")):
+            path = self.path.split("?", 1)[0].rstrip("/")
+            if not (path == MEMOS_PATH or path.startswith(MEMOS_PATH + "/")) or not origin_allowed(
+                    self.headers.get("Origin")):
                 return self._send(403, {"error": "origin not allowed"}, started, "preflight refused")
             self.send_response(204)
             self.send_header("Access-Control-Allow-Origin", self.headers["Origin"])
-            self.send_header("Access-Control-Allow-Methods", "GET, POST")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.send_header("Access-Control-Max-Age", "600")
             self.send_header("Vary", "Origin")
@@ -404,59 +697,62 @@ def make_memo_server(config: MemoConfig, *,
             self._log(204, started)
 
         def do_POST(self):
-            started = time.monotonic()
-            path = self.path.split("?", 1)[0]
-            if path not in (MEMOS_PATH, PREVIEW_PATH):
-                return self._send(404, {"error": "not found"}, started)
-            if self.headers.get(IDENTITY_HEADER) not in config.allowed_logins:
-                return self._send(403, {"error": "tailnet identity not allowed"}, started, "login refused")
-            origin = self.headers.get("Origin")
-            if origin and not origin_allowed(origin):
-                return self._send(403, {"error": "origin not allowed"}, started, "origin refused")
+            def handle(path, parts, query):
+                if path == PROFILES_PATH:
+                    fields = _profile_fields(self._json_body(), config.targets, partial=False)
+                    profile = {"id": "custom-" + secrets.token_hex(3), "description": "", "target": None, **fields}
+                    with store.lock:
+                        custom = store.custom_profiles()
+                        if len(custom) >= MAX_CUSTOM_PROFILES:
+                            raise _Refusal(409, "custom profile limit reached")
+                        store.save_custom_profiles(custom + [profile])
+                    return 200, {"profile": {**profile, "builtin": False}}, ""
+                if len(parts) == 5 and parts[4] == "process":
+                    body = self._json_body()
+                    if not isinstance(body, dict) or set(body) - {"profile", "target"}:
+                        raise _Refusal(400, "process takes profile and an optional target")
+                    return 200, {"output": process(parts[3], body.get("profile"), body.get("target"))}, ""
+                if path not in (MEMOS_PATH, PREVIEW_PATH):
+                    raise _Refusal(404, "not found")
+                return self._capture(path)
+            self._dispatch(handle)
+
+        def _capture(self, path):
             try:
                 length = int(self.headers.get("Content-Length") or 0)
             except ValueError:
                 length = 0
             if not 0 < length <= config.max_upload_bytes:
                 self.close_connection = True  # never read an unbounded or unannounced body
-                return self._send(413, {"error": "upload missing or too large"}, started)
+                raise _Refusal(413, "upload missing or too large")
             try:
                 fields = parse_multipart(self.headers.get("Content-Type"), self.rfile.read(length))
                 audio = fields.get("audio", (None, b""))[1]
                 if not audio:
                     raise ValueError("missing audio field")
                 duration_ms = int((fields.get("durationMs") or (None, b"0"))[1] or 0)
-                mode_id = (fields.get("mode") or (None, b""))[1].decode("utf-8").strip() or None
-                if mode_id is not None and path == MEMOS_PATH and mode_id not in config.modes:
-                    raise ValueError("unknown mode")
+                mode = (fields.get("mode") or (None, b""))[1].decode("utf-8").strip() or None
             except ValueError as error:
-                return self._send(400, {"error": str(error)}, started)
-
+                raise _Refusal(400, str(error)) from None
             if path == PREVIEW_PATH:  # live text while recording: transcribe, store nothing
                 try:
-                    return self._send(200, {"transcript": transcriber(audio)}, started, "preview")
+                    return 200, {"transcript": transcriber(audio)}, "preview"
                 except _FAILURES as error:
-                    return self._send(502, {"error": "transcription failed"}, started, type(error).__name__)
-
-            memo_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(3)
-            (config.data_dir / (memo_id + ".ogg")).write_bytes(audio)  # keep audio even if STT fails
+                    return 502, {"error": "transcription failed"}, type(error).__name__
+            if mode is not None and find_profile(mode) is None:  # legacy upload-time profile
+                raise _Refusal(400, "unknown mode")
+            memo = store.create(audio, duration_ms)
             try:
                 transcript = transcriber(audio)
             except _FAILURES as error:
-                return self._send(502, {"error": "transcription failed", "id": memo_id},
-                                  started, type(error).__name__)
-            memo = {"id": memo_id, "createdAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                    "durationMs": duration_ms, "transcript": transcript}
-            record = config.data_dir / (memo_id + ".json")
-            record.write_text(json.dumps(memo, ensure_ascii=False), encoding="utf-8")  # raw first
-            note = ""
-            if mode_id is not None:
-                memo["mode"] = mode_id
+                return 502, {"error": "transcription failed", "id": memo["id"]}, type(error).__name__
+            memo = store.update(memo["id"], lambda m: m.update(transcript=transcript))
+            if mode is not None:
                 try:
-                    memo["converted"] = converter(config.modes[mode_id], transcript) if transcript else ""
-                except _FAILURES as error:
-                    memo["converted"], note = None, "conversion " + type(error).__name__
-                record.write_text(json.dumps(memo, ensure_ascii=False), encoding="utf-8")
-            self._send(200, memo, started, note)
+                    process(memo["id"], mode)
+                except _Refusal as refusal:  # the raw memo is saved either way
+                    return 200, store.get(memo["id"]), "legacy mode %d" % refusal.status
+                memo = store.get(memo["id"])
+            return 200, memo, ""
 
     return ThreadingHTTPServer((config.listen_host, config.listen_port), Handler)
