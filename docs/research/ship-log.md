@@ -80,8 +80,8 @@ them. Nothing in this log has been deployed unless an entry says so.
 | # | Item | Status |
 | --- | --- | --- |
 | 5 | ADR-0034 and ADR-0039 amendments match the replica code | **Shipped.** PR 834 merged; nothing to deploy |
-| 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | PR 835 open, in review. Deploy left for the owner |
-| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | In implementation, stacked on PR 835 |
+| 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | PR 835 approved, merging on green CI. Deploy left for the owner |
+| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | Implemented locally, 974 router tests pass. One design question with the advisor; review next |
 | 2 | Fix what the recorded refusal cause shows | Blocked on data from 2+4a |
 | 4b | Accounting: emit the new refusal codes | Queued behind 2+4a deploy |
 | 4c | Accounting: session identifier | Left for the owner |
@@ -141,8 +141,11 @@ them. Nothing in this log has been deployed unless an entry says so.
     path's cause, so a disconnect could have been recorded as a backend error
     without any test failing. Fixed with tests for disconnect, deadline,
     cancellation, queue timeout, and quiesced and replica refusals.
-  A second review pass on the fix commit is in progress.
-- **CI.** All 18 required checks passed on the first commit.
+  The second review pass approved the fix commit after rerunning its mutations
+  and probes; its two remaining nits (a wall-clock test bound and one sentence
+  of the contract) were applied.
+- **CI.** All 18 required checks passed on the first commit. The final commit is
+  set to merge once its checks pass.
 - **Deploy.** Not deployed. Before numbers are the baseline table above; the
   after numbers need the owner's cutover and the watch period.
 
