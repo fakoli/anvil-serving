@@ -151,8 +151,11 @@ def test_split_wav_preserves_samples_within_gateway_limit():
 
 def test_multipart_part_floods_are_refused_before_parsing():
     many = b"".join(b"--b\r\nContent-Disposition: form-data; name=\"f%d\"\r\n\r\nx\r\n" % i for i in range(17))
-    with pytest.raises(ValueError, match="too many"):
-        memo.parse_multipart("multipart/form-data; boundary=b", many + b"--b--\r\n")
+    # Every spelling the parser accepts is counted, including ones a regex would misread.
+    for ctype in ("multipart/form-data; boundary=b", 'multipart/form-data; boundary="b"',
+                  "multipart/form-data; xboundary=zz; boundary=b", "multipart/form-data; boundary*=utf-8''b"):
+        with pytest.raises(ValueError, match="too many"):
+            memo.parse_multipart(ctype, many + b"--b--\r\n")
     ctype, body = multipart({"audio": ("m.ogg", b"x" * 8), "durationMs": (None, b"1000")})
     assert set(memo.parse_multipart(ctype, body)) == {"audio", "durationMs"}
     with pytest.raises(ValueError, match="boundary"):

@@ -342,13 +342,16 @@ def parse_multipart(content_type: Optional[str], body: bytes) -> dict:
     # Uploads carry a handful of fields. A flood of tiny parts would make the email
     # parser build every one (a few MiB of body can cost seconds of CPU and 100+ MiB),
     # so refuse before parsing anything.
-    boundary = re.search(r'boundary="?([^";]+)"?', content_type, re.IGNORECASE)
-    if boundary is None:
+    head = b"Content-Type: " + content_type.encode("latin-1") + b"\r\n\r\n"
+    parser = email.parser.BytesParser(policy=email.policy.HTTP)
+    # The boundary the parser will split on, however the header spells it (quoted,
+    # RFC 2231 `boundary*=`, or after a look-alike parameter).
+    boundary = parser.parsebytes(head, headersonly=True).get_boundary()
+    if not boundary:
         raise ValueError("multipart body has no boundary")
-    if body.count(b"--" + boundary.group(1).encode("latin-1")) > _MAX_MULTIPART_PARTS + 1:
+    if body.count(b"--" + boundary.encode("latin-1", "replace")) > _MAX_MULTIPART_PARTS + 1:
         raise ValueError("too many multipart parts")
-    message = email.parser.BytesParser(policy=email.policy.HTTP).parsebytes(
-        b"Content-Type: " + content_type.encode("latin-1") + b"\r\n\r\n" + body)
+    message = parser.parsebytes(head + body)
     if not message.is_multipart():
         raise ValueError("malformed multipart body")
     fields = {}
