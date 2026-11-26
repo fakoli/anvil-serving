@@ -651,12 +651,15 @@ def test_logs_carry_no_content(live, capfd):
     ctype, body = multipart({"text": (None, b"private words")})
     live.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})
     odd = json.dumps([{"jsonrpc": "2.0", "id": 1, "method": "private-method-name"},
-                      {"jsonrpc": "2.0", "id": 2, "method": "ping"}]).encode()
-    live.request("POST", "/mcp", odd, {"Content-Type": "application/json", "Tailscale-User-Login": LOGIN})
+                      {"jsonrpc": "2.0", "id": 2, "method": "ping"},
+                      {"jsonrpc": "2.0", "id": 3, "method": ["not", "a", "string"]}]).encode()
+    status, _, data = live.request("POST", "/mcp", odd, {"Content-Type": "application/json",
+                                                         "Tailscale-User-Login": LOGIN})
+    assert status == 200 and [r.get("error", {}).get("code") for r in json.loads(data)] == [-32601, None, -32600]
     err = capfd.readouterr().err
     assert '"path": "/v1/agent/turn"' in err
     assert "private words" not in err and LOGIN not in err and "echo" not in err
-    assert "private-method-name" not in err and '"note": "mcp other,ping n=2"' in err
+    assert "private-method-name" not in err and '"note": "mcp other,ping n=3"' in err
 
 
 def test_a_form_with_too_many_parts_is_refused_before_parsing(live, monkeypatch):
@@ -665,6 +668,14 @@ def test_a_form_with_too_many_parts_is_refused_before_parsing(live, monkeypatch)
     ctype, body = multipart({f"f{i}": (None, b"") for i in range(agent.MAX_FORM_PARTS + 1)})
     status, _, data = live.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})
     assert (status, json.loads(data), parsed) == (400, {"error": "too many form fields"}, [])
+    # The boundary is read the way email.parser reads it, so decoy or RFC 2231 parameters cannot hide parts.
+    for disguised in (ctype.replace("; boundary=", "; xboundary=zz; boundary="),
+                      ctype.replace("boundary=", "boundary*=utf-8''")):
+        status, _, data = live.request("POST", "/v1/agent/turn", body, {"Content-Type": disguised, **OWNER})
+        assert (status, json.loads(data), parsed) == (400, {"error": "too many form fields"}, []), disguised
+    for unparseable in ("multipart/form-data", "text/plain; boundary=testboundary123"):
+        status, _, data = live.request("POST", "/v1/agent/turn", body, {"Content-Type": unparseable, **OWNER})
+        assert (status, parsed) == (400, []), unparseable
     ctype, body = multipart({f"f{i}": (None, b"") for i in range(agent.MAX_FORM_PARTS)})  # at the limit
     assert live.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})[0] == 400
     assert len(parsed) == 1  # parsed, then refused for having no text or audio

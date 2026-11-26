@@ -23,6 +23,8 @@ audio, transcripts, replies, questions, answers or identity values.
 from __future__ import annotations
 
 import collections
+import email.parser
+import email.policy
 import http.client
 import ipaddress
 import json
@@ -89,7 +91,6 @@ MAX_INFLIGHT_ANSWERS = 2
 # email.parser materializes every part, so an 8 MiB body of tiny parts costs ~15x its size in memory
 # and seconds of CPU. Clients send at most four fields; refuse anything near this before parsing.
 MAX_FORM_PARTS = 16
-_BOUNDARY = re.compile(r'boundary="?([^";\s]+)', re.IGNORECASE)
 _SOCKET_TIMEOUT_SECONDS = 30  # an idle or stalled socket is dropped (socket reads only, not server waits)
 _BODY_DEADLINE_SECONDS = 60  # a body that drips in slower than this is refused
 _MCP_METHODS = frozenset({"initialize", "ping", "tools/list", "tools/call", "notifications/initialized"})
@@ -629,6 +630,15 @@ def _field(fields, name):
     return (fields.get(name) or (None, b""))[1].decode("utf-8", "replace").strip()
 
 
+def _form_boundary(content_type):
+    """The multipart boundary exactly as parse_multipart's email.parser reads it (decoy and RFC 2231
+    parameters included), or None. Only an ASCII boundary is valid (RFC 2046)."""
+    header = email.parser.BytesParser(policy=email.policy.HTTP).parsebytes(
+        b"Content-Type: " + (content_type or "").encode("latin-1") + b"\r\n\r\n", headersonly=True)
+    boundary = header.get_boundary() if header.get_content_type() == "multipart/form-data" else None
+    return boundary if boundary and boundary.isascii() else None
+
+
 def _length(headers) -> int:
     value = headers.get("Content-Length") or ""
     return int(value) if value.isascii() and value.isdigit() else 0
@@ -790,8 +800,11 @@ def make_server(config: AgentConfig, *,
                 if path == MCP_PATH:
                     return self._mcp(body, started)
                 content_type = self.headers.get("Content-Type")
-                boundary = _BOUNDARY.search(content_type or "")
-                if boundary and body.count(b"--" + boundary.group(1).encode("latin-1", "replace")) > MAX_FORM_PARTS + 1:
+                boundary = _form_boundary(content_type)
+                if boundary is None:
+                    raise ValueError("expected multipart/form-data with a boundary")
+                # Over-counts (any occurrence, not just delimiter lines), so it can only refuse early.
+                if body.count(b"--" + boundary.encode("ascii")) > MAX_FORM_PARTS + 1:
                     raise ValueError("too many form fields")
                 fields = parse_multipart(content_type, body)
                 audio = fields.get("audio", (None, b""))[1]
@@ -895,8 +908,9 @@ def make_server(config: AgentConfig, *,
                 self.end_headers()
                 return self._log(202, started, "mcp notification")
             # Method names are client text: log known ones only, once each, plus the batch size.
-            methods = dict.fromkeys(m.get("method") if isinstance(m, dict) and m.get("method") in _MCP_METHODS
-                                    else "other" for m in batch)
+            methods = dict.fromkeys(
+                m["method"] if isinstance(m, dict) and isinstance(m.get("method"), str) and m["method"] in _MCP_METHODS
+                else "other" for m in batch)
             return self._send(200, replies if isinstance(message, list) else replies[0], started,
                               "mcp %s n=%d" % (",".join(methods), len(batch)))
 
