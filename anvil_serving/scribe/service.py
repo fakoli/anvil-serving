@@ -335,48 +335,59 @@ def load_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] 
     )
 
 
-def _has_nested_part(body: bytes, boundary: str) -> bool:
-    """Whether any outer part declares multipart/* or message/*, read exactly as the parser will.
+def _form_parts(body: bytes, delimiter: bytes) -> list:
+    """The parts between RFC 2046 delimiter lines, as raw bytes; nothing is parsed recursively.
 
-    Each part's headers go through the same HTTP-policy parser, so folding, bare-CR line
-    endings and RFC 2047 encoded words are judged the way the full parse would judge them.
-    The caller has already capped the outer parts at ``_MAX_MULTIPART_PARTS``.
+    A delimiter starts a line and is followed only by optional ``--`` (the close), optional
+    spaces or tabs, and a line ending. The line ending before a delimiter belongs to it.
+    The preamble and epilogue are ignored.
     """
-    parser = email.parser.BytesParser(policy=email.policy.HTTP)
-    for chunk in body.split(b"--" + boundary.encode("ascii"))[1:]:
-        chunk = chunk.lstrip(b" \t")
-        for ending in (b"\r\n", b"\r", b"\n"):
-            if chunk.startswith(ending):
-                chunk = chunk[len(ending):]
-                break
-        if parser.parsebytes(chunk, headersonly=True).get_content_maintype() in ("multipart", "message"):
-            return True
-    return False
+    parts, start, pos = [], None, 0
+    while True:
+        at = body.find(delimiter, pos)
+        if at < 0:
+            raise ValueError("multipart body has no closing delimiter")
+        pos = at + 1
+        if at and body[at - 1:at] not in (b"\n", b"\r"):
+            continue  # mid-line occurrence: payload or header text, not a delimiter
+        after = at + len(delimiter)
+        close = body.startswith(b"--", after)
+        end = after + 2 if close else after
+        while body[end:end + 1] in (b" ", b"\t"):
+            end += 1
+        eol = 2 if body.startswith(b"\r\n", end) else 1 if body[end:end + 1] in (b"\r", b"\n") else 0
+        if not eol and not (close and end == len(body)):
+            continue  # text after the boundary on the same line: not a delimiter
+        if start is not None:
+            stop = at - (2 if body[at - 2:at] == b"\r\n" else 1)
+            parts.append(body[start:max(start, stop)])
+        if close:
+            return parts
+        start = pos = end + eol
 
 
 def parse_multipart(content_type: Optional[str], body: bytes) -> dict:
-    """Return ``{field: (filename, bytes)}`` for a multipart/form-data body."""
+    """Return ``{field: (filename, bytes)}`` for a flat multipart/form-data body.
+
+    Only each part's headers are parsed. A part that declares multipart/* or message/* is
+    kept as raw bytes, never expanded, so no body shape can make parsing explode.
+    """
     if not content_type or not content_type.lower().startswith("multipart/form-data"):
         raise ValueError("expected multipart/form-data")
-    # Uploads carry a handful of fields. A flood of tiny parts would make the email
-    # parser build every one (a few MiB of body can cost seconds of CPU and 100+ MiB),
-    # so refuse before parsing anything.
-    head = b"Content-Type: " + content_type.encode("latin-1") + b"\r\n\r\n"
     parser = email.parser.BytesParser(policy=email.policy.HTTP)
-    # The boundary the parser will split on, however the header spells it (quoted,
+    # The boundary as an email parser reads it, however the header spells it (quoted,
     # RFC 2231 `boundary*=`, or after a look-alike parameter).
+    head = b"Content-Type: " + content_type.encode("latin-1") + b"\r\n\r\n"
     boundary = parser.parsebytes(head, headersonly=True).get_boundary()
     if not boundary or not boundary.isascii():
         raise ValueError("multipart body has no usable boundary")
-    if body.count(b"--" + boundary.encode("ascii")) > _MAX_MULTIPART_PARTS + 1:
+    delimiter = b"--" + boundary.encode("ascii")
+    # Uploads carry a handful of fields; this also bounds the delimiter scan below.
+    if body.count(delimiter) > _MAX_MULTIPART_PARTS + 1:
         raise ValueError("too many multipart parts")
-    if _has_nested_part(body, boundary):  # nested parts would be expanded beyond the count above
-        raise ValueError("nested multipart parts are not accepted")
-    message = parser.parsebytes(head + body)
-    if not message.is_multipart():
-        raise ValueError("malformed multipart body")
     fields = {}
-    for part in message.iter_parts():
+    for chunk in _form_parts(body, delimiter):
+        part = parser.parsebytes(chunk, headersonly=True)
         name = part.get_param("name", header="content-disposition")
         if name:
             fields[name] = (part.get_filename(), part.get_payload(decode=True) or b"")

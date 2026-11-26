@@ -157,20 +157,35 @@ def test_multipart_part_floods_are_refused_before_parsing():
         with pytest.raises(ValueError, match="too many"):
             memo.parse_multipart(ctype, many + b"--b--\r\n")
     ctype, body = multipart({"audio": ("m.ogg", b"x" * 8), "durationMs": (None, b"1000")})
-    assert set(memo.parse_multipart(ctype, body)) == {"audio", "durationMs"}
+    assert memo.parse_multipart(ctype, body) == {"audio": ("m.ogg", b"x" * 8), "durationMs": (None, b"1000")}
     with pytest.raises(ValueError, match="boundary"):
         memo.parse_multipart("multipart/form-data", body)
-    for eol, nested in ((b"\r\n", b"Content-Type: multipart/mixed; boundary=c"),
+    with pytest.raises(ValueError, match="closing delimiter"):
+        memo.parse_multipart(ctype, body[:-len(b"--testboundary123--\r\n")])
+
+
+def test_nested_parts_stay_raw_bytes_and_parse_fast():
+    import time as _time
+    nested = b"--c\r\n\r\nx\r\n" * 150000 + b"--c--\r\n"  # a recursive parser would build 150k parts
+    for eol, header in ((b"\r\n", b"Content-Type: multipart/mixed; boundary=c"),
                         (b"\r\n", b"Content-Type:\r\n message/rfc822"),
                         (b"\r", b"Content-Type: multipart/mixed; boundary=c"),  # bare-CR line endings
-                        (b"\r\n", b"Content-Type: =?utf-8?q?multipart/mixed?=; boundary=c")):  # RFC 2047
-        inner = (b"--b" + eol + b"Content-Disposition: form-data; name=\"audio\"" + eol + nested + eol + eol
-                 + (b"--c" + eol + eol + b"x" + eol) * 3 + b"--c--" + eol + b"--b--" + eol)
-        with pytest.raises(ValueError, match="nested"):
-            memo.parse_multipart("multipart/form-data; boundary=b", inner)
-    # Audio bytes that merely look like a nested header inside a flat part are accepted.
-    ctype, body = multipart({"audio": ("m.ogg", b"OggS\r\nContent-Type: multipart/mixed; boundary=c\r\n")})
-    assert memo.parse_multipart(ctype, body)["audio"][1].startswith(b"OggS")
+                        (b"\r\n", b"Content-Type: =?utf-8?q?multipart/mixed?=; boundary=c"),  # RFC 2047
+                        (b"\r\n", b"X-Pad: --bz\r\nContent-Type: multipart/mixed; boundary=c")):  # mid-line decoy
+        payload = nested.replace(b"\r\n", eol)
+        body = (b"--b" + eol + b"Content-Disposition: form-data; name=\"audio\"" + eol + header + eol + eol
+                + payload + eol + b"--b--" + eol)
+        started = _time.monotonic()
+        fields = memo.parse_multipart("multipart/form-data; boundary=b", body)
+        assert _time.monotonic() - started < 2
+        assert fields["audio"][1] == payload
+
+
+def test_flat_parts_keep_binary_payloads_exactly():
+    data = bytes(range(256)) * 8 + b"\r\n--testboundary1234\r\nnot-a-delimiter --testboundary123 mid-line"
+    ctype, body = multipart({"audio": ("m.ogg", data), "durationMs": (None, b"7")})
+    assert memo.parse_multipart(ctype, body) == {"audio": ("m.ogg", data), "durationMs": (None, b"7")}
+    assert memo.parse_multipart(ctype, body.replace(b"\r\n", b"\r"))["durationMs"] == (None, b"7")
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
