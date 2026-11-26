@@ -39,6 +39,12 @@ segments through the gateway's `POST /v1/audio/transcriptions`, so the gateway
 applies its admission, accounting and decision log. A failed transcription
 keeps the audio and leaves a visible record whose transcript is `null`.
 
+Two limits bound memory. `max_recording_seconds` (900 by default) refuses
+longer recordings while decoding, and `max_concurrent_transcriptions` (2 by
+default) caps decodes in flight. A preview that finds no free slot gets 503 at
+once and retries on its next tick. A final upload waits up to 30 seconds, then
+keeps the audio and answers 503 with the memo id.
+
 Rewriting is a separate, optional step: the client picks a **profile** (a saved
 prompt) and a **target** (an allowlisted gateway chat alias from
 `[scribe.targets.<id>]`), and the service sends the stored transcript to

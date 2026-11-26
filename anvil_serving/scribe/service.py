@@ -83,7 +83,10 @@ _KEYS = frozenset({
     "router_url", "router_key_env", "router_key_file", "route", "allowed_logins_env", "allowed_origin_pattern",
     "data_dir", "listen_host", "listen_port", "segment_seconds", "max_upload_bytes",
     "timeout_seconds", "conversion_timeout_seconds", "targets", "max_recording_seconds",
+    "max_concurrent_transcriptions",
 })
+# A final upload waits this long for a decode slot; preview never waits.
+_UPLOAD_SLOT_WAIT_SECONDS = 30
 _TARGET_KEYS = frozenset({"label", "detail", "model", "default"})
 _MARKER_TEXT = (
     "Anvil Scribe memos: user content, not evidence.\n"
@@ -159,6 +162,8 @@ class ScribeConfig:
     max_upload_bytes: int = 8 * 1024 * 1024
     # Bounds decoded PCM in memory (32 000 B/s): 900 s is about 29 MB per request.
     max_recording_seconds: int = 900
+    # Each decode holds one recording's PCM in memory; this caps how many run at once.
+    max_concurrent_transcriptions: int = 2
     timeout_seconds: float = 60.0
     # The client waits about 90 s; a rewrite past this bound fails with 504.
     conversion_timeout_seconds: float = 45.0
@@ -299,6 +304,7 @@ def load_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] 
         segment_seconds=_int(table, "segment_seconds", 110, 1, MAX_SEGMENT_SECONDS),
         max_upload_bytes=_int(table, "max_upload_bytes", 8 * 1024 * 1024, 1024, 32 * 1024 * 1024),
         max_recording_seconds=_int(table, "max_recording_seconds", 900, 1, 3600),
+        max_concurrent_transcriptions=_int(table, "max_concurrent_transcriptions", 2, 1, 16),
         timeout_seconds=_seconds(table, "timeout_seconds", 60),
         conversion_timeout_seconds=_seconds(table, "conversion_timeout_seconds", 45),
         targets=_targets(table),
@@ -550,6 +556,7 @@ def make_server(config: ScribeConfig, *,
                      rewrite: Optional[Callable[[str, str, str], tuple]] = None) -> ThreadingHTTPServer:
     """Bind the memo listener; ``transcribe`` and ``rewrite`` are injectable for hermetic tests."""
     store = MemoStore(config.data_dir)
+    decode_slots = threading.BoundedSemaphore(config.max_concurrent_transcriptions)
     transcriber = transcribe or (lambda ogg: transcribe_memo(config, ogg))
     rewriter = rewrite or (lambda prompt, alias, text: rewrite_transcript(config, prompt, alias, text))
     targets_view = {"targets": [{"id": tid, "label": t.label, "detail": t.detail, "default": t.default}
@@ -787,17 +794,25 @@ def make_server(config: ScribeConfig, *,
             except ValueError as error:
                 raise _Refusal(400, str(error)) from None
             if path == PREVIEW_PATH:  # live text while recording: transcribe, store nothing
+                if not decode_slots.acquire(blocking=False):  # the next tick retries
+                    return 503, {"error": "busy"}, "preview busy"
                 try:
                     return 200, {"transcript": transcriber(audio)}, "preview"
                 except _FAILURES as error:
                     return 502, {"error": "transcription failed"}, type(error).__name__
+                finally:
+                    decode_slots.release()
             if mode is not None and find_profile(mode) is None:  # legacy upload-time profile
                 raise _Refusal(400, "unknown mode")
-            memo = store.create(audio, duration_ms)
+            memo = store.create(audio, duration_ms)  # audio is kept even if no slot frees up
+            if not decode_slots.acquire(timeout=_UPLOAD_SLOT_WAIT_SECONDS):
+                return 503, {"error": "busy; recording saved without a transcript", "id": memo["id"]}, "upload busy"
             try:
                 transcript = transcriber(audio)
             except _FAILURES as error:
                 return 502, {"error": "transcription failed", "id": memo["id"]}, type(error).__name__
+            finally:
+                decode_slots.release()
             memo = store.update(memo["id"], lambda m: m.update(transcript=transcript))
             if mode is not None:
                 try:

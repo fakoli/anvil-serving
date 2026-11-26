@@ -526,3 +526,34 @@ def test_recording_bound_is_configurable_and_bounded(tmp_path):
                             ).max_recording_seconds == 300
     with pytest.raises(memo.ConfigError, match="max_recording_seconds"):
         memo.load_config(write_manifest(tmp_path, {**BASE, "max_recording_seconds": 7200}), env=ENV)
+
+
+def test_decodes_are_bounded_and_busy_uploads_keep_audio(tmp_path, monkeypatch):
+    started, release = threading.Event(), threading.Event()
+
+    def slow(ogg):
+        started.set()
+        release.wait(5)
+        return "slow"
+    monkeypatch.setattr(memo, "_UPLOAD_SLOT_WAIT_SECONDS", 0.2)
+    cfg = config(tmp_path, max_concurrent_transcriptions=1)
+    server = memo.make_server(cfg, transcribe=slow)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{server.server_port}"
+    ctype, body = multipart({"audio": ("p.ogg", b"y" * 8)})
+    headers = {"Content-Type": ctype, **AUTH}
+    first = threading.Thread(target=request, args=(base, "POST", "/v1/memos/preview", body, headers))
+    try:
+        first.start()
+        assert started.wait(5)
+        assert request(base, "POST", "/v1/memos/preview", body, headers)[0] == 503  # preview never waits
+        status, _, data = request(base, "POST", "/v1/memos", body, headers)
+        assert status == 503 and (cfg.data_dir / (data["id"] + ".ogg")).exists()  # audio kept
+        assert request(base, "GET", "/v1/memos/" + data["id"], headers=AUTH)[2]["transcript"] is None
+    finally:
+        release.set()
+        first.join(5)
+        server.shutdown()
+        server.server_close()
+    assert memo.load_config(write_manifest(tmp_path, {**BASE, "max_concurrent_transcriptions": 4}), env=ENV
+                            ).max_concurrent_transcriptions == 4
