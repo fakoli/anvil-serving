@@ -1,5 +1,12 @@
 # Benchmark run catalog
 
+## 2026-11-26 ERNIE and Inkling bounded evaluation
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| ERNIE TP2 versus AZ-Focus; matched text, long-context, and fixed C8/C16 cells | Two RTX PRO 6000 Blackwell Max-Q GPUs | ERNIE 46/60 vs AZ-Focus 49/60; ERNIE passed one 999,990-token retrieval. C8/C16 fixed output measured 616/815 tok/s post-first and 353/359 tok/s whole-batch. LIL 919/1340 is mismatched external reference only. `no-promotion`; primary restored. | [ERNIE dossier](models/ernie-55-flash-preview.md) · [Finding](../findings/2026-11-26-ernie-inkling-runtime-evaluation.md) |
+| Inkling 2 Mini original mixed-precision C1/24K, 16,384 maximum output | One RTX 5090 | 60 transported; 44/60 correct and complete-correct; four length stops; 4.274s median complete-correct. Inkling C2/8K and a separate Swift on-demand recipe were each refused before creation by host-memory admission; no matched comparison. `no-promotion`; split-mode restored. | [Inkling dossier](models/inkling-2-mini.md) · [Finding](../findings/2026-11-26-ernie-inkling-runtime-evaluation.md) · [Historical Swift](../findings/2026-09-25-swift15-ninfer-5090-promotion.md) |
+
 ## 2026-11-21 GLM derivative survey — matched fixed-set result
 
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |

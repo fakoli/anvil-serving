@@ -1,0 +1,95 @@
+{
+  "schema": "anvil-serving.source-registry/v1",
+  "sources": [
+    {
+      "age_class": "current local measurement",
+      "decision_impact": "supports only the stated aggregate and non-equivalence boundary",
+      "evidence_type": "sanitized paired aggregate",
+      "hardware_runtime_relevance": "ERNIE local text lane on a dual RTX PRO 6000 Blackwell Max-Q configuration",
+      "id": "local-ernie-fixed-set",
+      "observed_at": "2026-11-26",
+      "published_or_observed": "2026-11-26",
+      "url": "ernie-fixed-60-summary.json"
+    },
+    {
+      "age_class": "current local measurement and pinned external reference",
+      "decision_impact": "supports only observed request completion and bounded external comparison",
+      "evidence_type": "sanitized C1 long-context aggregate",
+      "hardware_runtime_relevance": "ERNIE local text lane on two RTX PRO 6000 Blackwell Max-Q GPUs",
+      "id": "local-ernie-long-context",
+      "observed_at": "2026-11-26",
+      "published_or_observed": "2026-11-26",
+      "url": "ernie-long-context-c1.json"
+    },
+    {
+      "age_class": "current local measurement",
+      "decision_impact": "supports the stated 44/60 bounded result; Inkling C2/8K and a separate Swift on-demand recipe were refused before creation, so no matched Swift comparison exists",
+      "evidence_type": "sanitized original-runtime C1/24K fixed-set aggregate at 16,384 maximum output",
+      "hardware_runtime_relevance": "separate RTX 5090 lane",
+      "id": "local-inkling-original-matched-output",
+      "observed_at": "2026-11-26",
+      "published_or_observed": "2026-11-26",
+      "url": "inkling-original-summary.json"
+    },
+    {
+      "age_class": "historical local measurement",
+      "decision_impact": "historical context only; not a matched control",
+      "evidence_type": "same-hardware historical control",
+      "hardware_runtime_relevance": "same GPU product, different date and workload",
+      "id": "historical-swift-same-hardware",
+      "observed_at": "2026-11-26",
+      "published_or_observed": "2026-09-25",
+      "url": "../../findings/2026-09-25-swift15-ninfer-5090-promotion.md"
+    },
+    {
+      "age_class": "current local measurement",
+      "decision_impact": "supports short protocol checks only; Q8 quality run ended OOM",
+      "evidence_type": "Q8 bounded protocol receipts",
+      "hardware_runtime_relevance": "separate RTX 5090 lane",
+      "id": "local-inkling-q8-protocol",
+      "observed_at": "2026-11-26",
+      "published_or_observed": "2026-11-26",
+      "url": "inkling-q8-summary.json"
+    },
+    {
+      "age_class": "current local measurement",
+      "decision_impact": "supports bounded C8/C16 measurements only",
+      "evidence_type": "public-safe candidate-only C8/C16 aggregate timing projection",
+      "hardware_runtime_relevance": "ERNIE lane on two RTX PRO 6000 Blackwell Max-Q GPUs",
+      "id": "local-ernie-c8-c16",
+      "observed_at": "2026-11-26",
+      "published_or_observed": "2026-11-26",
+      "url": "c8-c16-capacity-receipts.json"
+    },
+    {
+      "age_class": "current local measurement",
+      "decision_impact": "supports the stated scorer distinction and incomplete SWE boundary",
+      "evidence_type": "public-safe scorer sensitivity and bounded gate projection",
+      "hardware_runtime_relevance": "ERNIE/AZ text lane plus separate Inkling scorer sensitivity",
+      "id": "local-quality-scope",
+      "observed_at": "2026-11-26",
+      "published_or_observed": "2026-11-26",
+      "url": "quality-scope-receipts.json"
+    },
+    {
+      "age_class": "current external reference",
+      "decision_impact": "identity context only; not local measurement evidence",
+      "evidence_type": "public model/package card",
+      "hardware_runtime_relevance": "not the local deployed runtime",
+      "id": "external-ernie-model-reference",
+      "observed_at": "2026-11-26",
+      "published_or_observed": "2026-11-26",
+      "url": "https://huggingface.co/local-inference-lab/ERNIE-5.5-Flash-Preview-FLARE"
+    },
+    {
+      "age_class": "current external reference",
+      "decision_impact": "identity context only; not local measurement evidence",
+      "evidence_type": "public model card",
+      "hardware_runtime_relevance": "not the local deployed runtime",
+      "id": "external-inkling-model-reference",
+      "observed_at": "2026-11-26",
+      "published_or_observed": "2026-11-26",
+      "url": "https://huggingface.co/thinkingmachines/Inkling-2-Mini"
+    }
+  ]
+}

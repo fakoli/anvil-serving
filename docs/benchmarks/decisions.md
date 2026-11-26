@@ -12,6 +12,14 @@ For one comparable table of every finding, use
 
 ## November and October 2026
 
+**2026-11-26 ERNIE and Inkling bounded evaluation:** ERNIE's single-target
+999,990-token retrieval passed; the matched fixed-set scores were AZ-Focus
+49/60 and ERNIE 46/60. Inkling's original runtime completed 44/60 correct and
+complete-correct at the matched output budget. Inkling C2/8K and a separate
+Swift on-demand recipe were refused before creation by memory admission, so no
+matched Swift comparison exists. `no-promotion`; retained primary and split-mode
+baselines restored. [Finding](../findings/2026-11-26-ernie-inkling-runtime-evaluation.md).
+
 **2026-11-21 Sage S2.1 Flash TensorFold challenger:** the bounded
 [qualification](../findings/2026-11-21-sage-s21-flash-qualification.md) retains
 two practical recipes on the dual RTX PRO 6000 pair: 64K/C4 native MTP for

@@ -1,0 +1,46 @@
+{
+  "boundary": "Sanitized continuity receipts only; no candidate route, default, or promotion change is authorized.",
+  "lanes": [
+    {
+      "checks": [
+        {
+          "name": "managed primary owner transition",
+          "status": "success"
+        },
+        {
+          "name": "primary route readiness",
+          "status": "ready and admitting"
+        },
+        {
+          "elapsed_seconds": 0.344,
+          "name": "authenticated routed visible-string smoke",
+          "status": "passed"
+        }
+      ],
+      "hardware": "RTX PRO 6000",
+      "scope": "retained primary text service"
+    },
+    {
+      "checks": [
+        {
+          "name": "candidate owners",
+          "status": "no active Swift or media owner"
+        },
+        {
+          "name": "post-run GPU-use observation",
+          "status": "22 MiB observed"
+        },
+        {
+          "name": "baseline state",
+          "status": "restored"
+        }
+      ],
+      "hardware": "RTX 5090",
+      "scope": "original split-mode baseline",
+      "source_sha256": "d769cf867650b44d73d457cf8db8a0dcc1e79e7749da400c982d75644660ed42"
+    }
+  ],
+  "privacy_boundary": "No host, endpoint, process identity, or local path is retained.",
+  "schema": "anvil-serving.sanitized-restoration-summary/v1",
+  "status": "restored"
+}

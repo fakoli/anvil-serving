@@ -102,6 +102,75 @@ def test_hardware_labels_are_canonical():
     assert records.hardware_label("lab-host-tp2") == records.UNIDENTIFIED_HARDWARE
 
 
+def test_structured_measured_hardware_preserves_multiple_canonical_labels(tmp_path):
+    finding = tmp_path / "findings"
+    finding.mkdir()
+    _write(finding / "2026-11-26-hardware.md", "# Hardware\n")
+    evidence = finding / "2026-11-26-hardware-evidence"
+    evidence.mkdir()
+    _write(evidence / "artifact-manifest.json", {
+        "schema": "anvil-serving.benchmark-artifact-set/v1",
+        "campaign": {},
+        "artifact_roles": [],
+    })
+    _write(evidence / "summary.json", {
+        "schema": "anvil-serving.benchmark-decision-summary/v1",
+        "identity": {
+            "model": "Candidate",
+            "hardware": "legacy free-text RTX PRO 6000",
+            "measured_hardware": ["two RTX PRO 6000 Blackwell Max-Q GPUs", "NVIDIA GeForce RTX 5090", "unknown topology"],
+        },
+    })
+    record = records.build_index(finding)["records"][0]
+    assert record["subject"]["hardware"] == "RTX PRO 6000 + RTX 5090"
+
+
+def test_decision_summary_workload_fills_generated_record_gaps(tmp_path):
+    finding = tmp_path / "findings"
+    finding.mkdir()
+    _write(finding / "2026-11-26-workload.md", "# Workload\n")
+    evidence = finding / "2026-11-26-workload-evidence"
+    evidence.mkdir()
+    _write(evidence / "artifact-manifest.json", {
+        "schema": "anvil-serving.benchmark-artifact-set/v1",
+        "campaign": {},
+        "artifact_roles": [],
+    })
+    _write(evidence / "summary.json", {
+        "schema": "anvil-serving.benchmark-decision-summary/v1",
+        "identity": {"model": "Candidate", "hardware": "RTX 5090"},
+        "workload": {"context_tokens": "fixed C1", "concurrency": "C1; configured C4"},
+    })
+    record = records.build_index(finding)["records"][0]
+    assert record["workload"] == {"context_tokens": "fixed C1", "concurrency": "C1; configured C4"}
+
+
+def test_decision_summary_numeric_workload_fills_generated_record_gaps(tmp_path):
+    finding = tmp_path / "findings"
+    finding.mkdir()
+    _write(finding / "2026-11-26-numeric.md", "# Numeric\n")
+    evidence = finding / "2026-11-26-numeric-evidence"
+    evidence.mkdir()
+    _write(evidence / "artifact-manifest.json", {"schema": "anvil-serving.benchmark-artifact-set/v1", "campaign": {}, "artifact_roles": []})
+    _write(evidence / "summary.json", {"schema": "anvil-serving.benchmark-decision-summary/v1", "workload": {"context_tokens": 32768, "concurrency": [1, 4]}})
+    record = records.build_index(finding)["records"][0]
+    assert record["workload"] == {"context_tokens": 32768, "concurrency": [1, 4]}
+
+
+def test_decision_summary_workload_rejects_malformed_values():
+    assert records._workload_value(1.0) == 1
+    assert records._workload_value([1, 4.0]) == [1, 4]
+    assert records._workload_value(True) is None
+    assert records._workload_value(1.5) is None
+    assert records._workload_value(-1) is None
+    assert records._workload_value("C1\u2028C4") is None
+    assert records._workload_value(float("nan")) is None
+    assert records._workload_value(float("inf")) is None
+    assert records._workload_value([1, [4]]) is None
+    assert records._workload_value(list(range(1, records.MAX_WORKLOAD_COUNTS + 2))) is None
+    assert records._workload_value("configured\nC4") is None
+
+
 def test_repository_findings_build_and_discover():
     index = records.build_index(REPO / "docs" / "findings")
     assert index["counts"]["records"] > 100

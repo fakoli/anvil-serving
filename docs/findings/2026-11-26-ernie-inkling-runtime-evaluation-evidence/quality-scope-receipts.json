@@ -1,0 +1,56 @@
+{
+  "fixed_set": {
+    "controls": {
+      "api": "chat_completions_sse",
+      "max_tokens": 16384,
+      "reasoning_effort": "max",
+      "retries": 0,
+      "seed_rule": "1000 + original corpus index",
+      "temperature": 1.0,
+      "top_p": 0.95
+    },
+    "frozen_protocol_complete_correct": {
+      "AZ": 49,
+      "ERNIE": 46,
+      "Inkling": 44
+    },
+    "paired_outcomes": {
+      "az_only": 5,
+      "both_correct": 44,
+      "both_missed": 9,
+      "ernie_only": 2
+    },
+    "request_count": 60,
+    "request_shape": "sequential C1",
+    "visible_only_complete_correct": {
+      "AZ": 50,
+      "ERNIE": 46,
+      "Inkling": 46
+    }
+  },
+  "independent_checks": {
+    "agentic": {
+      "attempted": 3,
+      "passed": 3
+    },
+    "aider": {
+      "attempted": 2,
+      "passed": 2
+    },
+    "swe_scout": {
+      "classification": "incomplete; not a full-suite score",
+      "graded_resolved": 1,
+      "graded_unresolved": 2,
+      "ungraded_budget_exhausted": 2
+    }
+  },
+  "limitations": "The frozen and visible-only scores are distinct scorer rules. SWE stopped at call-budget limits; it is not score-comparable to a completed suite.",
+  "privacy_boundary": "No corpus prompts, answers, reasoning, issue identifiers, endpoint, host, or local source paths are retained.",
+  "purpose": "Public-safe scorer-sensitivity and bounded quality-gate projection.",
+  "schema": "anvil-serving.sanitized-quality-scope-receipts/v1",
+  "source_sha256": {
+    "paired_60_outcomes": "4275f52c39e2507239248f37ef2a10f30b0750587baf775c189b0c00574e1b94",
+    "r3_closeout": "bd9ce319e51a8019d5e474b462605fec9734a7e3b8dd76555adbfa69d9979ecf",
+    "three_arm_60": "e39c7fee8e83774af8cb77eb6544128722e78c4ffcf87fb736349036ed4a54ad"
+  }
+}

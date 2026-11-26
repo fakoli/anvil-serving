@@ -1,5 +1,14 @@
 # Benchmark results
 
+## 2026-11-26 — ERNIE and Inkling bounded evaluation
+
+[ERNIE](findings/2026-11-26-ernie-inkling-runtime-evaluation.md) completed one
+correct 999,990-token retrieval but trailed AZ-Focus 46/60 to 49/60 on the
+matched fixed set; no primary-route change followed. Inkling completed 44/60
+correct and complete-correct requests at matched output budget, but fresh Swift
+controls were refused by host-memory admission, so no comparison or cutover was
+made. Both retained baselines were restored; `no-promotion`.
+
 ## 2026-11-21 — GLM derivative matched 327K comparison
 
 The [final matched 327K local comparison](findings/2026-11-21-glm-derivative-survey.md)

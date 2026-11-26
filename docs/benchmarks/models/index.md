@@ -9,6 +9,7 @@ evidence by measured hardware.
 
 | Model / configuration | Measured result | Limitation / decision | Evidence date | Dossier |
 | --- | --- | --- | --- | --- |
+| ERNIE 5.5 Flash Preview TP2 | ERNIE 46/60 and AZ-Focus 49/60 on a bounded matched text set; one 999,990-token lookup; bounded C8/C16 cells | Fixed-set scores are not a quality ranking; LIL comparison mismatched; `no-promotion` | 2026-11-26 | [ERNIE 5.5 Flash Preview](ernie-55-flash-preview.md) |
 | Sage S2.1 Flash EXL3 4-bit candidate | R2 64K/C4 native MTP 8/8, 115.09 aggregate output tok/s; R4 327K/C2 native MTP 8/8, 103.77 vs GLM 91.85; 4/4 single-request retrieval through 259,774 input tokens | challenger, `no-promotion`; GLM C2 has lower visible latency; small natural populations and no simultaneous full-window capacity; serving restored, pre-existing monitoring gap retained | 2026-11-21 | [Sage S2.1 Flash](sage-s21-flash.md) |
 | Private-target cache-layout and DFlash2 K3 scouts | 144/144 timed requests per trial; no 10% E2E win against both controls; cache slots +38.60% / −40.63% | retain original; natural-output scout, private identity, no promotion | 2026-11-01 | [Private runtime scouts](private-runtime-scouts.md) |
 | Nemotron 3.5 Super VL 120B-A12B NVFP4 TP2 scout | preflight 6/6, vision 18/18, context 2/2; Oracle 48/54; C1 0/4 eligible | exact Oracle and capacity prerequisite fail; no coding qualification, C4, speed, or promotion | 2026-10-16 | [Nemotron 3.5 Super VL](nemotron35-super-vl-120b.md) |
@@ -49,6 +50,7 @@ evidence by measured hardware.
 
 | Model / configuration | Measured result | Limitation / decision | Evidence date | Dossier |
 | --- | --- | --- | --- | --- |
+| Inkling 2 Mini original mixed-precision C1/24K | 44/60 correct and complete-correct at 16,384 maximum output | Inkling C2/8K and separate Swift on-demand recipe refused by memory admission; no matched comparison; `no-promotion` | 2026-11-26 | [Inkling 2 Mini](inkling-2-mini.md) |
 | Swift-1.5 Qwen3.8 27B all-NVFP4 / NInfer DFlash2 | 262K configured, routed context 18/18 through 257,898 actual tokens, image/OCR 12/12; 4K C1/C4 visible 100/100 | `current` secondary as of 2026-09-25; 128K/C4 only 5/10 due queue timeouts; throughput descriptive | 2026-09-25 | [Swift-1.5 Qwen3.8](swift15-qwen38-27b.md) |
 | ThinkingCap Qwen3.8 27B AWQ | 128K/C1; vision 18/18, limited quality 30/30, context 60/60, strict capacity 100/100 | former selected secondary; 128K/C1 qualification and rollback preserved; mixed near-limit vision and soak untested | 2026-09-24 | [ThinkingCap Qwen3.8](thinkingcap-qwen38-27b.md) |
 | FLUX.2 Klein 4B | 6/8 bounded visual reviews pass | workflow `available=true`, not promoted | 2026-08-28 | [FLUX.2 Klein](flux2-klein.md) |

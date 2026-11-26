@@ -1,0 +1,21 @@
+{
+  "schema": "anvil-serving.sanitized-aggregate/v1",
+  "kind": "quality",
+  "model": "Inkling 2 Mini Q8",
+  "provenance": {"engine": "managed local inference runtime", "gpu": "NVIDIA GeForce RTX 5090"},
+  "suites": {
+    "bounded-short-protocol": {
+      "status": "passed",
+      "work_class": "protocol",
+      "evidence_use": "diagnostic",
+      "validator_strength": "independent checks",
+      "checks": [{"status": "passed", "attempt_count": 3, "pass_count": 3}]
+    }
+  },
+  "measurement": {
+    "passed_checks": ["short coding", "structured JSON", "20/20 shared-prefix tools"],
+    "declared_context_tokens": 8192,
+    "quality_run": "ended OOM; no Q8 fixed-set result retained",
+    "comparison_boundary": "Separate Q8 protocol lane. Its incomplete capacity populations withhold throughput, and it provides no fixed-set quality result."
+  }
+}

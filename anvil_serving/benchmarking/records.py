@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 from collections import Counter
@@ -24,6 +25,7 @@ DEFAULT_ROOT = "docs/findings"
 NOT_RECORDED = "not recorded"
 CORE_FIELDS = ("model", "engine", "quantization", "hardware", "context_tokens", "concurrency", "decision")
 MAX_HEADLINES = 6
+MAX_WORKLOAD_COUNTS = 64
 
 _DATE = re.compile(r"^(\d{4}-\d{2}(?:-\d{2})?)-")
 _H1 = re.compile(r"^#\s+(.+?)\s*$", re.MULTILINE)
@@ -68,6 +70,32 @@ def _text(value: object) -> str | None:
             if isinstance(value.get(key), str) and value[key].strip():
                 return value[key].strip()[: evidence.MAX_TEXT_CHARS]
     return None
+
+
+def _workload_value(value: object) -> object | None:
+    """Keep valid structured summary workload values when no native point exists."""
+    def positive_count(candidate: object) -> int | None:
+        if isinstance(candidate, bool):
+            return None
+        if isinstance(candidate, int):
+            return candidate if candidate > 0 else None
+        if isinstance(candidate, float) and math.isfinite(candidate) and candidate > 0 and candidate.is_integer():
+            return int(candidate)
+        return None
+
+    if isinstance(value, str):
+        normalized = value.strip()
+        if (not normalized or len(normalized) > evidence.MAX_TEXT_CHARS
+                or not normalized.isprintable()):
+            return None
+        return normalized
+    count = positive_count(value)
+    if count is not None:
+        return count
+    if not isinstance(value, list) or not value or len(value) > MAX_WORKLOAD_COUNTS:
+        return None
+    counts = [positive_count(item) for item in value]
+    return counts if all(item is not None for item in counts) else None
 
 
 def _labels(value: object) -> list[str]:
@@ -200,6 +228,20 @@ def _identity_value(identity: Mapping[str, Any], field: str) -> str | None:
     return None
 
 
+def _explicit_hardware_labels(identity: Mapping[str, Any]) -> str | None:
+    """Use the structured multi-accelerator list when a summary supplies it.
+
+    Free-text ``hardware`` continues through the historical single-label path;
+    this field exists only for a campaign that genuinely spans named hardware.
+    """
+    labels: list[str] = []
+    for item in evidence._list(identity.get("measured_hardware")):
+        label = hardware_label(_text(item))
+        if label and label != UNIDENTIFIED_HARDWARE and label not in labels:
+            labels.append(label)
+    return " + ".join(labels) if labels else None
+
+
 def _observed(counter: Counter) -> str | None:
     values = sorted(str(value) for value in counter if value)
     if not values:
@@ -251,10 +293,11 @@ def build_record(stem: str, finding: Path | None, directory: Path | None, root: 
 
     subject: dict[str, str] = {}
     for field in _IDENTITY_ALIASES:
-        value = _identity_value(identity, field) or _observed(scan["subject"][field])
+        explicit_hardware = _explicit_hardware_labels(identity) if field == "hardware" else None
+        value = explicit_hardware or _identity_value(identity, field) or _observed(scan["subject"][field])
         if field == "hardware" and not value:
             value = _text(summary.get("measured_hardware"))
-        if field == "hardware":
+        if field == "hardware" and not explicit_hardware:
             value = hardware_label(value)
         subject[field] = value or NOT_RECORDED
 
@@ -265,9 +308,10 @@ def build_record(stem: str, finding: Path | None, directory: Path | None, root: 
         or _labels(evidence._mapping(decision).get("decision_labels"))
         or _labels(decision if isinstance(decision, str) else None)
     )
+    summary_workload = evidence._mapping(summary.get("workload"))
     workload = {
-        "context_tokens": sorted(scan["context"]) or NOT_RECORDED,
-        "concurrency": sorted(scan["concurrency"]) or NOT_RECORDED,
+        "context_tokens": sorted(scan["context"]) or _workload_value(summary_workload.get("context_tokens")) or NOT_RECORDED,
+        "concurrency": sorted(scan["concurrency"]) or _workload_value(summary_workload.get("concurrency")) or NOT_RECORDED,
     }
     limitations = [text for text in (_text(item) for item in evidence._list(summary.get("limitations"))) if text]
     failures = evidence._list(summary.get("failures"))

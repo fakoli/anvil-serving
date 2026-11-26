@@ -1,0 +1,113 @@
+{
+  "cache_state": "Measured cache counters are reported per cell; they do not establish a cold or warm population.",
+  "cells": [
+    {
+      "batch_seconds": 39.900568236,
+      "cache_observation": {
+        "engine_reused_tokens_after": 968,
+        "engine_reused_tokens_before": 712,
+        "engine_reused_tokens_delta": 256,
+        "per_request_cached_prompt_tokens": [
+          16
+        ]
+      },
+      "completion_p50_seconds": 38.516042052418925,
+      "completion_p95_seconds_nearest_rank": 39.893718477804214,
+      "concurrency": 16,
+      "end_to_end_tps": 359.29312873959145,
+      "first_output_to_last_completion_tps": 815.1501590347913,
+      "mode": "length",
+      "output_tokens": 14336,
+      "prompt_max": 15489,
+      "prompt_min": 13991,
+      "prompt_sum": 235882,
+      "semantic_matches": null
+    },
+    {
+      "batch_seconds": 26.077748091,
+      "cache_observation": {
+        "engine_reused_tokens_after": 712,
+        "engine_reused_tokens_before": 456,
+        "engine_reused_tokens_delta": 256,
+        "per_request_cached_prompt_tokens": [
+          16
+        ]
+      },
+      "completion_p50_seconds": 24.749539925018325,
+      "completion_p95_seconds_nearest_rank": 26.070515556959435,
+      "concurrency": 16,
+      "end_to_end_tps": 60.396319287383825,
+      "first_output_to_last_completion_tps": 379.12773559021804,
+      "mode": "natural",
+      "output_tokens": 1575,
+      "prompt_max": 15498,
+      "prompt_min": 14000,
+      "prompt_sum": 235914,
+      "semantic_matches": 16
+    },
+    {
+      "batch_seconds": 20.286120065,
+      "cache_observation": {
+        "engine_reused_tokens_after": 456,
+        "engine_reused_tokens_before": 328,
+        "engine_reused_tokens_delta": 128,
+        "per_request_cached_prompt_tokens": [
+          16
+        ]
+      },
+      "completion_p50_seconds": 19.821590697974898,
+      "completion_p95_seconds_nearest_rank": 20.281938835978508,
+      "concurrency": 8,
+      "end_to_end_tps": 353.34504464296634,
+      "first_output_to_last_completion_tps": 615.5813367679594,
+      "mode": "length",
+      "output_tokens": 7168,
+      "prompt_max": 10995,
+      "prompt_min": 10995,
+      "prompt_sum": 87960,
+      "semantic_matches": null
+    },
+    {
+      "batch_seconds": 10.923374677,
+      "cache_observation": {
+        "engine_reused_tokens_after": 328,
+        "engine_reused_tokens_before": 200,
+        "engine_reused_tokens_delta": 128,
+        "per_request_cached_prompt_tokens": [
+          16
+        ]
+      },
+      "completion_p50_seconds": 10.188236837508157,
+      "completion_p95_seconds_nearest_rank": 10.922378750052303,
+      "concurrency": 8,
+      "end_to_end_tps": 79.5541694481785,
+      "first_output_to_last_completion_tps": 348.9783656925739,
+      "mode": "natural",
+      "output_tokens": 869,
+      "prompt_max": 10990,
+      "prompt_min": 10990,
+      "prompt_sum": 87920,
+      "semantic_matches": 8
+    }
+  ],
+  "limitations": "Natural and length-controlled outputs are distinct populations. These candidate-only aggregates are not a matched service-speed or saturation comparison.",
+  "measurement_path": "direct local candidate-only C8/C16 batches; aggregate batch timing.",
+  "privacy_boundary": "No prompts, completions, reasoning, endpoint, host, or local source paths are retained.",
+  "purpose": "Public-safe C8/C16 aggregate timing projection from retained local runtime outputs.",
+  "schema": "anvil-serving.sanitized-capacity-receipts/v1",
+  "source_sha256": {
+    "c16-stress-16-length.json": "40145e05f0182862dec955b553565180964a157b2ec4ad326206a8b3a42aa2fb",
+    "c16-stress-16-natural.json": "c39958ecb457a84b9cba56c16e6a7da049326939be01341643d2cdf4ff3b5c7a",
+    "c16-stress-8-length.json": "b5da199ead960ca477d176e77b1cfc68883fe9a7868e3bd9013a06bb1cf256bd",
+    "c16-stress-8-natural.json": "514c5274aaaa72ebcff784fa149a23c95e795e73eebf18b66dc06fdb600858ee",
+    "concurrency_comparison": "67af24d75cd53c51945886c90d97e18ca81f09c833fcebdface99760b80ad1bd",
+    "prompt_policy_generator": "20e2b3cc09abbce260fed71672a16328cb8c3b2eae16980146778528a4c26ca8"
+  },
+  "prompt_cache_mode": "unique",
+  "prompt_policy_evidence": "Workload design from the hash-bound generator: each request began with a label unique to its batch size, item ordinal and output mode, then included a separately seeded needle. All requests used the runtime chat template. The observed cache counters are retained separately for each cell.",
+  "canary_validation": {
+    "natural": "Independent exact marker checks passed 8/8 and 16/16.",
+    "fixed_length": "896-token capped timing cells checked transport and usage only; no semantic score.",
+    "cache_reset_or_warmth": "unverified"
+  }
+}

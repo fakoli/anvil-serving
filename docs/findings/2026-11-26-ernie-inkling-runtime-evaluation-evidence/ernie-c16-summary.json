@@ -1,0 +1,25 @@
+{
+  "schema": "anvil-serving.sanitized-aggregate/v1",
+  "kind": "capacity",
+  "model": "ERNIE 5.5 Flash Preview",
+  "provenance": {"engine": "managed local inference runtime", "gpu": "two RTX PRO 6000 Blackwell Max-Q GPUs"},
+  "capacity": {"requests": 16, "completed": 16, "concurrency": 16, "context_tokens": 15498, "max_tokens": 896, "served_context_tokens": 15498},
+  "metrics": {
+    "natural_input_token_range": [14000, 15498],
+    "natural_output_tokens": 1575,
+    "natural_end_to_end_tokens_per_second": 60.3963,
+    "natural_completion_p50_seconds": 24.7495,
+    "natural_completion_p95_seconds_nearest_rank": 26.0705,
+    "natural_semantic_matches": 16,
+    "c1_natural_output_tokens": 16384,
+    "c1_natural_end_to_end_tokens_per_second": 223.0063,
+    "c1_fixed_output_tokens": 8192,
+    "c1_fixed_end_to_end_tokens_per_second": 223.7855,
+    "length_controlled_output_tokens": 14336,
+    "length_controlled_end_to_end_tokens_per_second": 359.2931,
+    "length_controlled_completion_p50_seconds": 38.5160,
+    "length_controlled_completion_p95_seconds_nearest_rank": 39.8937
+  },
+  "performance_eligible": false,
+  "limitation": "One bounded aggregate per mode. Natural and length-controlled output populations differ; neither is a general service-speed, saturation, or full-window capacity claim."
+}

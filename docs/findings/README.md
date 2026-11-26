@@ -1,5 +1,13 @@
 # Findings index
 
+**2026-11-26 ERNIE and Inkling bounded evaluation:** [ERNIE](2026-11-26-ernie-inkling-runtime-evaluation.md)
+completed one correct 999,990-token retrieval, but AZ-Focus led the matched
+text set 49/60 to 46/60 and remains the primary decision. Inkling completed
+44/60 correct and complete-correct requests on one RTX 5090; fresh Swift
+controls were refused by host-memory admission, so no single-GPU cutover or
+comparison followed. Both retained baselines were restored; `no-promotion`.
+[Evidence index](2026-11-26-ernie-inkling-runtime-evaluation-evidence/README.md).
+
 **2026-11-21 GLM derivative survey:** a [final matched 327K local 60-case comparison](2026-11-21-glm-derivative-survey.md) gave Mia and AZ327-Focus the same literal-parser score (49/60 each), while AZ327-Focus used 55.8% less summed sequential C1 request time (215.195 s versus 487.233 s). All 60 responses were independently reexecuted. The separate matched 327K/C4 summary has near-tied median end-to-end latency and lower AZ aggregate output, so no broad concurrent-speed claim follows. AZ327 image cases passed 12/12 using Mia's exact template; the distinct AZ64 native-template profile remains 0/12. A separate one-card Qwen receipt received 8/8 responses but ended 0/8 performance-eligible on its opening canary. `no-promotion`. [Evidence index](2026-11-21-glm-derivative-survey-evidence/README.md).
 
 The paired official-image SWE-Bench Verified scout resolved 4/5 for AZ327 and 3/5 for Mia under matched controls. It is neither the publisher subset nor a full-suite score. [Per-case evidence](2026-11-21-glm-derivative-survey-evidence/raw/paired-swe-five.json).

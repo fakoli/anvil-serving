@@ -1,0 +1,10 @@
+{
+  "schema": "anvil-serving.sanitized-aggregate/v1",
+  "kind": "capacity",
+  "model": "ERNIE 5.5 Flash Preview",
+  "provenance": {"engine": "managed local inference runtime", "gpu": "two RTX PRO 6000 Blackwell Max-Q GPUs"},
+  "capacity": {"requests": 3, "completed": 3, "concurrency": 1, "context_tokens": 1000000, "max_tokens": 264, "served_context_tokens": 1000000},
+  "metrics": {"observed_prompt_tokens": [32185, 63150, 999990], "prefill_tokens_per_second": [10730.2, 10441.3], "decode_tokens_per_second": [195.8, 203.5], "million_token_first_model_token_seconds": 201.111, "million_token_completion_seconds": 202.005, "million_token_target_count": 1, "million_token_target_position_fraction": 0.5},
+  "performance_eligible": false,
+  "limitation": "Three single-request observations only; the 1M result is a single target at one position. State is unspecified and results are not sustained, repeated-target, or broad reliability evidence."
+}

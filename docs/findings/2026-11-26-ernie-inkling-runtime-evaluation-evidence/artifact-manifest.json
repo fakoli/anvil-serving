@@ -1,0 +1,176 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-11-26-ernie-inkling-runtime-evaluation",
+    "capability": "bounded local runtime evaluation",
+    "repository_revision": "8aae2aca4741c2171720d2587d2ac8b4cfe3a81d",
+    "dirty_state": "final documented benchmark evidence",
+    "started_at": "2026-11-26",
+    "completed_at": "2026-11-26",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "partial capacity"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "completion_note": "Both bounded lanes completed with derivative public projections; native raw evidence is withheld, so the public artifact set does not claim raw-evidence auditability. Baseline restoration and no-promotion are separately scoped."
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-decision-summary/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "aecf6d9fdfc70517399911ece57a31e3a628f3e33e8adcdc2cd617545c0feb6b",
+          "bytes": 3095
+        }
+      ],
+      "reason": "Evidence index and measurement boundary."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "d79c216e4d08c30d184cb5bb1fa89e0fa40d2637e980ebfe76891d966c1ece2c",
+          "bytes": 4479
+        }
+      ],
+      "reason": "Dated local observation provenance."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "4518893a7f8d7f8254f164e5b0ca28ebc48a280aaa42da1c096d0ffdad03ec43",
+          "bytes": 1678
+        }
+      ],
+      "reason": "Sanitized workload controls."
+    },
+    {
+      "role": "run-plan",
+      "status": "missing",
+      "files": [],
+      "reason": "The original frozen plan is private and not retained publicly; coverage-and-gaps is retrospective, not a run plan."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "identity.json",
+          "sha256": "16015209f96fd26eb346a6f9f54ed3695c5d32343473274b018352393e74f64c",
+          "bytes": 549
+        }
+      ],
+      "reason": "Public hardware/runtime classes without deployment identities."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "missing",
+      "files": [],
+      "reason": "Original native request and capacity envelopes are withheld because they contain protected request content and deployment metadata. Public-safe projections are derivative attachments under decision-summary and do not satisfy the native raw-evidence role."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "53c9b09f155e917ca5f4cd8eb4b83056a31ae758c5db32648d8da94b17ce8fed",
+          "bytes": 1759
+        }
+      ],
+      "reason": "Closed limitations, refused controls, and Q8 OOM boundary."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "ffbc0e92d046951dd343903882d1116429694737a6c9c7b2cb1a1b74a47402c4",
+          "bytes": 1309
+        }
+      ],
+      "reason": "Sanitized derivative retained-primary continuity summary; original native restoration records are not retained publicly."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "02465707d38d58a8de8923da81a345204e7a89c85a8d273aefda595506cb4851",
+          "bytes": 3408
+        },
+        {
+          "path": "raw-request-receipts.json",
+          "sha256": "7bf20379eb86be649e88364c7ac5da6db0d3b88a281ab4af62d2a86ffef751f4",
+          "bytes": 90029
+        },
+        {
+          "path": "c8-c16-capacity-receipts.json",
+          "sha256": "f6b986cc61d01545f7c24519fa921728c63a632e7ef3fc7d8560b0d486e7cc52",
+          "bytes": 4709
+        },
+        {
+          "path": "quality-scope-receipts.json",
+          "sha256": "4c780733741e2949ab1076bd3e4603bf50aca079744c22d12422f94e9b92385b",
+          "bytes": 1738
+        },
+        {
+          "path": "long-context-receipts.json",
+          "sha256": "89510b1427bd4b6cded4b5414e68c53b9806dc7cce9a4c3c5f7a5eca6378afc9",
+          "bytes": 1520
+        },
+        {
+          "path": "ernie-fixed-60-summary.json",
+          "sha256": "0ecc584e63983238c7c7491c3ff2cc97cce9ed38e24b785844397ae0e2913c59",
+          "bytes": 944
+        },
+        {
+          "path": "ernie-long-context-c1.json",
+          "sha256": "72722da2bac528430385b99015b9a4746419bf24dd18d6f9c316925d2ef837b5",
+          "bytes": 948
+        },
+        {
+          "path": "ernie-c16-summary.json",
+          "sha256": "f46e516f4b3111bf9892909fbfd1199b7681d7163d86782ee53d940bb00ea9f4",
+          "bytes": 1313
+        },
+        {
+          "path": "inkling-original-summary.json",
+          "sha256": "9f8bcc9fe5127097293e5b4a0f555d6be7bf862932398eff34966a6929503dd9",
+          "bytes": 1358
+        },
+        {
+          "path": "inkling-q8-summary.json",
+          "sha256": "9ec7bd08613e0f3781a71a86848856ec6c8b0424ea569a17062490025701348c",
+          "bytes": 853
+        }
+      ],
+      "reason": "Supported public decision summary with derivative public-safe request, capacity, quality, and aggregate attachments; distinct from withheld native evidence envelopes."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No platform-copy publication summary was requested; the dated finding is the public narrative."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}
