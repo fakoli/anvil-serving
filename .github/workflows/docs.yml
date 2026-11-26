@@ -1,16 +1,17 @@
 name: Docs
 
+# Checks that the docs build. The public site, https://anvilserving.com/, is
+# published from main by a separate deploy pipeline; GitHub Pages is retired.
 on:
   push:
     branches: [main]
   pull_request:
 
-# Minimal read-only default; deploy job gets pages+id-token write via job-level override.
 permissions:
   contents: read
 
 concurrency:
-  group: pages-${{ github.ref }}
+  group: docs-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -38,29 +39,3 @@ jobs:
 
       - name: Check tracked Markdown links
         run: python scripts/check_markdown_links.py --root .
-
-      # Only upload the artifact when we are about to deploy (push to main).
-      # PRs get the strict build check above but never upload.
-      - name: Upload Pages artifact
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
-        with:
-          path: site
-
-  deploy:
-    name: Deploy to GitHub Pages
-    needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    # GitHub Actions OIDC token — required by actions/deploy-pages.
-    # Flip the repo Pages source to "GitHub Actions" once this workflow lands.
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5

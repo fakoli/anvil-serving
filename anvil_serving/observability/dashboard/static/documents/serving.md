@@ -8,12 +8,12 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Source Version](https://img.shields.io/badge/source-3.1.0-blue.svg)](CHANGELOG.md)
-[![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
+[![Docs](https://img.shields.io/badge/docs-anvilserving.com-blue.svg)](https://anvilserving.com/)
 
 [Get started](https://github.com/fakoli/anvil-serving/blob/main/docs/GETTING-STARTED.md) ·
 [Choose a product journey](https://github.com/fakoli/anvil-serving/blob/main/docs/PRODUCT-FAMILIES.md) ·
 [Browse benchmark evidence](https://github.com/fakoli/anvil-serving/blob/main/docs/benchmarks/index.md) ·
-[Open the documentation](https://fakoli.github.io/anvil-serving/)
+[Open the documentation](https://anvilserving.com/)
 
 </div>
 
