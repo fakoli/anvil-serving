@@ -73,7 +73,7 @@ The following are invariants, not optional deployment preferences:
 7. Readiness, configuration, qualification, promotion, package publication,
    and live deployment remain distinct states.
 
-**2026-09-05 amendment — bounded same-host replicas (design pending implementation).**
+**2026-09-05 amendment — bounded same-host replicas (implemented; see the 2026-11-26 amendment below).**
 A configured tier may eventually declare an explicit 2–16-member equivalent
 set on one host. This adds a second, internal decision only after the invariant
 alias-to-tier decision: select one eligible member of the already selected tier
@@ -89,6 +89,27 @@ trigger selection of another member, model, tier, host, or capability. This
 amendment grants neither lifecycle authority nor runtime replica support; the
 direct single-endpoint behavior remains the implemented contract until the
 bounded design is delivered.
+
+**2026-11-26 amendment — replica implementation status.**
+The bounded design above is delivered: PR #472 implemented replica tiers in the
+router request path, so the single-endpoint statement in the previous paragraph
+no longer describes the code. A tier is now either direct or an explicit set of
+2–16 equivalent members on one host. The internal member decision also has two
+strategies rather than one. `replica_strategy` is `round_robin`, the default,
+or `capacity`, which ranks already eligible members by local reservation ratio,
+then by bounded upstream pressure, then by a rotating member-ID tie. The
+capacity strategy comes from the
+[capacity scheduler PRD](../prds/replica-capacity-scheduler.md) and shipped in
+the same change; this ADR had specified round robin only. Pressure samples only
+order eligible members; they do not qualify, promote, or identify a model.
+
+The invariants are unchanged. One alias still selects exactly one tier, the
+member decision happens only inside that tier and on that host, a selected
+member is attempted once, and no failure selects another member, model, tier,
+host, or capability. This amendment still grants the router no lifecycle
+authority.
+[Qualified same-host replicas](../CONFIGURATION.md#qualified-same-host-replicas)
+is the current configuration reference.
 
 Purpose-model and audio routes remain deterministic separate surfaces. This
 decision does not add lifecycle authority to the router or change the guarded
