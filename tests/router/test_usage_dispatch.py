@@ -640,7 +640,8 @@ def test_admission_queue_wait_is_measured_and_is_upstream_time_only_after_dispat
         finally:
             other.close()
     held, queued = sorted(wait_details(usage, 2), key=lambda terminal: terminal.admission_wait_ms)
-    assert held.admission_wait_ms == 0 and held.error_code is None
+    # An uncontended pass through the gate can still measure a few milliseconds.
+    assert held.admission_wait_ms < 50 and held.error_code is None
     if expires:
         assert status == 503 and queued.dispatched is False and queued.error_code == "request_timeout"
         assert queued.admission_wait_ms >= 100

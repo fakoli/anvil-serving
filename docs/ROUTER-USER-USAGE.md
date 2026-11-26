@@ -108,7 +108,7 @@ cause is unambiguous:
 | `unavailable` | Refused before dispatch: the configured tier was not ready, its admission was quiesced, or no replica member was ready with free capacity. Waiting for a direct tier's concurrency slot never produces this code. |
 | `unknown_model` | A backend refused an unknown alias inside the generating path. The gateway's own alias check answers 404 before a row starts, so routed chat does not produce it. |
 | `backend_error` | The request failed after a confirmed dispatch: the upstream faulted, or the gateway faulted while completing the response. |
-| `request_timeout` | The outcome or the generation outcome is `timeout`, or the upstream call timed out. With `dispatched` false, the request timed out in the admission queue. |
+| `request_timeout` | The outcome or the generation outcome is `timeout`, or the upstream call timed out. With `dispatched` false, the request timed out before dispatch, normally in the admission queue. |
 | `request_cancelled` | The outcome is `cancelled`. |
 | `client_disconnected` | The outcome is `disconnected`. |
 | `interrupted` | Recovery closed the row after its owning process was lost. |
