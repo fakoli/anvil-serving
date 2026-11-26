@@ -51,8 +51,9 @@ These limits bound memory and threads:
   its body is read. Answers to `ASK` have two slots of their own, so waiting
   questions cannot lock out their answers.
 - A body must arrive within 60 seconds, and a socket that goes quiet for 30
-  seconds is dropped. A form with more than 16 parts, or with a part that is
-  itself `multipart/*` or `message/*`, gets 400 before it is parsed.
+  seconds is dropped. Forms go through Scribe's flat parser: parts are read one
+  at a time and never recursively, and a form with more than 16 parts, a part
+  header over 8 KiB, or a transfer encoding gets 400.
 - `/mcp` and notify bodies are JSON of at most 64 KiB; only turns and answers
   carry audio up to `max_upload_bytes`. An MCP batch of more than 16 messages
   is refused whole with one `-32600` error.
