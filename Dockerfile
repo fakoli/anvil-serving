@@ -154,6 +154,13 @@ USER 1000:1000
 ENTRYPOINT ["anvil-serving", "scribe"]
 CMD ["run", "--config", "/etc/anvil/scribe.toml"]
 
+# Anvil Agent (ADR-0049) also decodes Ogg Opus turns with ffmpeg, so it reuses
+# the Scribe stage's ffmpeg layer and only swaps the entrypoint.
+# `docker compose run --rm agent validate --config /etc/anvil/agent.toml` checks a deployment.
+FROM scribe AS agent
+ENTRYPOINT ["anvil-serving", "agent"]
+CMD ["run", "--config", "/etc/anvil/agent.toml"]
+
 # Preserve the historical `docker build .` behavior: the default final image is
 # still the router. Build the controller explicitly with `--target controller`.
 FROM router AS default

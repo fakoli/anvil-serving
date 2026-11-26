@@ -2,11 +2,11 @@
 
 ## Product
 
-Anvil Serving is one umbrella product with eight explicit families: Model
+Anvil Serving is one umbrella product with nine explicit families: Model
 Serving, Capability Gateway, Evaluation & Evidence, Anvil Voice, Anvil Media,
-Anvil Scribe, Anvil Connect, and Control Plane & Fleet. The families share one package, CLI,
+Anvil Scribe, Anvil Agent, Anvil Connect, and Control Plane & Fleet. The families share one package, CLI,
 topology, safety/evidence contract, and release line. Anvil Voice, Anvil
-Media and Anvil Scribe are first-class branded domains inside the umbrella, not
+Media, Anvil Scribe and Anvil Agent are first-class branded domains inside the umbrella, not
 separate products.
 
 The Capability Gateway family is an explicit capability meta-router,
@@ -113,6 +113,7 @@ anvil_serving/
   voice/                  owned STT/TTS, bridge, Realtime operations
   media/                  named workflows, durable jobs, qualification, artifacts
   scribe/                 record-first dictation, rewrite profiles, memo history
+  agent/                  glasses turns to declared agents, glasses events, MCP tool
 ```
 
 The three compatibility facades remain supported import and entrypoint
@@ -229,7 +230,7 @@ validation, and rollback.
 ## Documentation
 
 - `README.md` — product framing and quick start
-- `docs/PRODUCT-FAMILIES.md` — umbrella boundary and all eight user journeys
+- `docs/PRODUCT-FAMILIES.md` — umbrella boundary and all nine user journeys
 - `docs/META-ROUTER.md` — product category, authority model, and invariants
 - `docs/ARCHITECTURE.md` — current request path and topology
 - `docs/CONFIGURATION.md` — capability and metadata-authority configuration

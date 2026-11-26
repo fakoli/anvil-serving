@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from .agent import commands as agent_commands
 from .connect import commands as connect_commands
 from .control_plane import commands as control_plane_commands
 from .eval import commands as eval_commands
@@ -42,6 +43,7 @@ ROOT_ORDER = (
     "voice",
     "media",
     "scribe",
+    "agent",
     "fleet",
     "harness",
     "mcp",
@@ -106,6 +108,7 @@ FAMILIES = (
     voice_commands,
     media_commands,
     scribe_commands,
+    agent_commands,
     harness_commands,
     control_plane_commands,
     connect_commands,

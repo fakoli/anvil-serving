@@ -1,0 +1,32 @@
+# Anvil Agent: glasses turns to your own agents, and the memomind_glasses MCP
+# tool (ADR-0049). Read by `anvil-serving agent run|validate`; normally the
+# `agent` serve in serves.agent.toml. Spoken turns are transcribed through the
+# gateway's /v1/audio/transcriptions with one device key bound to the STT route:
+#   anvil-serving router keys create --name agent --model <stt route id> \
+#     --path /v1/audio/transcriptions --rpm 120 --out <protected file>
+# Every env value is a secret or identity supplied at runtime, never written here.
+[agent]
+router_url = "http://127.0.0.1:8000"
+router_key_env = "ANVIL_AGENT_ROUTER_KEY"
+allowed_logins_env = "ANVIL_AGENT_LOGINS"
+listen_host = "127.0.0.1"
+listen_port = 8792
+
+# Agent backends, in the order the glasses client lists them. GET /v1/agents
+# exposes ids and labels only. The backend with id `hermes` also answers the
+# legacy /v1/hermes/turn path.
+[agent.backends.hermes]
+kind = "hermes-api"
+label = "Hermes"
+url = "http://127.0.0.1:8642"
+key_env = "ANVIL_AGENT_HERMES_KEY"
+session = "anvil-agent"
+
+# Pi through pi-web's mobile bridge. The bridge cannot create sessions, so
+# `session` names an existing pi-web session id.
+# [agent.backends.pi]
+# kind = "pi-web"
+# label = "Pi"
+# url = "http://127.0.0.1:30141"
+# key_env = "ANVIL_AGENT_PI_TOKEN"
+# session = "<pi-web session id>"

@@ -4,8 +4,8 @@ Anvil Serving is one umbrella product for operating, qualifying, and exposing
 local AI capabilities through explicit, reviewable contracts. It is broader
 than the request router and narrower than a general orchestration platform.
 
-The public product has eight families. Anvil Voice, Anvil Media and Anvil
-Scribe are branded, first-class domains inside Anvil Serving; they are not separate repositories,
+The public product has nine families. Anvil Voice, Anvil Media, Anvil Scribe
+and Anvil Agent are branded, first-class domains inside Anvil Serving; they are not separate repositories,
 installations, or release lines. Run `anvil-serving product families` for the
 same map from installed code, or `anvil-serving product journey FAMILY` for an
 ordered CLI journey.
@@ -20,6 +20,7 @@ ordered CLI journey.
 | [Anvil Voice](#anvil-voice) | Operate qualified STT, TTS, and realtime voice paths. | `voice` | Undeclared placement or hidden split-host fallback. |
 | [Anvil Media](#anvil-media) | Run bounded named image/video workflows with durable jobs and artifacts. | `media` | Raw backend graphs, paths, installs, placement, or fallback. |
 | [Anvil Scribe](#anvil-scribe) | Record dictation first, then rewrite it on demand with saved profiles and a private history. | `scribe` | Direct model-serve calls, unscoped credentials, or feeding memos to training or evaluation. |
+| [Anvil Agent](#anvil-agent) | Talk to your own agents from smart glasses, and let them drive the HUD through one MCP tool. | `agent` | Client-held agent credentials, stored turns, or a microphone opened without the wearer's press. |
 | [Anvil Connect](#anvil-connect) | Publish local browser surfaces through one self-hosted, authenticated edge. | `connect` | Origin rewrites, loopback bypass, vendor-hosted identity, or exposure outside a rendered declaration. |
 | [Control Plane & Fleet](#control-plane-fleet) | Resolve ownership, dispatch bounded operations, and expose fleet state. | `topology`, `controller`, `mcp`, `fleet`, `host`, and integration utilities | Resource-owner bypass, embedded secrets, or SSH-first operations. |
 
@@ -151,6 +152,25 @@ the Capability Gateway's chat aliases through one route-bound device key.
 See [Scribe commands](cli/scribe.md) and
 [ADR-0048](adr/0048-anvil-scribe-record-first-dictation.md).
 
+## Anvil Agent
+
+Anvil Agent bridges a smart-glasses client to the operator's own agents. The
+wearer talks or types to an agent and reads its reply on the HUD, and the agents
+drive the glasses through one MCP tool, `memomind_glasses`, which shows cards,
+runs a teleprompter or asks the wearer a question. Speech is transcribed
+through the gateway with a route-bound key. Agent credentials stay server-side,
+nothing is stored, and no microphone opens until the wearer presses.
+
+1. Check the config and its references with `anvil-serving agent validate`.
+2. Review the key it needs with `anvil-serving router keys create --help`.
+3. Review the managed start with
+   `anvil-serving serves up agent --manifest <OPERATOR_HOME>/serves.agent.toml --dry-run`.
+4. Inspect the running container with
+   `anvil-serving serves status --manifest <OPERATOR_HOME>/serves.agent.toml`.
+
+See [Agent commands](cli/agent.md) and
+[ADR-0049](adr/0049-anvil-agent-glasses-bridge.md).
+
 ## Anvil Connect
 
 Anvil Connect owns the browser edge for local surfaces: edge TLS under an
@@ -214,5 +234,5 @@ Model Serving candidate
 ```
 
 Voice and Media use the same pattern with domain-specific qualification. Scribe
-consumes Voice and Gateway capabilities through a scoped key; it never owns them. No
+and Anvil Agent consume Voice and Gateway capabilities through a scoped key; they never own them. No
 arrow is an implicit fallback, auto-promotion, or transfer of authority.

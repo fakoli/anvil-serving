@@ -380,6 +380,9 @@ required operands, choices, and defaults.
 | `scribe` | Record-first dictation: raw transcripts, saved rewrite profiles, history. | `read` / `bounded` | - |
 | `scribe run` | Run the loopback Scribe service in the foreground. | `process` / `foreground` | `--config` |
 | `scribe validate` | Check the Scribe config and its references offline. | `read` / `bounded` | `--config` |
+| `agent` | Glasses turns to your own agents, and the memomind_glasses MCP tool. | `read` / `bounded` | - |
+| `agent run` | Run the loopback Anvil Agent service in the foreground. | `process` / `foreground` | - |
+| `agent validate` | Check the Anvil Agent config and its references offline. | `read` / `bounded` | - |
 | `fleet` | Cross-host visibility across the declared operator topology. | `read` / `bounded` | - |
 | `fleet workloads` | Read a bounded canonical workload snapshot from one fleet controller. | `read` / `bounded` | `--controller-url`<br>`--auth-env`<br>`--expected-node`<br>`--owner`<br>`--kind`<br>`--state`<br>`--host`<br>`--active-only`<br>`--recent-seconds`<br>`--limit` |
 | `fleet version` | Report anvil-serving version skew across declared fleet hosts. | `read` / `bounded` | `--host`<br>`--timeout` |

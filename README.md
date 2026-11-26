@@ -67,11 +67,11 @@ and Anthropic SDK examples, and fixes for 401, 404, and 403 responses.
 
 ## Product families
 
-Beyond the gateway, Anvil Serving is one local-first product with eight
+Beyond the gateway, Anvil Serving is one local-first product with nine
 families that share one package, CLI, topology, safety contract, evidence
 policy, and release line while keeping explicit authority boundaries. Anvil
-Voice, Anvil Media and Anvil Scribe are first-class domains inside the umbrella,
-not separate products. Together they give a reproducible path from model artifact to
+Voice, Anvil Media, Anvil Scribe and Anvil Agent are first-class domains inside
+the umbrella, not separate products. Together they give a reproducible path from model artifact to
 qualified capability: operate a declared serve, collect independent evidence,
 make a human-gated exposure decision, and present callers with one exact
 endpoint.
@@ -84,6 +84,7 @@ endpoint.
 | **Anvil Voice** | Operate qualified STT, TTS, and realtime voice paths. | `voice` |
 | **Anvil Media** | Run bounded named image/video workflows with durable artifacts. | `media` |
 | **Anvil Scribe** | Record dictation first, then rewrite it on demand with saved profiles. | `scribe` |
+| **Anvil Agent** | Talk to your own agents from smart glasses, and let them drive the HUD. | `agent` |
 | **Anvil Connect** | Publish local browser surfaces through one self-hosted, authenticated edge. | `connect` |
 | **Control Plane & Fleet** | Resolve ownership and operate declared hosts and integrations. | `topology`, `controller`, `mcp`, `fleet`, `host` |
 

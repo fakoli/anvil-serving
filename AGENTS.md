@@ -7,8 +7,8 @@
 ## What you're working in
 
 Anvil Serving is one umbrella product for Model Serving, Capability Gateway,
-Evaluation & Evidence, Anvil Voice, Anvil Media, Anvil Scribe, Anvil Connect,
-and Control Plane & Fleet.
+Evaluation & Evidence, Anvil Voice, Anvil Media, Anvil Scribe, Anvil Agent,
+Anvil Connect, and Control Plane & Fleet.
 The capability meta-router is the thin gateway in `anvil_serving/router/`; it
 is one product family, not the whole product.
 (`eval usage`, `models sync`, `serves render`, `eval preflight`, `eval benchmark run`,
