@@ -1081,6 +1081,7 @@ class RoutingBackend:
         workload_token: Optional[RouterWorkloadToken] = None,
         workload_outcome: WorkloadOutcome = WorkloadOutcome.REJECTED,
         admission_wait_ms: Optional[int] = None,
+        readiness_reason: Optional[str] = None,
     ) -> None:
         if prompt_tokens is None:
             prompt_tokens = self._prompt_tokens(request)
@@ -1088,6 +1089,11 @@ class RoutingBackend:
         control = request_control(request)
         if admission_wait_ms is None and control is not None:
             admission_wait_ms = control.admission_wait_ms
+        from .internal import usage_invocation
+        invocation = usage_invocation(request)
+        if invocation is not None:
+            # The usage terminal gets exactly the timings this record measured.
+            invocation.measured(admission_wait_ms, upstream_duration_ms, time_to_first_content_ms)
         attempts = (AttemptRecord(
             tier.id, served, reason, prompt_tokens, completion_tokens, outcome,
         ),)
@@ -1150,6 +1156,7 @@ class RoutingBackend:
             replica_selection=replica_selection,
             replica_scheduler=scheduler,
             admission_wait_ms=admission_wait_ms,
+            readiness_reason=readiness_reason,
             config_sha256=self._request_config_sha256,
             router_version=self._router_version,
             route_revision=(binding.snapshot.route_revision if isinstance(binding, RouteBinding) else None),
@@ -1475,6 +1482,7 @@ class RoutingBackend:
                 record(
                     request, tier, served=False, reason="unavailable", outcome="skipped",
                     latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+                    readiness_reason=readiness.reason,
                 )
                 raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
             lease = self._admission.acquire(tier.id)

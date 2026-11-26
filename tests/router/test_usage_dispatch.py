@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import datetime
 import http.client
+import io
 import json
 import threading
 import time
@@ -390,3 +391,125 @@ def test_serve_wire_fallbacks_do_not_invent_consumed_usage(store,message):
     assert terminal.tokens.input.count is terminal.tokens.output.count is None
     assert "usage_incomplete" in terminal.coverage
     assert sum(r["measured_input"]+r["estimated_input"]+r["measured_output"]+r["estimated_output"] for r in rows(usage,"usage_cumulative"))==0
+
+
+def routed(backend, **options):
+    """The production chat seam: one configured alias routed to one backend."""
+    from anvil_serving.router.config import load
+    from anvil_serving.router.serve import RoutingBackend
+    from tests.router.test_serve import _CONFIG
+    return RoutingBackend(load(_CONFIG), {"primary-local": backend}, **options)
+
+
+@pytest.mark.parametrize("managed", [True, False])
+@pytest.mark.parametrize("stream", [True, False])
+def test_routed_chat_terminal_carries_the_generating_path_timings(store, managed, stream):
+    usage, *_ = store
+
+    def transport(*args, **kwargs):
+        time.sleep(0.02)  # A real upstream phase, so a zero would be an invented value.
+        return json.dumps({"choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}]}).encode()
+
+    body = {"model": "llm.primary", "messages": [{"role": "user", "content": "hello"}], "stream": stream}
+    with server(routed(RelayBackend(make_tier("openai"), transport=transport)), store, managed=managed) as conn:
+        assert post(conn, body=body)[0] == 200
+    [terminal] = wait_details(usage)
+    assert terminal.outcome == "success" and terminal.error_code is None
+    # Each phase is measured inside the request's own wall-clock latency.
+    assert type(terminal.admission_wait_ms) is int and 0 <= terminal.admission_wait_ms <= terminal.latency_ms
+    for name in ("upstream_duration_ms", "time_to_first_content_ms"):
+        value = getattr(terminal, name)
+        assert type(value) is int and 15 <= value <= terminal.latency_ms, name
+
+
+@pytest.mark.parametrize("refusal,status,code", [("unready", 503, "unavailable"), ("over_context", 413, None)])
+def test_refusal_before_dispatch_names_only_an_unambiguous_cause(store, refusal, status, code):
+    from anvil_serving.router.availability import AvailabilityResult
+    usage, *_ = store
+
+    class Unready:
+        def check(self, tier):
+            return AvailabilityResult(False, "unavailable", "health_http_503")
+
+    calls, log = [], DecisionLog()
+    options = {"availability": Unready()} if refusal == "unready" else {}
+    content = "hello" if refusal == "unready" else "x " * 300_000
+    with server(routed(relay(usage, calls), decision_log=log, **options), store) as conn:
+        assert post(conn, body={"model": "llm.primary", "messages": [{"role": "user", "content": content}]})[0] == status
+    [terminal] = wait_details(usage)
+    assert not calls and terminal.dispatched is False and terminal.generation_outcome == "rejected"
+    assert terminal.error_code == code
+    assert terminal.time_to_first_content_ms is terminal.upstream_duration_ms is None
+    assert log.last.attempts[0].reason == ("unavailable" if refusal == "unready" else "over_context")
+    # The closed readiness family is kept; the probe's status code is not.
+    assert log.last.readiness_reason == ("health_http" if refusal == "unready" else None)
+
+
+def test_unknown_alias_raised_inside_generation_is_unknown_model(store):
+    from anvil_serving.router.internal import NoAvailableTierError
+    usage, *_ = store
+
+    class Unrouted:
+        usage_transport_boundary = True
+
+        def generate(self, request):
+            raise NoAvailableTierError(request.model, (), kind="unknown_model")
+
+    with server(Unrouted(), store) as conn:
+        assert post(conn)[0] == 404
+    [terminal] = wait_details(usage)
+    assert terminal.dispatched is False and terminal.error_code == "unknown_model"
+
+
+@pytest.mark.parametrize("error,code", [(ConnectionRefusedError, "backend_error"), (TimeoutError, "request_timeout")])
+def test_upstream_failure_after_dispatch_is_attributed(store, error, code):
+    usage, *_ = store
+
+    def transport(*args, **kwargs):
+        raise error("synthetic upstream fault")
+
+    with server(routed(RelayBackend(make_tier("openai"), transport=transport)), store) as conn:
+        assert post(conn)[0] >= 500
+    [terminal] = wait_details(usage)
+    assert terminal.dispatched is True and terminal.outcome == "error"
+    assert terminal.error_code == code and terminal.time_to_first_content_ms is None
+
+
+@pytest.mark.parametrize("marker,dispatched", [(b"", False), (b'"ok"', True)], ids=["before_dispatch", "after_content"])
+def test_client_disconnect_is_client_disconnected(store, marker, dispatched):
+    from tests.router.test_disconnect_logging import request_handler
+    usage, _, run, scope = store
+
+    class Gone(io.BytesIO):
+        def write(self, data):
+            if marker in data and not data.startswith(b"HTTP/"):
+                raise BrokenPipeError("synthetic client reset")
+            return super().write(data)
+
+    httpd = make_server("127.0.0.1", 0, routed(relay(usage, [])), auth_token="private-token",
+                        usage_store=usage, usage_run_id=run, usage_authority=lambda: scope, workload_clock=CLOCK)
+    try:
+        handler = request_handler(httpd)
+        handler.wfile = Gone()
+        handler.handle_one_request()
+    finally:
+        httpd.server_close()
+    [terminal] = wait_details(usage)
+    assert terminal.dispatched is dispatched
+    assert terminal.delivery_outcome == terminal.outcome == "disconnected"
+    assert terminal.error_code == "client_disconnected"
+    assert (terminal.time_to_first_content_ms is not None) is dispatched
+
+
+def test_bad_measurement_is_counted_not_fatal_and_other_kinds_keep_no_error_code(store):
+    usage, _, run, scope = store
+    chat = UsageInvocation(usage, run, scope, legacy_caller(), "chat", "llm.primary", clock=CLOCK)
+    chat.measured(-1, None, None)
+    chat.capture(None, "rejected", "unavailable")
+    assert chat.finish("error") is True
+    assert chat.terminal.admission_wait_ms is chat.terminal.error_code is None
+    assert usage.health("domain_fixture")["accounting_failures"] == 1
+    audio = UsageInvocation(usage, run, scope, legacy_caller(), "stt", "local-stt", clock=CLOCK)
+    audio.capture(None, "error")
+    assert audio.finish("disconnected") is True and audio.terminal.error_code is None
+    assert len(rows(usage, "usage_details")) == 2

@@ -47,6 +47,17 @@ _WORKLOAD_TIMESTAMP_RE = re.compile(
 _WORKLOAD_OUTCOMES = {
     "success", "error", "cancelled", "timeout", "rejected", "disconnected",
 }
+# Readiness sub-reasons for a direct tier refused as unavailable. Checker
+# reasons that end in a status code or an exception name are kept by family
+# only, so the vocabulary stays closed.
+_READINESS_FAMILIES = (
+    "availability_check", "health_http", "health_transport", "identity_http",
+    "identity_transport",
+)
+_READINESS_REASONS = frozenset(_READINESS_FAMILIES) | {
+    "identity_malformed", "identity_mismatch", "identity_oversized",
+    "probe_invalidated", "probe_pending",
+}
 _MAX_MEASUREMENT = 1_000_000_000_000_000
 _REPLICA_MEMBER_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}")
 
@@ -349,6 +360,9 @@ class DecisionRecord:
     # A copied capacity-ordering observation captured before admission reserves
     # the selected member.  It is absent for direct and round-robin routes.
     replica_scheduler: Optional[ReplicaDecision] = None
+    # Why a direct tier was refused as unavailable: a closed readiness category
+    # (see ``_READINESS_REASONS``), never the probe's status code or exception.
+    readiness_reason: Optional[str] = None
 
 
 def safe_correlation(value: Any) -> Optional[str]:
@@ -646,6 +660,15 @@ def _workload_outcome(value: Any) -> Optional[str]:
     return value if type(value) is str and value in _WORKLOAD_OUTCOMES else None
 
 
+def _readiness_reason(value: Any) -> Optional[str]:
+    """Project an availability reason onto the closed vocabulary, never free text."""
+    if type(value) is not str:
+        return None
+    if value in _READINESS_REASONS:
+        return value
+    return next((family for family in _READINESS_FAMILIES if value.startswith(family + "_")), None)
+
+
 def _config_sha256(value: Any) -> Optional[str]:
     return value if type(value) is str and re.fullmatch(r"[0-9a-f]{64}", value) else None
 
@@ -661,6 +684,7 @@ def _sanitize_history_metadata(record: DecisionRecord) -> DecisionRecord:
         "router_version": safe_correlation(record.router_version),
         "route_revision": _optional_nonnegative(record.route_revision),
         "effective_route_sha256": _config_sha256(record.effective_route_sha256),
+        "readiness_reason": _readiness_reason(record.readiness_reason),
     }
     if all(getattr(record, key) == value for key, value in values.items()):
         return record
@@ -776,6 +800,7 @@ def summarize_decisions(records: Iterable[Any], *, limit: int = 20) -> dict:
             "route_revision": _optional_nonnegative(_field(record, "route_revision")),
             "effective_route_sha256": _config_sha256(_field(record, "effective_route_sha256")),
             "workload_outcome": _workload_outcome(_field(record, "workload_outcome")),
+            "readiness_reason": _readiness_reason(_field(record, "readiness_reason")),
             **_replica_metadata(record),
         }
         scheduler = _replica_scheduler_metadata(record)
@@ -1015,7 +1040,7 @@ class DecisionLogWriter:
                 "output_limit_applied", "output_limit_clamped", "unix_ts",
                 "workload_created_at", "workload_updated_at", "workload_outcome",
                 "cache_read_input_tokens", "admission_wait_ms", "config_sha256", "router_version",
-                "route_revision", "effective_route_sha256",
+                "route_revision", "effective_route_sha256", "readiness_reason",
             )
         }
         payload["attempts"] = [
@@ -1033,6 +1058,7 @@ class DecisionLogWriter:
             "workload_created_at", "workload_updated_at", "workload_outcome",
             "session_id", "client_id", "cache_read_input_tokens", "admission_wait_ms",
             "config_sha256", "router_version", "route_revision", "effective_route_sha256",
+            "readiness_reason",
         ):
             if payload[field_name] is None:
                 del payload[field_name]

@@ -53,6 +53,18 @@ All notable changes to this project are documented here. The format is based on
   used. Audio audit rows record the real path instead of `[other]`.
 - STT corpus validation refuses case audio under a directory marked
   `EVALUATION-EXCLUDED.txt`, which the Scribe store writes.
+- Usage accounting rows for routed chat requests now carry
+  `admission_wait_ms`, `upstream_duration_ms` and `time_to_first_content_ms`,
+  and an `error_code` where the cause is unambiguous: `unavailable`,
+  `unknown_model`, `backend_error`, `request_timeout`, `request_cancelled` or
+  `client_disconnected`. Context, media and tools refusals keep a null code.
+  The reader also accepts `over_context`, `media_limit` and
+  `unsupported_tools`, which nothing emits yet, so a later writer can be
+  rolled back. The stored schema is unchanged.
+- The decision record for a direct tier refused as unavailable adds
+  `readiness_reason`, a closed readiness category such as `health_http`,
+  `identity_mismatch` or `probe_pending`. Probe status codes and exception
+  names are not recorded, and the one-line audit grammar is unchanged.
 
 ## [3.1.0] - 2026-11-23
 

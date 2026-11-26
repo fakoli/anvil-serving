@@ -305,6 +305,8 @@ class UsageInvocation:
         self.tokens = normalize_usage(None, "openai", units)
         self.dispatched = False
         self.generation = None
+        self.error_code = None
+        self.timings = {}
         self.delivery = None
         self.terminal = None
         self.terminal_persisted = False
@@ -330,7 +332,13 @@ class UsageInvocation:
             if self.dispatched is False:
                 self.dispatched = None
 
-    def capture(self, backend, outcome):
+    def measured(self, admission_wait_ms, upstream_duration_ms, time_to_first_content_ms):
+        """Generating-thread timings for the terminal; ``None`` is not measured."""
+        with self._lock:
+            self.timings = {"admission_wait_ms": admission_wait_ms, "upstream_duration_ms": upstream_duration_ms,
+                            "time_to_first_content_ms": time_to_first_content_ms}
+
+    def capture(self, backend, outcome, error_code=None):
         """Called on the generating thread after closing its upstream iterator."""
         from .decision_log import TokenUsage
         from .usage_store import Observation
@@ -348,11 +356,13 @@ class UsageInvocation:
             except Exception:
                 self.failure()
             self.generation = outcome
+            self.error_code = error_code
             if self.registry is not None:
                 self.registry.observe_usage(self.registry_id, tokens=self.tokens, phase="finalizing")
 
     def finish(self, delivery):
         import time
+        from functools import partial
         from .usage_store import Terminal
         with self._lock, self.registry.usage_mutation() if self.registry is not None else nullcontext():
             if self.terminal is None:
@@ -366,9 +376,20 @@ class UsageInvocation:
                     coverage.append("usage_incomplete")
                 outcome = delivery if delivery != "success" else generation
                 at = self.clock().isoformat(timespec="microseconds").replace("+00:00", "Z")
-                self.terminal = Terminal(self.start.request_id, at, self.dispatched, generation, delivery, outcome,
-                                         self.route, self.tokens, latency_ms=max(0, int((time.monotonic() - self.started) * 1000)),
-                                         coverage=tuple(coverage))
+                # A chat error code refines the terminal outcome; the generating
+                # path's cause applies only where the outcome itself names none.
+                error_code = None if self.start.kind != "chat" or outcome == "success" else {
+                    "timeout": "request_timeout", "cancelled": "request_cancelled",
+                    "disconnected": "client_disconnected"}.get(outcome, self.error_code)
+                build = partial(Terminal, self.start.request_id, at, self.dispatched, generation, delivery, outcome,
+                                self.route, self.tokens, latency_ms=max(0, int((time.monotonic() - self.started) * 1000)),
+                                coverage=tuple(coverage))
+                try:
+                    self.terminal = build(error_code=error_code, **self.timings)
+                except Exception:
+                    # A bad optional measurement never costs the terminal row.
+                    self.failure()
+                    self.terminal = build()
             try:
                 self.store.finalize(self.terminal)
                 self.terminal_persisted = True
