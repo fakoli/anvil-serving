@@ -18,17 +18,25 @@ services:
     container_name: anvil-scribe
     restart: unless-stopped
     network_mode: host
+    # The owner-only key file is readable only by the operator who created it.
+    user: "${SCRIBE_UID:-1000}:${SCRIBE_GID:-1000}"
     command: ["run", "--config", "/etc/anvil/scribe.toml"]
     environment:
-      # Resolved by env-var NAME from [scribe]; values come from the operator's
-      # protected environment file, never from this file.
-      ANVIL_SCRIBE_ROUTER_KEY: ${ANVIL_SCRIBE_ROUTER_KEY:?set ANVIL_SCRIBE_ROUTER_KEY}
-      ANVIL_SCRIBE_LOGINS: ${ANVIL_SCRIBE_LOGINS:?set ANVIL_SCRIBE_LOGINS}
+      # From the operator .env beside this file (ADR-0033); never written here.
+      ANVIL_SCRIBE_LOGINS: ${ANVIL_SCRIBE_LOGINS:?set ANVIL_SCRIBE_LOGINS in the operator .env}
     volumes:
       - "./scribe.toml:/etc/anvil/scribe.toml:ro"
+      # Written by `router keys create --out`; a missing file stops startup instead
+      # of Docker creating a root-owned directory in its place.
+      - type: bind
+        source: ./scribe.key
+        target: /etc/anvil/scribe.key
+        read_only: true
+        bind:
+          create_host_path: false
       # Recordings, transcripts, rewrites and custom profiles: user content, evaluation-excluded.
-      # A named volume inherits the image's anvil-owned directory; a host bind path
-      # (SCRIBE_DATA) must already be writable by the container user.
+      # A named volume inherits the image's private directory (uid 1000); a host
+      # bind path (SCRIBE_DATA) must be owned by SCRIBE_UID.
       - "${SCRIBE_DATA:-anvil-scribe-data}:/var/lib/anvil-scribe"
     read_only: true
     tmpfs:

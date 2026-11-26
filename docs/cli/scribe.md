@@ -39,7 +39,9 @@ segments through the gateway's `POST /v1/audio/transcriptions`, so the gateway
 applies its admission, accounting and decision log. A failed transcription
 keeps the audio and leaves a visible record whose transcript is `null`.
 
-Two limits bound memory. `max_recording_seconds` (900 by default) refuses
+The listener admits at most 16 connections and 4 buffered uploads at once,
+drops idle sockets after 30 seconds, and refuses a body that takes longer than
+60 seconds to arrive. Two more limits bound decoding. `max_recording_seconds` (900 by default) refuses
 longer recordings while decoding, and `max_concurrent_transcriptions` (2 by
 default) caps decodes in flight. A preview that finds no free slot gets 503 at
 once and retries on its next tick. A final upload waits up to 30 seconds, then
@@ -59,10 +61,14 @@ rewrite.
 
 ## Access
 
-The device key is either an environment reference (`router_key_env`) or the
-protected file written by `router keys create --out` (`router_key_file`); the
-login allowlist is an environment reference. The service refuses to start when
-either is empty or when `listen_host` is not loopback. Only requests whose
+The device key is the protected file written by `router keys create --out`
+(`router_key_file`; a relative path sits beside `scribe.toml`), or an
+environment reference (`router_key_env`). The login allowlist is an environment
+reference resolved like every other one: the shell first, then
+`$ANVIL_SERVING_HOME/.env`, then `~/.env`. The service refuses to start when
+either is empty or when `listen_host` is not loopback. The store directory is
+made private (0700) and must be owned by the service user, and every file in it
+is written owner-only (0600). Only requests whose
 `Tailscale-User-Login` header names an allowlisted login are accepted, so
 publish the listener through `tailscale serve` and nothing else.
 
@@ -70,8 +76,12 @@ Issue a key bound to the STT route, the transcription path, and the chat path
 plus every target alias:
 
 ```bash
-anvil-serving router keys create --name scribe --model STT_ROUTE_ID --model llm.voice --model llm.primary --path /v1/audio/transcriptions --path /v1/chat/completions --rpm 120 --out ~/.config/anvil-serving/device-secrets/scribe.key
+anvil-serving router keys create --name scribe --model STT_ROUTE_ID --model llm.voice --model llm.primary --path /v1/audio/transcriptions --path /v1/chat/completions --rpm 120 --out ~/.anvil-serving/scribe.key
 ```
+
+Then add the allowed logins to `~/.anvil-serving/.env`
+(`ANVIL_SCRIBE_LOGINS=you@example.test`; `init` scaffolds the empty entry in
+`.env.example`).
 
 ## Deploy
 

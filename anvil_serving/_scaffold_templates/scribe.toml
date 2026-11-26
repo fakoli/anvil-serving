@@ -2,14 +2,17 @@
 # `anvil-serving scribe run|validate`; normally the `scribe` serve in
 # serves.scribe.toml. Scribe transcribes through the gateway's
 # /v1/audio/transcriptions and rewrites through /v1/chat/completions with one
-# device key bound to the STT route and every target alias:
+# device key bound to the STT route and every target alias. Write it beside
+# this file; the key never goes in this file or in the environment:
 #   anvil-serving router keys create --name scribe --model <stt route id> \
 #     --model llm.voice --model llm.primary --path /v1/audio/transcriptions \
-#     --path /v1/chat/completions --rpm 120 --out <protected file>
-# Both env values are secrets or identities supplied at runtime, never written here.
+#     --path /v1/chat/completions --rpm 120 --out ~/.anvil-serving/scribe.key
+# Put the allowed Tailscale logins in ~/.anvil-serving/.env as
+#   ANVIL_SCRIBE_LOGINS=you@example.test
+# Compose and the CLI both read that file. Then run `anvil-serving scribe validate`.
 [scribe]
 router_url = "http://127.0.0.1:8000"
-router_key_env = "ANVIL_SCRIBE_ROUTER_KEY"
+router_key_file = "scribe.key"
 allowed_logins_env = "ANVIL_SCRIBE_LOGINS"
 data_dir = "/var/lib/anvil-scribe"
 listen_host = "127.0.0.1"

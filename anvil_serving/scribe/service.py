@@ -44,6 +44,7 @@ from pathlib import Path
 from typing import Callable, Mapping, Optional
 
 from ..control_plane.mcp.auth_file import AuthFileError, read_private_auth_file
+from ..envfile import resolve_env_value
 from ..paths import config_path
 from ..voice.corpus import EVALUATION_EXCLUDED_MARKER
 
@@ -87,6 +88,12 @@ _KEYS = frozenset({
 })
 # A final upload waits this long for a decode slot; preview never waits.
 _UPLOAD_SLOT_WAIT_SECONDS = 30
+# Request admission before any body is read. Each buffered upload holds at most
+# max_upload_bytes, so these bound memory and threads, not just decode work.
+_MAX_CONNECTIONS = 16
+_MAX_BUFFERED_UPLOADS = 4
+_SOCKET_TIMEOUT_SECONDS = 30  # an idle or stalled socket is dropped
+_BODY_DEADLINE_SECONDS = 60  # a body that drips in slower than this is refused
 _TARGET_KEYS = frozenset({"label", "detail", "model", "default"})
 _MARKER_TEXT = (
     "Anvil Scribe memos: user content, not evidence.\n"
@@ -221,7 +228,6 @@ def default_config_path() -> str:
 
 def load_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] = None) -> ScribeConfig:
     """Load ``[scribe]`` and resolve its environment references, failing closed."""
-    environ = os.environ if env is None else env
     path = path or default_config_path()
     try:
         with open(path, "rb") as handle:
@@ -252,7 +258,9 @@ def load_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] 
         name = _str(table, key)
         if name is None:
             raise ConfigError("scribe.%s is required" % key)
-        value = (environ.get(name) or "").strip()
+        # Shell environment, then $ANVIL_SERVING_HOME/.env, then ~/.env (ADR-0033);
+        # an explicit env mapping stays hermetic.
+        value, _source = resolve_env_value(name, env=env)
         if not value:
             raise ConfigError("scribe.%s names %s, which is unset or empty" % (key, name))
         return value
@@ -263,8 +271,11 @@ def load_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] 
     if key_file is None:
         router_key = secret_reference("router_key_env")
     else:
+        # A relative path sits beside the config, so the same file works on the host and
+        # when both are mounted into /etc/anvil.
+        key_path = os.path.join(os.path.dirname(os.path.abspath(path)), key_file)
         try:  # the protected file written by `router keys create --out`
-            router_key = read_private_auth_file(key_file, max_bytes=4096).decode("utf-8").strip()
+            router_key = read_private_auth_file(key_path, max_bytes=4096).decode("utf-8").strip()
         except (AuthFileError, UnicodeDecodeError):
             raise ConfigError("scribe.router_key_file must be a private, non-empty key file") from None
         if not router_key:
@@ -438,18 +449,35 @@ def _now():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _write_private(path: Path, data: bytes) -> None:
+    """Write one owner-only (0600) file, whatever the process umask."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    try:
+        if hasattr(os, "fchmod"):
+            os.fchmod(fd, 0o600)  # a pre-existing file keeps its old mode otherwise
+        os.write(fd, data)
+    finally:
+        os.close(fd)
+
+
 def _write_json(path: Path, value) -> None:
     """Replace one JSON record atomically; callers hold the store lock."""
     staged = path.with_name(path.name + ".tmp")
-    staged.write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
+    _write_private(staged, json.dumps(value, ensure_ascii=False).encode("utf-8"))
     os.replace(staged, path)
 
 
 def prepare_store(data_dir: Path) -> None:
+    """Create or adopt the store as a private (0700) directory owned by this process."""
     data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if os.name == "posix":
+        info = os.stat(data_dir, follow_symlinks=False)
+        if not os.path.isdir(data_dir) or os.path.islink(data_dir) or info.st_uid != os.geteuid():
+            raise OSError("the store must be a directory owned by the service user: %s" % data_dir)
+        os.chmod(data_dir, 0o700)  # an existing bind-mounted 0755 directory becomes private
     marker = data_dir / EVALUATION_EXCLUDED_MARKER
     if not marker.exists():
-        marker.write_text(_MARKER_TEXT, encoding="utf-8")
+        _write_private(marker, _MARKER_TEXT.encode("utf-8"))
 
 
 class MemoStore:
@@ -481,7 +509,7 @@ class MemoStore:
 
     def create(self, audio, duration_ms):
         memo_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(3)
-        (self.root / (memo_id + ".ogg")).write_bytes(audio)  # keep audio even if STT fails
+        _write_private(self.root / (memo_id + ".ogg"), audio)  # keep audio even if STT fails
         memo = {"id": memo_id, "createdAt": _now(), "durationMs": duration_ms, "transcript": None, "outputs": []}
         with self.lock:
             _write_json(self.root / (memo_id + ".json"), memo)
@@ -557,6 +585,7 @@ def make_server(config: ScribeConfig, *,
     """Bind the memo listener; ``transcribe`` and ``rewrite`` are injectable for hermetic tests."""
     store = MemoStore(config.data_dir)
     decode_slots = threading.BoundedSemaphore(config.max_concurrent_transcriptions)
+    upload_slots = threading.BoundedSemaphore(_MAX_BUFFERED_UPLOADS)
     transcriber = transcribe or (lambda ogg: transcribe_memo(config, ogg))
     rewriter = rewrite or (lambda prompt, alias, text: rewrite_transcript(config, prompt, alias, text))
     targets_view = {"targets": [{"id": tid, "label": t.label, "detail": t.detail, "default": t.default}
@@ -606,6 +635,23 @@ def make_server(config: ScribeConfig, *,
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "anvil-scribe/2"
+        timeout = _SOCKET_TIMEOUT_SECONDS  # applied to every connection's socket
+
+        def _read_body(self, length):
+            """Read exactly ``length`` bytes within one wall-clock deadline."""
+            deadline = time.monotonic() + _BODY_DEADLINE_SECONDS
+            chunks, received = [], 0
+            while received < length:
+                if time.monotonic() > deadline:
+                    self.close_connection = True
+                    raise _Refusal(408, "upload too slow")
+                chunk = self.rfile.read1(min(65536, length - received))
+                if not chunk:
+                    self.close_connection = True
+                    raise _Refusal(400, "incomplete upload")
+                chunks.append(chunk)
+                received += len(chunk)
+            return b"".join(chunks)
 
         def log_message(self, fmt, *args):  # default request lines can carry query strings
             pass
@@ -777,6 +823,15 @@ def make_server(config: ScribeConfig, *,
             self._dispatch(handle)
 
         def _capture(self, path):
+            if not upload_slots.acquire(blocking=False):  # before any body byte is read
+                self.close_connection = True
+                raise _Refusal(503, "busy")
+            try:
+                return self._capture_admitted(path)
+            finally:
+                upload_slots.release()
+
+        def _capture_admitted(self, path):
             try:
                 length = int(self.headers.get("Content-Length") or 0)
             except ValueError:
@@ -785,7 +840,7 @@ def make_server(config: ScribeConfig, *,
                 self.close_connection = True  # never read an unbounded or unannounced body
                 raise _Refusal(413, "upload missing or too large")
             try:
-                fields = parse_multipart(self.headers.get("Content-Type"), self.rfile.read(length))
+                fields = parse_multipart(self.headers.get("Content-Type"), self._read_body(length))
                 audio = fields.get("audio", (None, b""))[1]
                 if not audio:
                     raise ValueError("missing audio field")
@@ -822,4 +877,32 @@ def make_server(config: ScribeConfig, *,
                 memo = store.get(memo["id"])
             return 200, memo, ""
 
-    return ThreadingHTTPServer((config.listen_host, config.listen_port), Handler)
+    return _BoundedServer((config.listen_host, config.listen_port), Handler)
+
+
+class _BoundedServer(ThreadingHTTPServer):
+    """ThreadingHTTPServer with a fixed ceiling on concurrent connection threads."""
+
+    daemon_threads = True
+
+    def __init__(self, *args, **kwargs):
+        self._connections = threading.BoundedSemaphore(_MAX_CONNECTIONS)
+        super().__init__(*args, **kwargs)
+
+    def process_request(self, request, client_address):
+        # ponytail: a full server drops the connection instead of queueing it; the
+        # client retries. Raise _MAX_CONNECTIONS if real clients ever hit it.
+        if not self._connections.acquire(blocking=False):
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self._connections.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._connections.release()

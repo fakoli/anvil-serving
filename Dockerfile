@@ -141,8 +141,9 @@ USER root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg \
     && rm -rf /var/lib/apt/lists/* \
-    && install -d -o anvil -g anvil -m 700 /var/lib/anvil-scribe
-USER anvil
+    && install -d -o 1000 -g 1000 -m 700 /var/lib/anvil-scribe
+# The operator uid owns the bind-mounted key file and the store (Compose `user:`).
+USER 1000:1000
 
 # Loopback bind is enforced by the service; the reference Compose file uses host
 # networking so tailscale serve, the service and the gateway share 127.0.0.1.
