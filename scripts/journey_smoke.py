@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Walk the gateway quickstart and the seven product journeys as a new user would.
+"""Walk the gateway quickstart and every product journey as a new user would.
 
 Host mode runs this same file inside a stock Python container that holds only the
 installed package: no checkout, no operator repository, no Docker, no GPU. The report

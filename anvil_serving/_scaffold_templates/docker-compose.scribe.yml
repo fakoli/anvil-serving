@@ -1,0 +1,64 @@
+# Anvil Scribe as a Docker-MANAGED CONTAINER (ADR-0048). Runs the package CLI
+# verb `anvil-serving scribe run` from the repository Dockerfile's `scribe`
+# target (the shared runtime plus ffmpeg). Managed via
+# `anvil-serving serves up scribe --manifest serves.scribe.toml`; do not
+# docker-run by hand.
+#
+# Host networking is deliberate: the service refuses a non-loopback bind, the
+# gateway listens on host loopback, and `tailscale serve` proxies the tailnet
+# edge to the same 127.0.0.1 listener. Nothing else publishes this port.
+#
+# Build: docker build --target scribe -t anvil-serving-scribe:3.1.0 .
+# SCRIBE_IMAGE is a per-invocation candidate override.
+name: anvil-scribe
+
+services:
+  scribe:
+    image: ${SCRIBE_IMAGE:-anvil-serving-scribe:3.1.0}
+    container_name: anvil-scribe
+    restart: unless-stopped
+    network_mode: host
+    # The owner-only key file is readable only by the operator who created it.
+    user: "${SCRIBE_UID:-1000}:${SCRIBE_GID:-1000}"
+    command: ["run", "--config", "/etc/anvil/scribe.toml"]
+    environment:
+      # From the operator .env beside this file (ADR-0033); never written here.
+      ANVIL_SCRIBE_LOGINS: ${ANVIL_SCRIBE_LOGINS:?set ANVIL_SCRIBE_LOGINS in the operator .env}
+    volumes:
+      # Long syntax for both files: a missing file stops startup instead of Docker
+      # creating a root-owned directory in its place.
+      - type: bind
+        source: ./scribe.toml
+        target: /etc/anvil/scribe.toml
+        read_only: true
+        bind:
+          create_host_path: false
+      # Written by `router keys create --out`.
+      - type: bind
+        source: ./scribe.key
+        target: /etc/anvil/scribe.key
+        read_only: true
+        bind:
+          create_host_path: false
+      # Recordings, transcripts, rewrites and custom profiles: user content, evaluation-excluded.
+      # A named volume inherits the image's private directory (uid 1000). With any
+      # other SCRIBE_UID, set SCRIBE_DATA to a host path owned by that uid.
+      - "${SCRIBE_DATA:-anvil-scribe-data}:/var/lib/anvil-scribe"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      # Port 8790 matches `listen_port` in scribe.toml and `port` in serves.scribe.toml;
+      # change all three together.
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8790/healthz', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  anvil-scribe-data:
+    name: anvil-scribe-data

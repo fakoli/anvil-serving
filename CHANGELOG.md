@@ -8,11 +8,36 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **Anvil Scribe**, an eighth product family (ADR-0048, `scribe`). `scribe run`
+  serves record-first dictation for a browser or WebView client: it saves each
+  Ogg Opus recording and its raw transcript, transcribing through the gateway's
+  `/v1/audio/transcriptions` instead of calling an STT serve directly. It binds
+  loopback only, accepts allowlisted `Tailscale-User-Login` identities and
+  origins, and fails closed when its key or allowlist is missing; `scribe
+  validate` checks the same references offline. The `scribe` Dockerfile target
+  adds ffmpeg, and `init` scaffolds `scribe.toml`, `serves.scribe.toml` and
+  `docker-compose.scribe.yml`.
+- Scribe rewriting after recording: `POST /v1/memos/{id}/process` rewrites a
+  stored raw transcript with a profile on an allowlisted target
+  (`[scribe.targets.<id>]`, a gateway chat alias) and appends the result to
+  the memo's `outputs`. Eight read-only built-in profiles ship with the product,
+  custom profiles are managed over `/v1/memos/profiles` and stored with the
+  memos, and `GET /v1/memos` (cursor paged), `GET` and `DELETE /v1/memos/{id}`
+  provide history.
 - `router maintenance-console --assume-yes` runs a prepared STOP and OPEN
   without the typed YES, for one explicit invocation. Previews are still
   printed and must be fresh, native guards and authorizations still apply, the
   acknowledgement is recorded as `ASSUMED-BY-FLAG`, and it is never on by
   default or from configuration.
+
+### Changed
+
+- Device keys can be granted `/v1/audio/transcriptions` and `/v1/audio/speech`.
+  For those paths the key's model grants name the audio route ids it may
+  select; an ungranted route is refused before the audio pool or upstream is
+  used. Audio audit rows record the real path instead of `[other]`.
+- STT corpus validation refuses case audio under a directory marked
+  `EVALUATION-EXCLUDED.txt`, which the Scribe store writes.
 
 ## [3.1.0] - 2026-11-23
 

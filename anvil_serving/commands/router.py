@@ -100,7 +100,7 @@ def commands() -> CommandNode:
                             _option("--offline", summary="Issue under exclusive producer/writer custody in the stopped native store."),
                             _option("--confirm", summary="Confirm offline unique-key issuance.", requires_confirmation=True),
                             _option("--name", summary="Device label (required).", value_name="NAME"),
-                            _option("--model", summary="Allowed alias or purpose-model name; repeat for multiple grants (required).", value_name="MODEL"),
+                            _option("--model", summary="Allowed alias, purpose-model name, or audio route id; repeat for multiple grants (required).", value_name="MODEL"),
                             _option("--path", summary="Allowed inference endpoint; repeat for multiple grants (required).", value_name="PATH"),
                             _option("--rpm", summary="Request token bucket capacity and refill per minute (default 60).", value_name="COUNT"),
                             _option("--expires-days", summary="Expire the key after this many days.", value_name="DAYS"),

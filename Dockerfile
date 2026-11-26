@@ -133,6 +133,27 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 ENTRYPOINT ["anvil-serving", "controller", "serve"]
 CMD ["--host", "0.0.0.0", "--port", "8765", "--allow-public-bind", "--state-db", "/var/lib/anvil-serving/controller-operations.sqlite3"]
 
+FROM runtime AS scribe
+
+# Anvil Scribe decodes Ogg Opus with ffmpeg (ADR-0048). Only this target carries
+# ffmpeg; the router, dashboard and controller images stay without it.
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/* \
+    && install -d -o 1000 -g 1000 -m 700 /var/lib/anvil-scribe \
+    && chown root:root /etc/anvil
+# The operator uid owns the bind-mounted key file and the store (Compose `user:`).
+# /etc/anvil is root-owned here: the key reader refuses a parent directory owned by
+# another user (the runtime stage gives it to `anvil`, uid 999).
+USER 1000:1000
+
+# Loopback bind is enforced by the service; the reference Compose file uses host
+# networking so tailscale serve, the service and the gateway share 127.0.0.1.
+# `docker compose run --rm scribe validate --config /etc/anvil/scribe.toml` checks a deployment.
+ENTRYPOINT ["anvil-serving", "scribe"]
+CMD ["run", "--config", "/etc/anvil/scribe.toml"]
+
 # Preserve the historical `docker build .` behavior: the default final image is
 # still the router. Build the controller explicitly with `--target controller`.
 FROM router AS default
