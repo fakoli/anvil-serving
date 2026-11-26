@@ -200,6 +200,8 @@ that records Ogg Opus memos ([ADR-0048](../adr/0048-voice-memo-capture-through-s
 | --- | --- |
 | `POST /v1/memos` (multipart `audio`, `durationMs`, `droppedFrames`) | Stores `<id>.ogg` and `<id>.json`; returns `{id, createdAt, durationMs, transcript}`. |
 | `POST /v1/memos/preview` (same input, a trailing window) | Returns `{transcript}`; stores nothing. |
+| `POST /v1/memos` with a `mode` field | Also rewrites the raw transcript with that mode; returns and stores `mode` and `converted` beside `transcript`. |
+| `GET /v1/memos/modes` | Lists mode `id` and `label` for an allowlisted login; prompts and aliases stay server-side. |
 | `OPTIONS` on either path | CORS preflight for an allowlisted `Origin`. |
 | `GET /healthz` | Token-free liveness. |
 
@@ -215,10 +217,19 @@ when `listen_host` is not loopback. Only requests whose `Tailscale-User-Login`
 header names an allowlisted login are accepted, so publish the listener through
 `tailscale serve` and nothing else.
 
-Issue a key bound to the STT route and the transcription path:
+Conversion modes work like dictation presets. Each `[voice.memo.modes.<id>]`
+names a label, a chat alias and instructions. After transcription the service
+sends the raw transcript to the gateway's `POST /v1/chat/completions` with the
+same device key. The response and the stored record keep the raw `transcript`
+next to the `converted` text. If conversion fails or exceeds
+`conversion_timeout_seconds` (45 by default), `converted` is `null` and the raw
+transcript is still returned. Preview requests never run a mode.
+
+Issue a key bound to the STT route, the transcription path, and the chat path
+and aliases the modes use:
 
 ```bash
-anvil-serving router keys create --name voice-memo --model STT_ROUTE_ID --path /v1/audio/transcriptions --rpm 120 --out ~/.config/anvil-serving/device-secrets/voice-memo.key
+anvil-serving router keys create --name voice-memo --model STT_ROUTE_ID --model llm.voice --path /v1/audio/transcriptions --path /v1/chat/completions --rpm 120 --out ~/.config/anvil-serving/device-secrets/voice-memo.key
 ```
 
 Build the `voice-memo` image target, which adds ffmpeg to the shared runtime,
