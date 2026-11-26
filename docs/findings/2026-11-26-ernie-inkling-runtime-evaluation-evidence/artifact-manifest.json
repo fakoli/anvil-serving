@@ -122,8 +122,8 @@
         },
         {
           "path": "c8-c16-capacity-receipts.json",
-          "sha256": "50ef44b88411f738739ee01c50321d8070091e1e32539502c212589f7a46707f",
-          "bytes": 4501
+          "sha256": "f6b986cc61d01545f7c24519fa921728c63a632e7ef3fc7d8560b0d486e7cc52",
+          "bytes": 4709
         },
         {
           "path": "quality-scope-receipts.json",

@@ -100,10 +100,11 @@
     "c16-stress-16-natural.json": "c39958ecb457a84b9cba56c16e6a7da049326939be01341643d2cdf4ff3b5c7a",
     "c16-stress-8-length.json": "b5da199ead960ca477d176e77b1cfc68883fe9a7868e3bd9013a06bb1cf256bd",
     "c16-stress-8-natural.json": "514c5274aaaa72ebcff784fa149a23c95e795e73eebf18b66dc06fdb600858ee",
-    "concurrency_comparison": "67af24d75cd53c51945886c90d97e18ca81f09c833fcebdface99760b80ad1bd"
+    "concurrency_comparison": "67af24d75cd53c51945886c90d97e18ca81f09c833fcebdface99760b80ad1bd",
+    "prompt_policy_generator": "20e2b3cc09abbce260fed71672a16328cb8c3b2eae16980146778528a4c26ca8"
   },
   "prompt_cache_mode": "unique",
-  "prompt_policy_evidence": "Each request began with its own batch, item and mode label and used a separately seeded needle. The runtime shared the chat template. Native prefix counters are recorded per cell.",
+  "prompt_policy_evidence": "Workload design from the hash-bound generator: each request began with a label unique to its batch size, item ordinal and output mode, then included a separately seeded needle. All requests used the runtime chat template. The observed cache counters are retained separately for each cell.",
   "canary_validation": {
     "natural": "Independent exact marker checks passed 8/8 and 16/16.",
     "fixed_length": "896-token capped timing cells checked transport and usage only; no semantic score.",
