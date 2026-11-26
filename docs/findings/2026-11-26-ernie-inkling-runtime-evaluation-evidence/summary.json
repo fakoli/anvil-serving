@@ -58,6 +58,10 @@
   "identity": {
     "engine": "managed local inference runtimes",
     "hardware": "two NVIDIA RTX PRO 6000 Blackwell Max-Q GPUs and one NVIDIA GeForce RTX 5090 across distinct lanes",
+    "measured_hardware": [
+      "two NVIDIA RTX PRO 6000 Blackwell Max-Q GPUs",
+      "one NVIDIA GeForce RTX 5090"
+    ],
     "model": "ERNIE 5.5 Flash Preview; Inkling 2 Mini original-runtime and Q8 protocol lanes",
     "quantization": "not comparable across lanes"
   },

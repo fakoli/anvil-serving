@@ -24,8 +24,9 @@ in a one-GPU, TP1, 24K-context original-runtime lane.
 
 **Measured hardware:** two NVIDIA RTX PRO 6000 Blackwell Max-Q GPUs for the
 ERNIE/AZ-Focus lane; one NVIDIA GeForce RTX 5090 for the separate Inkling lane.
-The C1 fixed-set cache state was not retained publicly; the C8/C16 cells have
-their separately recorded cache conditions. Reproduction controls, source
+The C1 fixed-set cache state was not retained publicly. The C8/C16 receipt
+records its per-cell cached-prompt and engine-reuse deltas, but does not infer a
+cold or warm population. Reproduction controls, source
 hashes, and public-safe per-request receipts are in the [evidence index](2026-11-26-ernie-inkling-runtime-evaluation-evidence/README.md).
 
 | Headline measurement | Result | Condition |
@@ -88,8 +89,8 @@ about 919/1,340 tokens/s for nominal C8/C16, but its workload, timing boundary,
 GPU product, cache setting, and driver setting differ. It is a reference, not a
 reproduction or a causal comparison.
 
-The public-safe per-cell timing, context range, output count, cache-state gap,
-and source hash are retained in
+The public-safe per-cell timing, context range, output count, measured cache
+counter deltas, and source hashes are retained in
 [`c8-c16-capacity-receipts.json`](2026-11-26-ernie-inkling-runtime-evaluation-evidence/c8-c16-capacity-receipts.json).
 
 ## Inkling and restoration

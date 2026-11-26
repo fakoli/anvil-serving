@@ -102,6 +102,29 @@ def test_hardware_labels_are_canonical():
     assert records.hardware_label("lab-host-tp2") == records.UNIDENTIFIED_HARDWARE
 
 
+def test_structured_measured_hardware_preserves_multiple_canonical_labels(tmp_path):
+    finding = tmp_path / "findings"
+    finding.mkdir()
+    _write(finding / "2026-11-26-hardware.md", "# Hardware\n")
+    evidence = finding / "2026-11-26-hardware-evidence"
+    evidence.mkdir()
+    _write(evidence / "artifact-manifest.json", {
+        "schema": "anvil-serving.benchmark-artifact-set/v1",
+        "campaign": {},
+        "artifact_roles": [],
+    })
+    _write(evidence / "summary.json", {
+        "schema": "anvil-serving.benchmark-decision-summary/v1",
+        "identity": {
+            "model": "Candidate",
+            "hardware": "legacy free-text RTX PRO 6000",
+            "measured_hardware": ["two RTX PRO 6000 Blackwell Max-Q GPUs", "NVIDIA GeForce RTX 5090", "unknown topology"],
+        },
+    })
+    record = records.build_index(finding)["records"][0]
+    assert record["subject"]["hardware"] == "RTX PRO 6000 + RTX 5090"
+
+
 def test_decision_summary_workload_fills_generated_record_gaps(tmp_path):
     finding = tmp_path / "findings"
     finding.mkdir()

@@ -200,6 +200,20 @@ def _identity_value(identity: Mapping[str, Any], field: str) -> str | None:
     return None
 
 
+def _explicit_hardware_labels(identity: Mapping[str, Any]) -> str | None:
+    """Use the structured multi-accelerator list when a summary supplies it.
+
+    Free-text ``hardware`` continues through the historical single-label path;
+    this field exists only for a campaign that genuinely spans named hardware.
+    """
+    labels: list[str] = []
+    for item in evidence._list(identity.get("measured_hardware")):
+        label = hardware_label(_text(item))
+        if label and label != UNIDENTIFIED_HARDWARE and label not in labels:
+            labels.append(label)
+    return " + ".join(labels) if labels else None
+
+
 def _observed(counter: Counter) -> str | None:
     values = sorted(str(value) for value in counter if value)
     if not values:
@@ -251,10 +265,11 @@ def build_record(stem: str, finding: Path | None, directory: Path | None, root: 
 
     subject: dict[str, str] = {}
     for field in _IDENTITY_ALIASES:
-        value = _identity_value(identity, field) or _observed(scan["subject"][field])
+        explicit_hardware = _explicit_hardware_labels(identity) if field == "hardware" else None
+        value = explicit_hardware or _identity_value(identity, field) or _observed(scan["subject"][field])
         if field == "hardware" and not value:
             value = _text(summary.get("measured_hardware"))
-        if field == "hardware":
+        if field == "hardware" and not explicit_hardware:
             value = hardware_label(value)
         subject[field] = value or NOT_RECORDED
 

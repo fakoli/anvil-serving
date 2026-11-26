@@ -28,8 +28,8 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "0e11dcddb45d154257d5fdeb91544d43059fd05b59819efde1a6faf526a4a1ef",
-          "bytes": 2910
+          "sha256": "acf16b21d852d5e15e52884909e78a0d99475b4173200000ef740ee06354c30c",
+          "bytes": 2937
         }
       ],
       "reason": "Evidence index and measurement boundary."
@@ -118,8 +118,8 @@
       "files": [
         {
           "path": "summary.json",
-          "sha256": "79b16abeaa237691f028e3318a28615c437d24afb357c3593c559b2e47d0bb12",
-          "bytes": 2953
+          "sha256": "b54caf5e15e1a842a1fba87d4e486dab96aea79eafad2c9e23d8d83ec8b1b3a5",
+          "bytes": 3077
         },
         {
           "path": "raw-request-receipts.json",
@@ -128,8 +128,8 @@
         },
         {
           "path": "c8-c16-capacity-receipts.json",
-          "sha256": "c9a6e8dac342ffe2447ac51d6be7a53759ce43478ca036374d53649b1de2c52c",
-          "bytes": 2561
+          "sha256": "87bdaf40802e6821dd6689ccebc12b57a22ef3e71036fafb43860500388780a1",
+          "bytes": 4007
         },
         {
           "path": "quality-scope-receipts.json",
