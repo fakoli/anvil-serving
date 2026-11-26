@@ -82,7 +82,7 @@ _PROFILES_FILE = "profiles.json"
 _KEYS = frozenset({
     "router_url", "router_key_env", "router_key_file", "route", "allowed_logins_env", "allowed_origin_pattern",
     "data_dir", "listen_host", "listen_port", "segment_seconds", "max_upload_bytes",
-    "timeout_seconds", "conversion_timeout_seconds", "targets",
+    "timeout_seconds", "conversion_timeout_seconds", "targets", "max_recording_seconds",
 })
 _TARGET_KEYS = frozenset({"label", "detail", "model", "default"})
 _MARKER_TEXT = (
@@ -157,6 +157,8 @@ class ScribeConfig:
     origin_pattern: re.Pattern = re.compile(DEFAULT_ORIGIN_PATTERN)
     segment_seconds: int = 110
     max_upload_bytes: int = 8 * 1024 * 1024
+    # Bounds decoded PCM in memory (32 000 B/s): 900 s is about 29 MB per request.
+    max_recording_seconds: int = 900
     timeout_seconds: float = 60.0
     # The client waits about 90 s; a rewrite past this bound fails with 504.
     conversion_timeout_seconds: float = 45.0
@@ -296,6 +298,7 @@ def load_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] 
         origin_pattern=origin_pattern,
         segment_seconds=_int(table, "segment_seconds", 110, 1, MAX_SEGMENT_SECONDS),
         max_upload_bytes=_int(table, "max_upload_bytes", 8 * 1024 * 1024, 1024, 32 * 1024 * 1024),
+        max_recording_seconds=_int(table, "max_recording_seconds", 900, 1, 3600),
         timeout_seconds=_seconds(table, "timeout_seconds", 60),
         conversion_timeout_seconds=_seconds(table, "conversion_timeout_seconds", 45),
         targets=_targets(table),
@@ -318,14 +321,20 @@ def parse_multipart(content_type: Optional[str], body: bytes) -> dict:
     return fields
 
 
-def ogg_to_wav(ogg: bytes) -> bytes:
-    """Ogg Opus to 16 kHz mono PCM16 WAV through ffmpeg pipes, with no temporary files."""
+def ogg_to_wav(ogg: bytes, max_seconds: int = 900) -> bytes:
+    """Ogg Opus to 16 kHz mono PCM16 WAV through ffmpeg pipes, with no temporary files.
+
+    Compressed Opus is tiny, so the upload limit alone does not bound decoded size.
+    ffmpeg stops one second past ``max_seconds``; a longer recording is refused.
+    """
     result = subprocess.run(
-        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", "pipe:0",
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-t", str(max_seconds + 1),
          "-ac", "1", "-ar", str(SAMPLE_RATE), "-sample_fmt", "s16", "-f", "wav", "pipe:1"],
         input=ogg, capture_output=True, timeout=60, check=False)
     if result.returncode != 0 or len(result.stdout) <= 44:
         raise ValueError("audio could not be decoded")
+    if len(result.stdout) > 44 + max_seconds * BYTES_PER_SECOND + BYTES_PER_SECOND // 10:
+        raise ValueError("recording is longer than %d seconds" % max_seconds)
     return result.stdout
 
 
@@ -388,7 +397,7 @@ def transcribe_segment(config: ScribeConfig, wav: bytes) -> str:
 
 
 def transcribe_memo(config: ScribeConfig, ogg: bytes) -> str:
-    segments = split_wav(ogg_to_wav(ogg), config.segment_seconds)
+    segments = split_wav(ogg_to_wav(ogg, config.max_recording_seconds), config.segment_seconds)
     return " ".join(t for t in (transcribe_segment(config, s) for s in segments) if t)
 
 
@@ -409,6 +418,14 @@ def rewrite_transcript(config: ScribeConfig, prompt: str, alias: str, transcript
 
 
 _FAILURES = (TranscriptionError, ValueError, OSError, http.client.HTTPException, subprocess.TimeoutExpired)
+
+
+def _declared_length(headers) -> int:
+    """Content-Length for logs only; a malformed value logs as -1 instead of raising."""
+    try:
+        return int(headers.get("Content-Length") or 0)
+    except ValueError:
+        return -1
 
 
 def _now():
@@ -589,7 +606,7 @@ def make_server(config: ScribeConfig, *,
         def _log(self, status, started, note=""):
             print(json.dumps({
                 "ts": _now(), "method": self.command, "path": self.path.split("?", 1)[0], "status": status,
-                "bytes_in": int(self.headers.get("Content-Length") or 0),
+                "bytes_in": _declared_length(self.headers),
                 "ms": round((time.monotonic() - started) * 1000),
                 "login_ok": self.headers.get(IDENTITY_HEADER) in config.allowed_logins,
                 "origin_ok": origin_allowed(self.headers.get("Origin")), "note": note,
