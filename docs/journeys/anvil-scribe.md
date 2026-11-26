@@ -36,16 +36,20 @@ double-press to cancel, which saves nothing.
 Scribe saves the raw transcript first, exactly as you said it. Then pick a
 profile, choose a model and tap Rewrite. Each rewrite is added below the
 transcript with its own Copy button. The latest result also shows on the
-glasses, and holding the glasses button brings it back.
+glasses. A long result is split into pages with a footer such as "1/2 · hold:
+next page". Holding the glasses button shows the next page; when no result is
+showing, it brings back the latest one.
 
 ![The saved memo: the 0:27 recording, the raw transcript, and the eight rewrite profiles.](../assets/scribe/phone-saved.png)
 ![The rewrite panel with the model picker and two results, an email and a technical document.](../assets/scribe/phone-rewrite.png)
 
-![The glasses display showing the email rewrite: "Subject: Docs Site Shipping Update" followed by the message.](../assets/scribe/hud-email.png)
+![Page 1 of the email rewrite on the glasses: "Subject: Docs Site Shipping Update" and the opening of the message, with the footer "1/2 · hold: next page".](../assets/scribe/hud-email.png)
+![Page 2 of the email: the end of the message and "Best,", with the footer "2/2 · hold: back to start".](../assets/scribe/hud-email-page2.png)
 
-The same memo, rewritten by each built-in profile:
+The same memo, rewritten by each built-in profile. Each image shows the first
+page:
 
-![Eight glasses displays, one per built-in profile: Email, Technical doc, Clean note, Message, Meeting minutes, Task list, Say it better and Summary.](../assets/scribe/hud-profiles.png)
+![Eight glasses displays, one per built-in profile: Email (page 1 of 2), Technical doc (page 1 of 9), Clean note, Message, Meeting minutes, Task list, Say it better and Summary.](../assets/scribe/hud-profiles.png)
 
 ### History
 
@@ -66,7 +70,7 @@ description, a prompt and a default model.
 
 A saved custom profile appears next to the built-ins as a rewrite option:
 
-![The glasses display showing the memo rewritten by the custom Standup update profile, with Yesterday and Today sections.](../assets/scribe/hud-custom-profile.png)
+![The glasses display showing the memo rewritten by the custom Standup update profile, with Yesterday and Today sections and the footer "1/2 · hold: next page".](../assets/scribe/hud-custom-profile.png)
 
 ## Go deeper
 
