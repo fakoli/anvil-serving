@@ -267,7 +267,7 @@ finding. Do not leave a finding-only update for a later pass. The landing-page
 cards are generated, so inspect the rendered local `site/index.html` and
 `site/benchmarks/index.html` after `mkdocs build --strict`; when the dated
 finding is within the configured latest-card window, both pages must contain
-its title and finding URL. After an authorized Pages deploy, read back the
+its title and finding URL. After an authorized docs deploy, read back the
 published page for the deployed commit (bypassing stale browser/CDN cache when
 possible) and retain the result or an explicit publication gap. A successful
 source build is not a user-visible-page receipt.

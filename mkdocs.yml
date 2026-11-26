@@ -2,7 +2,7 @@ site_name: Anvil Serving
 site_description: >-
   Operate, qualify, and expose local AI capabilities through explicit,
   reviewable contracts.
-site_url: https://fakoli.github.io/anvil-serving/
+site_url: https://anvilserving.com/
 repo_url: https://github.com/fakoli/anvil-serving
 repo_name: fakoli/anvil-serving
 edit_uri: edit/main/docs/

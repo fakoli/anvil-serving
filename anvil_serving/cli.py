@@ -68,7 +68,7 @@ from .transports import (
 
 
 MIN_PYTHON = (3, 11)
-_DOCS_URL = "https://fakoli.github.io/anvil-serving/CLI/"
+_DOCS_URL = "https://anvilserving.com/CLI/"
 _GROUP_ORDER = (
     "Start here",
     "Model Serving",
