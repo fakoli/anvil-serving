@@ -78,8 +78,6 @@ MAX_CUSTOM_PROFILES = 64
 _MAX_RESPONSE_BYTES = 1024 * 1024
 _MAX_JSON_BODY = 64 * 1024
 _MAX_MULTIPART_PARTS = 16  # uploads send audio, durationMs and an optional legacy mode
-# A part header declaring multipart/* or message/* (folded or not) that the email parser would expand.
-_NESTED_PART = re.compile(rb"(?im)^content-type:\s*(multipart|message)/")
 _MEMO_ID = re.compile(r"\d{8}T\d{6}Z-[0-9a-f]{6}\Z")
 _SLUG = re.compile(r"[a-z0-9][a-z0-9_-]{0,31}\Z")
 _PROFILES_FILE = "profiles.json"
@@ -337,6 +335,25 @@ def load_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] 
     )
 
 
+def _has_nested_part(body: bytes, boundary: str) -> bool:
+    """Whether any outer part declares multipart/* or message/*, read exactly as the parser will.
+
+    Each part's headers go through the same HTTP-policy parser, so folding, bare-CR line
+    endings and RFC 2047 encoded words are judged the way the full parse would judge them.
+    The caller has already capped the outer parts at ``_MAX_MULTIPART_PARTS``.
+    """
+    parser = email.parser.BytesParser(policy=email.policy.HTTP)
+    for chunk in body.split(b"--" + boundary.encode("ascii"))[1:]:
+        chunk = chunk.lstrip(b" \t")
+        for ending in (b"\r\n", b"\r", b"\n"):
+            if chunk.startswith(ending):
+                chunk = chunk[len(ending):]
+                break
+        if parser.parsebytes(chunk, headersonly=True).get_content_maintype() in ("multipart", "message"):
+            return True
+    return False
+
+
 def parse_multipart(content_type: Optional[str], body: bytes) -> dict:
     """Return ``{field: (filename, bytes)}`` for a multipart/form-data body."""
     if not content_type or not content_type.lower().startswith("multipart/form-data"):
@@ -353,7 +370,7 @@ def parse_multipart(content_type: Optional[str], body: bytes) -> dict:
         raise ValueError("multipart body has no usable boundary")
     if body.count(b"--" + boundary.encode("ascii")) > _MAX_MULTIPART_PARTS + 1:
         raise ValueError("too many multipart parts")
-    if _NESTED_PART.search(body):  # nested parts would be expanded beyond the count above
+    if _has_nested_part(body, boundary):  # nested parts would be expanded beyond the count above
         raise ValueError("nested multipart parts are not accepted")
     message = parser.parsebytes(head + body)
     if not message.is_multipart():

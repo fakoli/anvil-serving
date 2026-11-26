@@ -160,11 +160,17 @@ def test_multipart_part_floods_are_refused_before_parsing():
     assert set(memo.parse_multipart(ctype, body)) == {"audio", "durationMs"}
     with pytest.raises(ValueError, match="boundary"):
         memo.parse_multipart("multipart/form-data", body)
-    for nested in (b"Content-Type: multipart/mixed; boundary=c", b"Content-Type:\r\n message/rfc822"):
-        inner = (b"--b\r\nContent-Disposition: form-data; name=\"audio\"\r\n" + nested + b"\r\n\r\n"
-                 + b"--c\r\n\r\nx\r\n" * 3 + b"--c--\r\n--b--\r\n")
+    for eol, nested in ((b"\r\n", b"Content-Type: multipart/mixed; boundary=c"),
+                        (b"\r\n", b"Content-Type:\r\n message/rfc822"),
+                        (b"\r", b"Content-Type: multipart/mixed; boundary=c"),  # bare-CR line endings
+                        (b"\r\n", b"Content-Type: =?utf-8?q?multipart/mixed?=; boundary=c")):  # RFC 2047
+        inner = (b"--b" + eol + b"Content-Disposition: form-data; name=\"audio\"" + eol + nested + eol + eol
+                 + (b"--c" + eol + eol + b"x" + eol) * 3 + b"--c--" + eol + b"--b--" + eol)
         with pytest.raises(ValueError, match="nested"):
             memo.parse_multipart("multipart/form-data; boundary=b", inner)
+    # Audio bytes that merely look like a nested header inside a flat part are accepted.
+    ctype, body = multipart({"audio": ("m.ogg", b"OggS\r\nContent-Type: multipart/mixed; boundary=c\r\n")})
+    assert memo.parse_multipart(ctype, body)["audio"][1].startswith(b"OggS")
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
