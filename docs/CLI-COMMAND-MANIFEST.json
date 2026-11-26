@@ -9721,6 +9721,15 @@
           "requires_confirmation": false,
           "summary": "Protected terminal cutover plan.",
           "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--assume-yes"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Skip the typed YES for STOP and OPEN in this run only; previews, expiry and native guards still apply.",
+          "value_name": null
         }
       ],
       "output_policy": "foreground",

@@ -122,7 +122,7 @@ def test_acknowledgement_failure_never_refreshes_or_reuses_permission(tmp_path, 
         console.maintenance._publish(tmp_path / 'preview.json', preview())
         return preview()
 
-    def acknowledge(value, phase):
+    def acknowledge(value, phase, assume_yes=False):
         if failure == 'decline':
             raise ValueError('declined')
         if failure == 'expired':
@@ -158,7 +158,7 @@ def test_post_stop_resume_starts_receipt_bound_successor_without_replaying_stop(
                         lambda *args, **kwargs: {'container_id': 'f' * 64, 'image_id': 'sha256:' + 'd' * 64})
     phases = []
     monkeypatch.setattr(console, '_authorize_and_confirm',
-                        lambda directory, config, phase: phases.append(phase) or {'readmitted': True, 'state': 'admitting'})
+                        lambda directory, config, phase, assume_yes=False: phases.append(phase) or {'readmitted': True, 'state': 'admitting'})
     assert console._operate(plan, tmp_path)['readmitted'] is True
     assert phases == ['OPEN']
     assert starts[0][1]['current_stop_receipt'] == str(directory / 'stop-receipt.json')
@@ -224,3 +224,38 @@ def test_durable_attempt_precedes_consumable_authority(tmp_path, monkeypatch, fa
     if console._read(tmp_path / 'authorization.json')['preview_sha256'] is not None:
         assert (tmp_path / 'attempt.json').exists()
     assert confirms == ([False, True] if failed_publish == 'console-result.json' else [False])
+
+
+def test_assume_yes_skips_only_the_typed_reply(monkeypatch):
+    value = preview()
+    monkeypatch.setattr(console.sys, 'stdin', io.StringIO())  # not a terminal, nothing typed
+    monkeypatch.setattr(console.sys, 'stdout', Terminal())
+    monkeypatch.setattr(console.time, 'time', lambda: 100)
+    monkeypatch.setattr(console.os, 'read', lambda *_: pytest.fail('read a reply under --assume-yes'))
+    record = console._acknowledge(value, 'OPEN', assume_yes=True)
+    assert record['acknowledgement'] == 'ASSUMED-BY-FLAG' and record['preview_sha256'] == digest(value)
+    assert record['accepted_remote_memory_completion'] == 'UNKNOWN'
+    shown = console.sys.stdout.getvalue()
+    assert 'Exact native preview SHA-256' in shown and 'acknowledged by --assume-yes' in shown
+    monkeypatch.setattr(console.time, 'time', lambda: 160)  # an expired preview still refuses
+    with pytest.raises(ValueError):
+        console._acknowledge(value, 'OPEN', assume_yes=True)
+    monkeypatch.setattr(console.time, 'time', lambda: 90)  # so does one longer than 60 seconds
+    with pytest.raises(ValueError):
+        console._acknowledge(value, 'OPEN', assume_yes=True)
+
+
+def test_assume_yes_is_never_the_default(monkeypatch):
+    monkeypatch.setattr(console.sys, 'stdin', io.StringIO())
+    with pytest.raises(ValueError):
+        console._acknowledge(preview(), 'STOP')
+    reached = []
+    monkeypatch.setattr(console, '_read', lambda *_: reached.append(True) or pytest.fail('stop here'))
+    with pytest.raises(BaseException):
+        console.run('/protected/plan.json', assume_yes=True)  # passes the terminal check
+    assert reached == [True]
+    args = []
+    monkeypatch.setattr(console, 'run', lambda config, assume_yes=False: args.append(assume_yes) or {})
+    console.dispatch(['--config', '/protected/plan.json'])
+    console.dispatch(['--config', '/protected/plan.json', '--assume-yes'])
+    assert args == [False, True]

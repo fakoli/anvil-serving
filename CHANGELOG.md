@@ -8,6 +8,11 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- `router maintenance-console --assume-yes` runs a prepared STOP and OPEN
+  without the typed YES, for one explicit invocation. Previews are still
+  printed and must be fresh, native guards and authorizations still apply, the
+  acknowledgement is recorded as `ASSUMED-BY-FLAG`, and it is never on by
+  default or from configuration.
 - **Anvil Scribe**, an eighth product family (ADR-0048, `scribe`). `scribe run`
   serves record-first dictation for a browser or WebView client: it saves each
   Ogg Opus recording and its raw transcript, transcribing through the gateway's
