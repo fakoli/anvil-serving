@@ -639,19 +639,39 @@ def _form_boundary(content_type):
     return boundary if boundary and boundary.isascii() else None
 
 
+_DELIMITER_TAIL = re.compile(rb"(--)?[ \t]*\Z")
+
+
+def _form_parts(boundary, body):
+    """The outer parts exactly as email.parser delimits them: the bytes between delimiter lines (a line
+    that starts with --boundary, then an optional -- and blanks), up to the close delimiter. A mid-line
+    --boundary is not a delimiter. Lines end at \\r\\n, \\r or \\n. The caller bounds the occurrence count,
+    so at most MAX_FORM_PARTS + 1 candidates are examined."""
+    delimiter = b"--" + boundary.encode("ascii")
+    parts, start, at = [], None, body.find(delimiter)
+    while at != -1:
+        ends = [i for i in (body.find(b"\r", at), body.find(b"\n", at)) if i != -1]
+        end = min(ends) if ends else len(body)
+        tail = _DELIMITER_TAIL.match(body, at + len(delimiter), end)
+        if tail and (at == 0 or body[at - 1] in b"\r\n"):
+            if start is not None:
+                parts.append(body[start:at])
+            if tail.group(1):
+                return parts
+            start = end + (2 if body[end:end + 2] == b"\r\n" else 1)
+        at = body.find(delimiter, at + 1)
+    if start is not None:
+        parts.append(body[start:])
+    return parts
+
+
 def _has_nested_part(boundary, body):
-    """True when a part is itself multipart/* or message/*, whose inner parts email.parser would also
-    build unseen by the outer count. Each part's headers are read by that same parser (line endings,
-    folding and encoded words included). Splitting on every occurrence over-splits, so this can only
-    refuse early; the outer count already bounds the work to MAX_FORM_PARTS + 1 chunks."""
-    for chunk in body.split(b"--" + boundary.encode("ascii"))[1:]:
-        chunk = chunk.lstrip(b" \t")
-        for ending in (b"\r\n", b"\r", b"\n"):
-            if chunk.startswith(ending):
-                chunk = chunk[len(ending):]
-                break
-        part = email.parser.BytesParser(policy=email.policy.HTTP).parsebytes(chunk, headersonly=True)
-        if part.get_content_maintype() in ("multipart", "message"):
+    """True when an outer part is itself multipart/* or message/*: email.parser would also build its
+    inner parts, which the outer count never sees. Each part's headers are read by that same parser
+    (line endings, folding and encoded words included)."""
+    for part in _form_parts(boundary, body):
+        headers = email.parser.BytesParser(policy=email.policy.HTTP).parsebytes(part, headersonly=True)
+        if headers.get_content_maintype() in ("multipart", "message"):
             return True
     return False
 

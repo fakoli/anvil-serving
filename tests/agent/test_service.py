@@ -662,6 +662,20 @@ def test_logs_carry_no_content(live, capfd):
     assert "private-method-name" not in err and '"note": "mcp other,ping n=3"' in err
 
 
+def test_form_parts_are_delimited_the_way_email_parser_delimits_them():
+    import email.parser
+    import email.policy
+
+    parser = email.parser.BytesParser(policy=email.policy.HTTP)
+    for nl in (b"\r\n", b"\n", b"\r"):
+        body = (b"preamble --b" + nl + b"--b \t" + nl + b"A: 1" + nl + nl + b"x --b y" + nl + b"--bz" + nl
+                + b"--b" + nl + b"A: 2" + nl + nl + b"z" + nl + b"--b-- " + nl + b"epilogue" + nl + b"--b" + nl)
+        whole = parser.parsebytes(b"Content-Type: multipart/form-data; boundary=b" + nl + nl + body)
+        assert [p["A"] for p in whole.iter_parts()] == ["1", "2"], nl
+        parts = agent._form_parts("b", body)
+        assert [parser.parsebytes(p, headersonly=True)["A"] for p in parts] == ["1", "2"], nl
+
+
 def test_a_form_with_too_many_parts_is_refused_before_parsing(live, monkeypatch):
     parsed = []
     monkeypatch.setattr(agent, "parse_multipart", lambda *args: parsed.append(args) or {})
@@ -686,6 +700,14 @@ def test_a_form_with_too_many_parts_is_refused_before_parsing(live, monkeypatch)
             "Content-Type": "multipart/form-data; boundary=testboundary123", **OWNER})
         assert (status, json.loads(data), parsed) == (400, {"error": "nested form parts are not accepted"}, []), (
             nl, nested_type)
+    # A mid-line --boundary is not a delimiter, so it must not hide the part headers after it.
+    inner = b"".join(b"--c\r\n\r\nx\r\n" for _ in range(agent.MAX_FORM_PARTS * 4)) + b"--c--\r\n"
+    for decoy in (b"X-Pad: --testboundary123z\r\n", b'X-Name: "x--testboundary123z"\r\n'):
+        nested = (b"--testboundary123\r\nContent-Disposition: form-data; name=\"x\"\r\n" + decoy
+                  + b"Content-Type: multipart/mixed; boundary=c\r\n\r\n" + inner + b"\r\n--testboundary123--\r\n")
+        status, _, data = live.request("POST", "/v1/agent/turn", nested, {
+            "Content-Type": "multipart/form-data; boundary=testboundary123", **OWNER})
+        assert (status, json.loads(data), parsed) == (400, {"error": "nested form parts are not accepted"}, []), decoy
     ctype_audio, flat_audio = multipart({"audio": ("a.ogg", b"OggS\r\nContent-Type: multipart/mixed\r\n")})
     assert live.request("POST", "/v1/agent/turn", flat_audio, {"Content-Type": ctype_audio, **OWNER})[0] == 400
     assert len(parsed) == 1  # a flat audio part passes the guard, whatever its bytes say
