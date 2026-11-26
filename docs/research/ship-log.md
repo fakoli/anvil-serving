@@ -79,7 +79,7 @@ them. Nothing in this log has been deployed unless an entry says so.
 
 | # | Item | Status |
 | --- | --- | --- |
-| 5 | ADR-0034 and ADR-0039 amendments match the replica code | PR 834 reviewed, waiting on CI |
+| 5 | ADR-0034 and ADR-0039 amendments match the replica code | **Shipped.** PR 834 merged; nothing to deploy |
 | 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | In implementation |
 | 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | Queued behind 2+4a |
 | 2 | Fix what the recorded refusal cause shows | Blocked on data from 2+4a |
@@ -109,7 +109,9 @@ them. Nothing in this log has been deployed unless an entry says so.
   `tests/agent/test_service.py::test_logs_carry_no_content`. It reads captured
   log output before the server has written its line, so it is also
   timing-sensitive. The failed job was rerun.
-- **Status.** Ready for review, waiting on CI. Not merged.
+- **Status.** Merged 2026-11-26 23:05 UTC as `cafe3835`, by squash, after all 18
+  required checks passed on the rerun. Documentation only, so there is no
+  deploy and no before-and-after metric.
 
 ### 2026-11-26 — Item 3, measurement only (no change)
 
