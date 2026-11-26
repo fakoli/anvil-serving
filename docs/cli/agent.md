@@ -34,7 +34,11 @@ the reference file is `examples/primary-node/agent.toml`.
 | `OPTIONS` on the client paths | CORS preflight for an allowlisted `Origin`. |
 | `GET /healthz` | Token-free liveness. |
 
-A turn that cannot be transcribed returns 502, and silence returns 422. A
+A turn that cannot be transcribed returns 502, and silence returns 422.
+Two limits bound memory, as in Scribe: `max_recording_seconds` (300 by
+default) refuses longer recordings while decoding, and
+`max_concurrent_transcriptions` (2 by default) caps decodes in flight. A
+spoken turn that finds no free slot within 30 seconds returns 503. A
 backend that answers with an error status returns 502 naming only that status;
 its body is never forwarded or logged. A backend that does not finish within
 `turn_timeout_seconds` returns 504 with `unconfirmed: true`, because the agent
