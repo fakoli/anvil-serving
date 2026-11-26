@@ -150,6 +150,23 @@ def test_split_wav_preserves_samples_within_gateway_limit():
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
+def test_multipart_part_floods_are_refused_before_parsing():
+    many = b"".join(b"--b\r\nContent-Disposition: form-data; name=\"f%d\"\r\n\r\nx\r\n" % i for i in range(17))
+    with pytest.raises(ValueError, match="too many"):
+        memo.parse_multipart("multipart/form-data; boundary=b", many + b"--b--\r\n")
+    ctype, body = multipart({"audio": ("m.ogg", b"x" * 8), "durationMs": (None, b"1000")})
+    assert set(memo.parse_multipart(ctype, body)) == {"audio", "durationMs"}
+    with pytest.raises(ValueError, match="boundary"):
+        memo.parse_multipart("multipart/form-data", body)
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
+def test_ogg_decode_pins_the_demuxer():
+    wav = memo.wav_header(32000) + b"\x00" * 32000  # valid WAV, but not Ogg
+    with pytest.raises(ValueError):
+        memo.ogg_to_wav(wav)
+
+
 def test_ogg_to_wav_rejects_garbage():
     with pytest.raises(ValueError):
         memo.ogg_to_wav(b"not audio")

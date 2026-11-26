@@ -77,6 +77,7 @@ MAX_SEGMENT_SECONDS = 130
 MAX_CUSTOM_PROFILES = 64
 _MAX_RESPONSE_BYTES = 1024 * 1024
 _MAX_JSON_BODY = 64 * 1024
+_MAX_MULTIPART_PARTS = 16  # uploads send audio, durationMs and an optional legacy mode
 _MEMO_ID = re.compile(r"\d{8}T\d{6}Z-[0-9a-f]{6}\Z")
 _SLUG = re.compile(r"[a-z0-9][a-z0-9_-]{0,31}\Z")
 _PROFILES_FILE = "profiles.json"
@@ -338,6 +339,14 @@ def parse_multipart(content_type: Optional[str], body: bytes) -> dict:
     """Return ``{field: (filename, bytes)}`` for a multipart/form-data body."""
     if not content_type or not content_type.lower().startswith("multipart/form-data"):
         raise ValueError("expected multipart/form-data")
+    # Uploads carry a handful of fields. A flood of tiny parts would make the email
+    # parser build every one (a few MiB of body can cost seconds of CPU and 100+ MiB),
+    # so refuse before parsing anything.
+    boundary = re.search(r'boundary="?([^";]+)"?', content_type, re.IGNORECASE)
+    if boundary is None:
+        raise ValueError("multipart body has no boundary")
+    if body.count(b"--" + boundary.group(1).encode("latin-1")) > _MAX_MULTIPART_PARTS + 1:
+        raise ValueError("too many multipart parts")
     message = email.parser.BytesParser(policy=email.policy.HTTP).parsebytes(
         b"Content-Type: " + content_type.encode("latin-1") + b"\r\n\r\n" + body)
     if not message.is_multipart():
@@ -357,7 +366,10 @@ def ogg_to_wav(ogg: bytes, max_seconds: int = 900) -> bytes:
     ffmpeg stops one second past ``max_seconds``; a longer recording is refused.
     """
     result = subprocess.run(
-        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-t", str(max_seconds + 1),
+        # The input is untrusted: pin the Ogg demuxer and allow only the pipe protocol,
+        # so a crafted body can never make ffmpeg probe another format or open a URL.
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-protocol_whitelist", "pipe", "-f", "ogg",
+         "-i", "pipe:0", "-t", str(max_seconds + 1),
          "-ac", "1", "-ar", str(SAMPLE_RATE), "-sample_fmt", "s16", "-f", "wav", "pipe:1"],
         input=ogg, capture_output=True, timeout=60, check=False)
     if result.returncode != 0 or len(result.stdout) <= 44:
