@@ -18,6 +18,56 @@ route-bound key.
 - You want the same memo as an email, a task list or minutes, on demand.
 - Recordings and transcripts must stay on your own hosts and out of evaluation.
 
+## A walk through the glasses app
+
+These screenshots come from one session in the MemoMind Plugin Studio
+simulator, running against a live Scribe service. The app has three tabs:
+Record, History and Profiles. The glasses display is 600x350.
+
+### Record
+
+Tap the mic, or press the glasses button, and speak. The transcript appears as
+you talk, on the phone and on the glasses. Press again to stop and save, or
+double-press to cancel, which saves nothing.
+
+![The Record tab while recording: a red stop button, the 0:22 timer, and the live transcript of a planning update.](../assets/scribe/phone-recording.png)
+![The glasses display while recording, showing "REC" and the same live transcript.](../assets/scribe/hud-recording.png)
+
+Scribe saves the raw transcript first, exactly as you said it. Then pick a
+profile, choose a model and tap Rewrite. Each rewrite is added below the
+transcript with its own Copy button. The latest result also shows on the
+glasses, and holding the glasses button brings it back.
+
+![The saved memo: the 0:27 recording, the raw transcript, and the eight rewrite profiles.](../assets/scribe/phone-saved.png)
+![The rewrite panel with the model picker and two results, an email and a technical document.](../assets/scribe/phone-rewrite.png)
+
+![The glasses display showing the email rewrite: "Subject: Docs Site Shipping Update" followed by the message.](../assets/scribe/hud-email.png)
+
+The same memo, rewritten by each built-in profile:
+
+![Eight glasses displays, one per built-in profile: Email, Technical doc, Clean note, Message, Meeting minutes, Task list, Say it better and Summary.](../assets/scribe/hud-profiles.png)
+
+### History
+
+Every recording is kept with its length and rewrite count. Tap one to see the
+original transcript and every rewrite made from it.
+
+![The History tab with the planning memo expanded: the original transcript, then the email rewrite.](../assets/scribe/phone-history.png)
+
+### Profiles
+
+The eight built-in profiles are read-only. Open one to read its prompt, or
+duplicate it as a custom profile and adjust it. "New profile" takes a name, a
+description, a prompt and a default model.
+
+![The Profiles tab listing the eight built-in profiles, each with a one-line description.](../assets/scribe/phone-profiles.png)
+![The read-only view of the built-in Technical doc profile, showing its prompt and a "Duplicate as custom" button.](../assets/scribe/phone-builtin.png)
+![A new custom profile, "Standup update", with a prompt asking for Yesterday, Today and Blockers headings.](../assets/scribe/phone-new-profile.png)
+
+A saved custom profile appears next to the built-ins as a rewrite option:
+
+![The glasses display showing the memo rewritten by the custom Standup update profile, with Yesterday and Today sections.](../assets/scribe/hud-custom-profile.png)
+
 ## Go deeper
 
 - Command reference: [scribe](../cli/scribe.md)

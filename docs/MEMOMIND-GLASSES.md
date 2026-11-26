@@ -27,12 +27,14 @@ These screenshots come from the MemoMind Plugin Studio simulator, connected to
 live Scribe and Agent services. In each pair, the phone app is on the left or
 first, and the glasses display follows.
 
-**Anvil Scribe.** A dictated memo, rewritten as an email with a saved profile.
-The raw transcript stays on top.
+**Anvil Scribe.** A dictated planning update, rewritten as an email with a
+saved profile. The raw transcript stays above it. The
+[Scribe walkthrough](journeys/anvil-scribe.md#a-walk-through-the-glasses-app)
+covers every tab and profile.
 
-![The Anvil Scribe phone app showing the raw transcript, the rewrite profiles (Email, Technical doc, Clean note, Message, Meeting minutes, Task list, Say it better, Summary), and the transcript rewritten as an email.](assets/scribe/phone-rewrite.png)
+![The Anvil Scribe phone app showing the rewrite profiles (Email, Technical doc, Clean note, Message, Meeting minutes, Task list, Say it better, Summary), the model picker, and the memo rewritten as an email.](assets/scribe/phone-rewrite.png)
 
-![The glasses display showing the same email: "Subject: Testing Live Transcription", a greeting, the dictated sentence and "Thanks,".](assets/scribe/hud-email.png)
+![The glasses display showing the email: "Subject: Docs Site Shipping Update" followed by the message.](assets/scribe/hud-email.png)
 
 **Anvil Agent.** An agent asks the wearer a question and waits for the answer.
 
