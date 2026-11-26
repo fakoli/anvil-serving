@@ -681,6 +681,43 @@ def safe_check_member(
         return AvailabilityResult(False, "unavailable", reason)
 
 
+# Reasons only a completed probe produces when it found the tier not serving:
+# a failed health check, an identity check that did not confirm the configured
+# model, or upstream metadata that could not be adopted.
+_PROBE_FAILURE_FAMILIES = (
+    "health_http_", "health_transport_", "identity_http_", "identity_transport_",
+)
+_PROBE_FAILURE_REASONS = frozenset({
+    "identity_malformed",
+    "identity_mismatch",
+    "identity_oversized",
+    "upstream_metadata_context_missing",
+    "upstream_metadata_identity_mismatch",
+    "upstream_metadata_model_count",
+    "upstream_metadata_model_invalid",
+    "upstream_metadata_output_limit_conflict",
+})
+
+
+def probe_found_unavailable(result: object) -> bool:
+    """Whether ``result`` is a completed probe that found its tier not serving.
+
+    Deliberately narrower than ``not result.available``.  A pending or
+    invalidated probe, a faulting availability adapter, a tier with no probe
+    configured, and any reason this module does not list are not evidence that
+    the tier is down.
+    """
+    return (
+        isinstance(result, AvailabilityResult)
+        and result.available is False
+        and type(result.reason) is str
+        and (
+            result.reason in _PROBE_FAILURE_REASONS
+            or result.reason.startswith(_PROBE_FAILURE_FAMILIES)
+        )
+    )
+
+
 def resolve_runtime_tier(
     tier: Tier, readiness: AvailabilityResult
 ) -> Optional[Tier]:
@@ -709,6 +746,7 @@ __all__ = [
     "AvailabilityResult",
     "HttpHealthAvailability",
     "RuntimeModelMetadata",
+    "probe_found_unavailable",
     "replica_identity_passed",
     "resolve_runtime_tier",
     "safe_check",

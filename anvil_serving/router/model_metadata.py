@@ -380,6 +380,9 @@ def _canonical_public_config(config: RouterConfig) -> bytes:
                 key: getattr(tier.replica_identity, key) for key in _FINGERPRINT_KEYS
             }
     payload = {"model_routes": sorted(config.model_routes.items()), "tiers": tiers}
+    if config.unavailable_redirects:
+        # Present only when declared, so every existing identity is unchanged.
+        payload["unavailable_redirects"] = sorted(config.unavailable_redirects.items())
     return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 

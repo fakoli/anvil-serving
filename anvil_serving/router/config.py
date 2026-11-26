@@ -148,6 +148,7 @@ _TIER_KEYS = frozenset({
 _ROUTER_KEYS = frozenset({
     "tiers",
     "model_routes",
+    "unavailable_redirects",
     "exhaustion_status",
     "relay_timeout",
     "availability_probe_interval",
@@ -389,6 +390,8 @@ class RouterConfig:
     ``model_routes`` is the complete chat model vocabulary.  Every normalized
     capability alias maps to exactly one configured local tier; there are no
     presets, inferred intent classes, cloud escalation, or fallback pools.
+    ``unavailable_redirects`` is the one declared exception to "a tier that
+    cannot serve is not replaced", and it is empty unless an operator opts in.
     """
 
     tiers: tuple[Tier, ...]
@@ -420,6 +423,13 @@ class RouterConfig:
     audio_max_concurrency: int = 4
     # Device-bound memory routes are additive; no entry leaves memory unavailable.
     memory_routes: tuple[MemoryRoute, ...] = ()
+    # The gateway's one fallback (ADR-0039 amendment of 2026-11-26): a source
+    # alias whose direct tier is verifiably not serving may be answered by one
+    # other configured alias.  One hop, operator-declared, and empty by
+    # default, which leaves routing exactly as it was.
+    unavailable_redirects: Mapping[str, str] = field(
+        default_factory=lambda: MappingProxyType({}), hash=False
+    )
 
     @cached_property
     def _tiers_by_id(self) -> Mapping[str, Tier]:
@@ -1760,6 +1770,41 @@ def _parse_router_config(
             f"unaddressable tiers: {unaddressable}"
         )
 
+    # The gateway's one fallback is declared per alias and validated closed:
+    # known aliases, two different tiers, a direct source, and never a chain.
+    raw_redirects = router.get("unavailable_redirects", {})
+    if not isinstance(raw_redirects, dict):
+        raise ConfigError(f"[router].unavailable_redirects must be a table in {path}")
+    unavailable_redirects: dict[str, str] = {}
+    for alias, target in _route_items(raw_redirects):
+        source = normalize_model_alias(alias) if isinstance(alias, str) else ""
+        destination = normalize_model_alias(target) if isinstance(target, str) else ""
+        for name, value in ((alias, source), (target, destination)):
+            if value not in model_routes:
+                raise ConfigError(
+                    f"unavailable redirect {alias!r} references unknown capability alias: {name!r}"
+                )
+        if source in unavailable_redirects:
+            raise ConfigError(
+                f"duplicate unavailable redirect (case-insensitive): {alias!r}"
+            )
+        if model_routes[source] == model_routes[destination]:
+            raise ConfigError(
+                f"unavailable redirect {alias!r} must name an alias of a different tier"
+            )
+        if tiers_by_id[model_routes[source]].replicas:
+            raise ConfigError(
+                f"unavailable redirect {alias!r} requires a direct source tier; "
+                "a replica tier never redirects"
+            )
+        unavailable_redirects[source] = destination
+    chained = sorted(set(unavailable_redirects) & set(unavailable_redirects.values()))
+    if chained:
+        raise ConfigError(
+            "an unavailable redirect target must not itself redirect (one hop only); "
+            f"chained aliases: {chained}"
+        )
+
     # HTTP status returned when the selected tier is unavailable.
     # Default 503 lets an upstream client apply its own transport retry policy.
     raw_exhaustion_status = router.get("exhaustion_status", 503)
@@ -1955,6 +2000,7 @@ def _parse_router_config(
         audio_max_text_chars=audio_max_text_chars,
         audio_max_concurrency=raw_audio_max_concurrency,
         memory_routes=tuple(memory_routes),
+        unavailable_redirects=MappingProxyType(unavailable_redirects),
     )
 
 
