@@ -200,6 +200,23 @@ def test_oversized_part_headers_and_transfer_encodings_are_refused_cheaply():
     assert memo.parse_multipart("multipart/form-data; boundary=b", plain) == {"n": (None, b"v")}
 
 
+def test_part_edges_match_the_email_parser():
+    ctype = "multipart/form-data; boundary=b"
+    for head_end in (b"\r\r\n", b"\n\r\n", b"\r\n\r", b"\n\r", b"\r\n\r\n", b"\n\n", b"\r\r"):  # mixed endings
+        body = b"--b\r\nContent-Disposition: form-data; name=\"a\"" + head_end + b"DATA\r\n--b--\r\n"
+        assert memo.parse_multipart(ctype, body) == {"a": (None, b"DATA")}, head_end
+    empty_first = b"--b\r\n--b\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\nv\r\n--b--\r\n"
+    assert memo.parse_multipart(ctype, empty_first) == {"a": (None, b"v")}
+    with pytest.raises(ValueError, match="boundary"):
+        memo.parse_multipart("multipart/form-data; boundary=" + "-" * 71, b"")
+    nested_comment = b"(" * 8000
+    with pytest.raises(ValueError, match="malformed"):
+        memo.parse_multipart(ctype, b"--b\r\nContent-Disposition: form-data; name=\"a\" " + nested_comment
+                             + b"\r\n\r\nv\r\n--b--\r\n")
+    with pytest.raises(ValueError):
+        memo.parse_multipart(ctype + " " + "(" * 4000, b"--b--\r\n")
+
+
 def test_flat_parts_keep_binary_payloads_exactly():
     data = bytes(range(256)) * 8 + b"\r\n--testboundary1234\r\nnot-a-delimiter --testboundary123 mid-line"
     ctype, body = multipart({"audio": ("m.ogg", data), "durationMs": (None, b"7")})
@@ -433,10 +450,15 @@ def test_an_unreadable_record_stays_listed_and_deletable(tmp_path):
     (tmp_path / "memos" / "20000101T000000Z-abcdef.json").write_text("{", encoding="utf-8")
     (tmp_path / "memos" / "20000101T000000Z-aaaaaa.json").write_text("[]", encoding="utf-8")
     (tmp_path / "memos" / "20000101T000000Z-bbbbbb.json").mkdir()
+    (tmp_path / "memos" / "99999999T999999Z-cccccc.json").write_text("{", encoding="utf-8")  # impossible date
     memos, _ = store.page(10, None)
-    assert [m["id"] for m in memos] == [good["id"], "20000101T000000Z-bbbbbb", "20000101T000000Z-abcdef",
+    # A directory with a record's name is not a memo: it is neither listed nor deletable.
+    assert [m["id"] for m in memos] == ["99999999T999999Z-cccccc", good["id"], "20000101T000000Z-abcdef",
                                         "20000101T000000Z-aaaaaa"]
-    assert all(m.get("unreadable") for m in memos[1:])
+    assert memos[0]["createdAt"] is None and all(m.get("unreadable") for m in memos[2:])
+    with pytest.raises(memo._Refusal):
+        store.delete("20000101T000000Z-bbbbbb")
+    memos = memos[1:]
     memos = [m for m in memos if m["id"] in (good["id"], "20000101T000000Z-abcdef")]
     assert memos[1]["unreadable"] is True and memos[1]["createdAt"] == "2000-01-01T00:00:00+00:00"
     store.delete("20000101T000000Z-abcdef")

@@ -79,6 +79,9 @@ _MAX_RESPONSE_BYTES = 1024 * 1024
 _MAX_JSON_BODY = 64 * 1024
 _MAX_MULTIPART_PARTS = 16  # uploads send audio, durationMs and an optional legacy mode
 _MAX_PART_HEADER_BYTES = 8192  # a browser part header is about 150 bytes
+# One line ending of any style (CRLF, bare CR, bare LF), and two in a row (a blank line).
+_LINE_END = re.compile(rb"\r\n|\r(?!\n)|\n")
+_BLANK_LINE = re.compile(rb"(?:\r\n|\r(?!\n)|\n)(?:\r\n|\r(?!\n)|\n)")
 _MEMO_ID = re.compile(r"\d{8}T\d{6}Z-[0-9a-f]{6}\Z")
 _SLUG = re.compile(r"[a-z0-9][a-z0-9_-]{0,31}\Z")
 _PROFILES_FILE = "profiles.json"
@@ -381,8 +384,13 @@ def parse_multipart(content_type: Optional[str], body: bytes) -> dict:
     # The boundary as an email parser reads it, however the header spells it (quoted,
     # RFC 2231 `boundary*=`, or after a look-alike parameter).
     head = b"Content-Type: " + content_type.encode("latin-1") + b"\r\n\r\n"
-    boundary = parser.parsebytes(head, headersonly=True).get_boundary()
-    if not boundary or not boundary.isascii():
+    try:
+        boundary = parser.parsebytes(head, headersonly=True).get_boundary()
+    except RecursionError:  # deeply nested comments in the header value
+        raise ValueError("multipart content type is malformed") from None
+    # RFC 2046 caps a boundary at 70 characters; a long periodic one would make the
+    # delimiter scan below quadratic.
+    if not boundary or not boundary.isascii() or len(boundary) > 70:
         raise ValueError("multipart body has no usable boundary")
     delimiter = b"--" + boundary.encode("ascii")
     # Uploads carry a handful of fields; this also bounds the delimiter scan below.
@@ -390,30 +398,34 @@ def parse_multipart(content_type: Optional[str], body: bytes) -> dict:
         raise ValueError("too many multipart parts")
     fields = {}
     for chunk in _form_parts(body, delimiter):
+        if not chunk:
+            continue  # an empty part between two delimiters, as the email parser skips it
         # Parse only a small header block: the header parser builds a token tree for the
         # whole value, so a megabyte of parameters would cost a gigabyte of memory.
         split = _part_header_end(chunk)
-        part = parser.parsebytes(chunk[:split], headersonly=True)
-        encoding = (part.get("Content-Transfer-Encoding") or "binary").strip().lower()
+        try:
+            part = parser.parsebytes(chunk[:split], headersonly=True)
+            encoding = (part.get("Content-Transfer-Encoding") or "binary").strip().lower()
+            name, filename = part.get_param("name", header="content-disposition"), part.get_filename()
+        except RecursionError:  # deeply nested comments in a header value
+            raise ValueError("multipart part headers are malformed") from None
         if encoding not in ("7bit", "8bit", "binary"):
             raise ValueError("multipart transfer encodings are not accepted")
-        name = part.get_param("name", header="content-disposition")
         if name:
-            fields[name] = (part.get_filename(), chunk[split:])  # the exact payload bytes
+            fields[name] = (filename, chunk[split:])  # the exact payload bytes
     return fields
 
 
 def _part_header_end(chunk: bytes) -> int:
     """Offset just past the blank line that ends a part's headers, within the header limit."""
     window = chunk[:_MAX_PART_HEADER_BYTES + 4]
-    for blank in (b"\r\n", b"\n", b"\r"):  # a part with no headers starts with its blank line
-        if window.startswith(blank):
-            return len(blank)
-    ends = [(at, len(sep)) for sep in (b"\r\n\r\n", b"\n\n", b"\r\r") if (at := window.find(sep)) >= 0]
-    if not ends:
+    leading = _LINE_END.match(window)  # a part with no headers starts with its blank line
+    if leading:
+        return leading.end()
+    blank = _BLANK_LINE.search(window)  # the first line end followed by an empty line
+    if blank is None:
         raise ValueError("multipart part headers are missing or too long")
-    at, size = min(ends)
-    return at + size
+    return blank.end()
 
 
 def ogg_to_wav(ogg: bytes, max_seconds: int = 900) -> bytes:
@@ -618,14 +630,15 @@ class MemoStore:
     def delete(self, memo_id):
         path = self._memo_path(memo_id)
         with self.lock:
-            if not path.exists():
+            if not path.is_file():  # a directory with a record's name is not a memo
                 raise _Refusal(404, "memo not found")
             # Audio first: if this stops halfway, the record still lists and can be deleted again.
             (self.root / (memo_id + ".ogg")).unlink(missing_ok=True)
             path.unlink()
 
     def page(self, limit, before):
-        ids = sorted((p.stem for p in self.root.glob("*.json") if _MEMO_ID.fullmatch(p.stem)), reverse=True)
+        ids = sorted((p.stem for p in self.root.glob("*.json") if _MEMO_ID.fullmatch(p.stem) and p.is_file()),
+                     reverse=True)
         if before:
             ids = [memo_id for memo_id in ids if memo_id < before]
         memos = []
@@ -637,8 +650,12 @@ class MemoStore:
                     continue
                 # Keep an unreadable record visible so its audio can still be found and deleted.
                 # The id starts with its UTC creation time, so clients still sort and label it.
-                created = datetime.strptime(memo_id[:16], "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
-                memos.append({"id": memo_id, "createdAt": created.isoformat(timespec="seconds"),
+                try:
+                    created = datetime.strptime(memo_id[:16], "%Y%m%dT%H%M%SZ").replace(
+                        tzinfo=timezone.utc).isoformat(timespec="seconds")
+                except ValueError:  # a hand-placed id with an impossible date
+                    created = None
+                memos.append({"id": memo_id, "createdAt": created,
                               "durationMs": 0, "transcript": None, "outputs": [], "unreadable": True})
         return memos, (ids[limit - 1] if len(ids) > limit else None)
 
