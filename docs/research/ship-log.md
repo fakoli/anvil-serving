@@ -85,7 +85,7 @@ them. Nothing in this log has been deployed unless an entry says so.
 | 2 | Fix what the recorded refusal cause shows | Blocked on data from 2+4a |
 | 4b | Accounting: emit the new refusal codes | Queued behind 2+4a deploy |
 | 4c | Accounting: session identifier | Left for the owner |
-| 3 | Conversation-cache budget | Measure only; engine change left for the owner |
+| 3 | Conversation-cache budget | Measured; no change justified (see entry) |
 
 ## Entries
 
@@ -110,3 +110,35 @@ them. Nothing in this log has been deployed unless an entry says so.
   log output before the server has written its line, so it is also
   timing-sensitive. The failed job was rerun.
 - **Status.** Ready for review, waiting on CI. Not merged.
+
+### 2026-11-26 — Item 3, measurement only (no change)
+
+The advisor ruled that a full conversation cache is its normal state and asked
+for the cold large prefills to be attributed before anything is changed. This
+was done from 30 days of usage accounting, using token counts and timing only.
+It is an estimate: no session identifier exists, so "returning context" means a
+request whose prompt size matches an earlier one within 24 hours.
+
+| Cold large prefills (32k tokens or more, under 10% cached) | Count | Share |
+| --- | ---: | ---: |
+| Within 30 minutes of a change of backing serve | 94 | 49% |
+| Returning context whose cache was lost | 94 | 49% |
+| New large context | 5 | 3% |
+| Total | 193 | |
+
+- Half of the cold prefills follow a serve change, not cache pressure. One day
+  holds 96 of them, and on that day the serve then in place reported almost no
+  cache reads at all, so many of these are likely a reporting artifact rather
+  than real cold starts.
+- The 94 returning contexts are the only candidates for eviction, about three a
+  day. Their gap since the earlier request: 23 within 5 minutes, 33 within an
+  hour, 27 within 6 hours, 11 within a day. A context lost within 5 minutes is
+  more likely a changed prompt prefix than an eviction.
+- Cost: a cold large request takes 11.6 s at the median against 1.7 s warm.
+  All 193 together took 74 minutes over 30 days.
+
+**Decision.** No engine change. The advisor's bar was that evictions make up at
+least two-thirds of cold large prefills; the upper bound here is 49%, and the
+total cost is small. Any change to the engine's cache or a restart of the
+primary serve stays with the owner. What would sharpen this: an eviction
+counter from the engine, and the decision log's session identifier.
