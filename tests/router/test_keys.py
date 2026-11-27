@@ -175,3 +175,72 @@ def test_cli_unknown_revocation_fails_but_known_revocation_is_idempotent(tmp_pat
     assert dispatch(["revoke", "--config", str(config), "--key-id", "key_missing"]) == 2
     for _ in range(2):
         assert dispatch(["revoke", "--config", str(config), "--key-id", meta["key_id"]]) == 0
+
+
+def test_model_grant_is_additive_routable_and_compare_and_swap(tmp_path):
+    store = _store(tmp_path)
+    meta, secret = store.create("phone", ["llm.secondary"], ["/v1/chat/completions"], rpm=30, expires_days=7)
+    routable = frozenset({"llm.primary", "llm.secondary"})
+    request = (meta["key_id"], ["llm.primary"], ["llm.secondary"], routable)
+    stale = store.authenticate(secret, snapshot=True)
+
+    preview = store.grant_models(*request, dry_run=True)
+    assert preview["models_after"] == ["llm.secondary", "llm.primary"]
+    assert preview["policy_digest_before"] != preview["policy_digest_after"]
+    assert store.authenticate(secret).models == ("llm.secondary",)
+
+    assert store.grant_models(*request) == {**preview, "dry_run": False}
+    after = store.list_keys()[0]
+    assert after == {**meta, "models": ["llm.secondary", "llm.primary"]}
+    # A request admitted on the old policy is refused once instead of running on a changed grant.
+    with pytest.raises(KeyStoreError, match="admission_policy_changed"):
+        store.admit(stale, "/v1/chat/completions", "llm.secondary")
+    store.admit(store.authenticate(secret, snapshot=True), "/v1/chat/completions", "llm.primary")
+
+    current = ["llm.secondary", "llm.primary"]
+    for models, expected, names in (
+        (["vision.ocr"], ["llm.secondary"], {"vision.ocr"}),   # stale expected list
+        (["llm.primary"], current, {"llm.primary"}),           # already granted
+        (["llm.unknown"], current, {"llm.primary"}),           # not routable in this config
+        (["llm.*"], current, {"llm.*"}),                       # wildcards stay rejected
+        ([], current, set()),                                  # nothing to add
+    ):
+        with pytest.raises(KeyStoreError):
+            store.grant_models(meta["key_id"], models, expected, frozenset(names))
+    assert store.list_keys()[0] == after
+
+    assert store.revoke(meta["key_id"])
+    with pytest.raises(KeyStoreError, match="unavailable"):
+        store.grant_models(meta["key_id"], ["vision.ocr"], current, frozenset({"vision.ocr"}))
+
+
+def test_model_grant_refuses_a_connect_owned_key(tmp_path):
+    from anvil_serving.router import connect_keys
+    store = _store(tmp_path)
+    connect_keys.migrate(store)
+    meta, _ = store.create("phone", ["llm.secondary"], ["/v1/chat/completions"])
+    with store._write() as connection:
+        connection.execute("INSERT INTO connect_key_owners VALUES (?, ?, ?, ?, ?)",
+                           (meta["key_id"], "human:" + "a" * 64, "1", "f" * 64, 1))
+    with pytest.raises(KeyStoreError):
+        store.grant_models(meta["key_id"], ["llm.primary"], ["llm.secondary"], frozenset({"llm.primary"}))
+    assert store.list_keys()[0]["models"] == ["llm.secondary"]
+
+
+def test_cli_grant_checks_the_selected_config_and_prints_both_digests(tmp_path, monkeypatch, capsys):
+    from types import SimpleNamespace
+    from anvil_serving.router import config as router_config
+    config = tmp_path / "router.toml"
+    config.write_text("[server]\nauth_env='TEST_MASTER'\napi_keys_path=%s\n" % json.dumps(str(tmp_path / "keys.sqlite3")))
+    monkeypatch.setattr(router_config, "load", lambda path: SimpleNamespace(
+        model_routes={"llm.primary": "tier", "llm.secondary": "other"},
+        purpose_models=(SimpleNamespace(model="embed-small"),), audio_routes=(SimpleNamespace(id="stt-main"),)))
+    meta, _ = _store(tmp_path).create("phone", ["llm.secondary"], ["/v1/chat/completions"])
+    base = ["grant", "--config", str(config), "--key-id", meta["key_id"], "--expected-model", "llm.secondary"]
+    assert dispatch([*base, "--model", "llm.missing"]) == 2
+    assert dispatch([*base, "--model", "llm.primary", "--model", "embed-small", "--model", "stt-main", "--dry-run"]) == 0
+    assert dispatch([*base, "--model", "llm.primary"]) == 0
+    preview, applied = (json.loads(line) for line in capsys.readouterr().out.splitlines())
+    assert preview["dry_run"] and preview["models_after"] == ["llm.secondary", "llm.primary", "embed-small", "stt-main"]
+    assert applied["models_after"] == ["llm.secondary", "llm.primary"] and len(applied["policy_digest_after"]) == 64
+    assert dispatch([*base, "--model", "stt-main"]) == 2  # the expected list is now stale

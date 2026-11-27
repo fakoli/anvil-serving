@@ -217,6 +217,31 @@ may select, and a request whose resolved route is not granted is refused
 before the audio pool or upstream is used
 ([ADR-0048](../adr/0048-anvil-scribe-record-first-dictation.md)).
 
+A key's grants are an explicit list, and an operator can add to it without
+reissuing the secret:
+
+```bash
+anvil-serving router keys grant --config PATH --container anvil-router --key-id KEY_ID --expected-model llm.secondary --model llm.primary --dry-run
+anvil-serving router keys grant --config PATH --container anvil-router --key-id KEY_ID --expected-model llm.secondary --model llm.primary
+```
+
+`grant` only adds model grants to one live ordinary key. Repeat
+`--expected-model` for the key's full current list, in the order `keys list`
+shows it; the command changes nothing if that list has moved. Each added name
+must be one the router's own boot config can route (a chat alias, a
+purpose-model name or an audio route id), and a name the key already holds is
+refused. Paths, rate and expiry stay as issued. Revoked, expired and
+Connect-owned keys are refused; a Connect-owned key takes its grants from its
+approved account. There is no command to remove a grant: revoke the key and
+issue a narrower one.
+
+The output lists the model grants and the key policy digest before and after.
+The store keeps only the current policy, so save that output with your private
+records. The change applies to the next request. A request admitted on the old
+policy at that instant is refused once and can be retried. A wider grant also
+lets an [unavailable redirect](../CONFIGURATION.md#unavailable-redirects) bind
+that caller to the target alias.
+
 After initializing storage, preview and install the candidate configuration
 with `router install-config --config PATH --dry-run`, then repeat with
 `--confirm`. This activates device keys using the existing guarded config

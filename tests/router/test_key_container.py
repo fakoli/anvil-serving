@@ -88,3 +88,27 @@ def test_memory_key_requires_the_complete_bank_grant(tmp_path, monkeypatch, caps
     captured = capsys.readouterr()
     assert payload['secret'] not in captured.out + captured.err
     assert len(store.list_keys()) == 1
+
+
+def test_container_grant_uses_the_router_mounted_config(container, tmp_path, monkeypatch, capsys):
+    from anvil_serving.router import config as router_config
+    host_config, _, calls = container
+    common = ["--container", "anvil-router", "--config", str(host_config)]
+    assert keys.dispatch(["init", *common]) == 0
+    assert keys.dispatch(["create", *common, "--name", "laptop", "--model", "llm.secondary",
+                          "--path", "/v1/chat/completions", "--out", str(tmp_path / "secrets" / "device.key")]) == 0
+    key_id = json.loads(capsys.readouterr().out.splitlines()[-1])["key_id"]
+    mounted = tmp_path / "mounted.toml"
+    mounted.write_text('[server]\nauth_env="TEST_MASTER"\napi_keys_path=%s\n' % json.dumps(str(tmp_path / "store" / "keys.sqlite3")))
+    monkeypatch.setattr(key_container, "_CONFIG", str(mounted))
+    monkeypatch.setattr(router_config, "load", lambda path: SimpleNamespace(
+        model_routes={"llm.primary": "tier"} if path == str(mounted) else {"llm.other": "tier"},
+        purpose_models=(), audio_routes=()))
+    grant = ["grant", *common, "--key-id", key_id, "--expected-model", "llm.secondary"]
+    assert keys.dispatch([*grant, "--model", "llm.other"]) == 2      # routable only in the caller's copy
+    assert keys.dispatch([*grant, "--model", "llm.primary"]) == 0
+    assert json.loads(capsys.readouterr().out.splitlines()[-1])["models_after"] == ["llm.secondary", "llm.primary"]
+    assert json.loads(calls[-1][1]["input"])["expected_model"] == ["llm.secondary"]
+    mounted.write_text('[server]\nauth_env="TEST_MASTER"\napi_keys_path="/elsewhere/keys.sqlite3"\n')
+    assert keys.dispatch(["grant", *common, "--key-id", key_id, "--expected-model", "llm.secondary",
+                          "--expected-model", "llm.primary", "--model", "llm.primary"]) == 2
