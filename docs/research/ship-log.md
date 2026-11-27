@@ -81,7 +81,7 @@ them. Nothing in this log has been deployed unless an entry says so.
 | --- | --- | --- |
 | 5 | ADR-0034 and ADR-0039 amendments match the replica code | **Shipped.** PR 834 merged; nothing to deploy |
 | 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | **Merged**, PR 835. Not deployed: cutover left for the owner |
-| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | PR 836 open; review fixes applied, second review in progress |
+| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | PR 836 approved, merging on green CI. Not deployed and not configured: left for the owner |
 | 2 | Fix what the recorded refusal cause shows | Blocked on data from 2+4a |
 | 4b | Accounting: emit the new refusal codes | Queued behind 2+4a deploy |
 | 4c | Accounting: session identifier | Left for the owner |
@@ -195,7 +195,15 @@ them. Nothing in this log has been deployed unless an entry says so.
   without a health path is rejected at load. Planning fails closed on any
   error. 998 router tests pass, 93 of them for this feature, and 22 mutations
   of the safeguards each fail a test.
-- **Pull request.** PR 836, opened as a draft. Second review pass in progress.
+- **Review, second pass.** Approved. The reviewer reran its reproductions:
+  both races now return the plain unavailable response with no redirect header
+  and no upstream call, the header does not leak across a kept-alive connection
+  or onto refused requests, and configurations without the table hash exactly
+  as before. Its five remaining nits were applied: a quiesced source is no
+  longer probed at all, aliases without a redirect are not timed, the bind-time
+  admission read fails closed, and two more tests. 1,003 router tests pass and
+  27 mutations of the safeguards each fail a test.
+- **Pull request.** PR 836, ready and set to merge once its checks pass.
 
 ### 2026-11-26 — Item 3, measurement only (no change)
 
