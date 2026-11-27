@@ -159,9 +159,16 @@ Cache-read counts were reported for 10,332 of the 11,173 chat requests.
   0.28 s at the 95th percentile, and 0.64 s at the 99th. Time to first token was
   0.48 s, 3.5 s, and 14.5 s at the same points.
 - **Rejections.** 524 chat requests were refused before dispatch, 490 of them
-  on `llm.primary` (4.4% of its traffic), in a median of 13 ms. They fall in 39
-  clock hours, five of which hold 48%. In 36 of those hours other `llm.primary`
-  requests succeeded, so these were not full outages. The cause is not recorded.
+  on `llm.primary` (4.4% of its traffic), in a median of 13 ms. A closer look
+  shows these are not intermittent. They fall into 21 windows in which no
+  `llm.primary` request succeeded at all, and every one arrived with nothing
+  else in flight. Host metrics for the windows inside the metrics retention
+  show the primary's GPU memory dropping to near zero and the engine absent,
+  with other work on the GPUs: the primary serve had been unloaded, on days
+  when candidate models were being qualified. Callers on a schedule kept
+  calling and were refused at once. The windows total at most 21.7 hours, 2.9%
+  of the period. This is the cost of qualifying on the serving host, not a
+  gateway defect.
 - **Disconnects.** 130 `llm.primary` requests (1.2%) ended with the client
   disconnecting mid-stream, a median of 15 s in.
 - **Clustering.** Three days hold 66% of all unsuccessful chat requests.

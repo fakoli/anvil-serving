@@ -82,11 +82,11 @@ them. Nothing in this log has been deployed unless an entry says so.
 | 5 | ADR-0034 and ADR-0039 amendments match the replica code | **Shipped.** PR 834 merged; nothing to deploy |
 | 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | **Merged**, PR 835. Not deployed: cutover left for the owner |
 | 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | **Merged**, PR 836. Not deployed and not configured: left for the owner |
-| 2 | Fix what the recorded refusal cause shows | Blocked on data from 2+4a |
+| 2 | Fix what the recorded refusal cause shows | Cause found from existing data; no gateway defect (see entry) |
 | 4b | Accounting: emit the new refusal codes | Queued behind 2+4a deploy |
 | 4c | Accounting: session identifier | Left for the owner |
 | 3 | Conversation-cache budget | Measured; no change justified (see entry) |
-| extra | Two racing tests that kept breaking CI | PR 837 approved, left for the owner to merge |
+| extra | Two racing tests that kept breaking CI | PR 837 approved and green; merge declined twice by the session's permission check, left for the owner |
 
 ## Entries
 
@@ -308,13 +308,45 @@ context, media or tools refusals, they will show as uncoded until the follow-up
 change that writes those three codes; that change must not merge before the
 first cutover has been deployed, or a rollback could meet rows it cannot read.
 
+### 2026-11-27 — Item 2, cause of the pre-dispatch refusals (no change)
+
+The refusals could be explained without waiting for the new accounting fields.
+From 30 days of usage metadata and 14 days of host metrics:
+
+- All 490 refusals on `llm.primary` fall into 21 runs with no successful
+  request in between. 488 of them sit in a gap of at least five minutes with
+  no success, and 171 in a gap longer than an hour.
+- Every refusal arrived with no other `llm.primary` request in flight, so this
+  is not capacity or admission pressure. Refused rows carry no token count, so
+  it is not a context-limit refusal either. Only 1% fall near a change of the
+  recorded backing serve.
+- For the windows inside the metrics retention, the primary's GPU memory drops
+  from about 95% to near zero and the engine disappears from scrapes while the
+  GPUs run other work, then the model returns. The busiest days match days on
+  which candidate models were qualified on the serving host.
+- 191 refusals have no backend bound, which is what a route hold produces, and
+  299 have the primary tier bound and unavailable.
+
+**Conclusion.** The primary serve was deliberately unloaded, and scheduled
+callers kept calling. The gateway refused correctly in about 13 ms. The windows
+add up to at most 21.7 hours, 2.9% of the period, which is the real
+availability cost of qualifying candidates on the only serving host.
+
+**Decision.** No gateway change. Once PR 835 is deployed these rows will carry
+`unavailable`, with the readiness reason in the decision log, which will
+confirm or correct this reading. The earlier statement in the usage snapshot
+that these were not full outages was wrong at minute granularity and has been
+corrected. What could reduce the cost is operational and the owner's call:
+qualify on the qualification host, or pause scheduled callers during a window.
+
 ## State at the end of the run (2026-11-27 01:10 UTC)
 
 - Merged: PR 834 (`cafe3835`), PR 835 (`9d067fc6`), PR 836 (`e5079099`).
-- Open and approved: PR 837, tests only.
+- Open, approved and green: PR 837, tests only. Not merged: the session's
+  permission check declined the merge twice.
 - Deployed: nothing. The live gateway still runs the image it ran before this
   run, and no redirect is configured. There are therefore no after numbers yet,
   and no rollback was needed.
 - Not done, by ruling or by constraint: a session identifier in accounting, the
-  three new refusal codes being written, the fix for the pre-dispatch refusals
-  (it needs the data the first cutover unlocks), and any engine cache change.
+  three new refusal codes being written, and any engine cache change. The pre-dispatch refusals turned out to need no
+  fix.
