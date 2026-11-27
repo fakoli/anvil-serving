@@ -237,6 +237,31 @@ total cost is small. Any change to the engine's cache or a restart of the
 primary serve stays with the owner. What would sharpen this: an eviction
 counter from the engine, and the decision log's session identifier.
 
+### 2026-11-27 — Outside the backlog: PR 837, two racing tests
+
+- **Why.** Two tests in `tests/agent/test_service.py` failed intermittently
+  during this run: on PR 834 twice, and on `main` itself at the
+  documentation-only merge commit. They blocked merges that had nothing to do
+  with them.
+- **Change.** Tests only. One test sent its last request the instant the first
+  reply arrived, while the server frees its intake slot just after writing
+  that reply. The other read captured log output before the last line was
+  written. Both now wait up to two seconds for the condition. Assertions are
+  unchanged.
+- **Left for the owner.** The first race is visible to a real client: a caller
+  that sends its next turn the moment it gets a reply can receive `503 busy`.
+  That is a product question and was not changed.
+- **Review.** Fresh-context Fable review in progress.
+
+### 2026-11-27 — PR 836, a failed docs build
+
+The first CI run on the final redirect commits failed the strict documentation
+build. The changelog is included into the documentation site, and one new
+entry linked to `docs/CONFIGURATION.md` with a path that only resolves from the
+repository root. The link was replaced with a plain reference, as other
+entries use, and the strict build passes locally. The lesson for this run: run
+the strict docs build locally for any change that touches the changelog.
+
 ## Handing the deploys to the owner
 
 Two merged or pending changes need the gateway cutover, in this order, one at a
