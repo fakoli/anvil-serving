@@ -111,6 +111,58 @@ authority.
 [Qualified same-host replicas](../CONFIGURATION.md#qualified-same-host-replicas)
 is the current configuration reference.
 
+**2026-11-26 amendment — configured unavailable redirect.**
+The repository owner has decided to grant one narrow exception to invariants 2
+and 5. An operator may declare, for one source alias, exactly one other alias
+in `[router.unavailable_redirects]`. When a completed readiness probe finds the
+source alias's tier not serving its model (a failed health check, a served
+model identity that is not the configured one, or upstream metadata that
+cannot be adopted), the gateway may bind the request to the target alias's
+tier instead of returning the unavailable error. The motivating case is a
+secondary tier on a host that is regularly given over to another workload,
+during which its chat model is not served.
+
+Three safeguards bound the exception:
+
+- **Explicit per-alias opt-in.** Nothing redirects unless the operator names
+  the pair. The table is empty by default, and an absent or empty table leaves
+  routing exactly as this ADR described it.
+- **No widened credential.** The caller's credential must already be granted
+  the target alias. A caller that could not have requested the target directly
+  receives the unchanged unavailable response.
+- **What served is named.** The response `model` is the target alias, the
+  response carries `X-Anvil-Redirected-From` with the source alias, the
+  decision record keeps the source tier as requested and the target tier as
+  served, and usage accounting keeps the requested alias with the serving
+  tier.
+
+The decision is made once, before dispatch and before usage accounting names a
+route. The source must be a direct tier that is admitting requests, and the
+request must be admissible on the target under the target's own context,
+media, tool, and output limits. Otherwise there is no redirect and the caller
+receives the response it would have received before this amendment.
+
+Everything else stays forbidden:
+
+- chains: a redirect is one hop, a target can never itself be a source, and an
+  unavailable target returns its own error rather than bouncing back;
+- selection by load, capacity, quality, cost, or latency;
+- classifier-driven or content-driven choice of an alias;
+- any retry after dispatch: once a request has been sent to a tier, its
+  failure is returned to the caller exactly as before; and
+- a redirect caused by an operator quiesce or route hold, a context, media, or
+  tool refusal, rate limiting, replica capacity or admission limits, or a
+  probe that has not completed.
+
+With this amendment invariant 2 reads: each alias maps to exactly one
+configured tier, and a source alias may additionally name one redirect alias.
+Invariant 5 reads: a request is never retried after dispatch, and before
+dispatch it moves to another tier only through that one declared redirect.
+Invariants 1, 3, 4, 6, and 7 are unchanged. The redirect is not a selection
+algorithm: it compares nothing, ranks nothing, and has one configured outcome.
+[Unavailable redirects](../CONFIGURATION.md#unavailable-redirects) is the
+configuration reference.
+
 Purpose-model and audio routes remain deterministic separate surfaces. This
 decision does not add lifecycle authority to the router or change the guarded
 serve/promotion operations.

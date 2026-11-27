@@ -123,8 +123,8 @@ PRODUCT_FAMILIES = (
         promise="Expose explicit capability aliases through one authenticated protocol boundary.",
         boundary=(
             "Owns auth, exact alias resolution, dialect translation, readiness, admission, "
-            "streaming, and relay; it never classifies intent, selects a model semantically, "
-            "or falls back to another tier."
+            "streaming, and relay; it never classifies intent or selects a model semantically, "
+            "and falls back to another tier only through one operator-declared unavailable redirect."
         ),
         commands=("router",),
         docs_anchor="docs/PRODUCT-FAMILIES.md#capability-gateway",

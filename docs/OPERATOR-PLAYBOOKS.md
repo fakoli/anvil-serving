@@ -80,8 +80,9 @@ readmits the target tier, so success means the declared alias is actually
 routable. A failed start, profile install, or readmission restores both the
 rollback router profile and named split group. While exclusive mode is active,
 ordinary serve starts and ad-hoc Compose experiments fail before a container
-command. Other aliases whose backing serves are offline return unavailable;
-they never fall back to the TP=2 serve.
+command. Other aliases whose backing serves are offline return unavailable.
+They never fall back to the TP=2 serve unless the operator has declared it as
+that alias's [unavailable redirect](CONFIGURATION.md#unavailable-redirects).
 
 Leave in the reverse order:
 
@@ -102,7 +103,9 @@ separate benchmark and promotion decision.
 The router's `[router.model_routes]` maps a caller-facing alias to exactly one local tier.
 Update that mapping only as an explicit configuration change, and only after the target serve
 carries the required evidence. The gateway returns 404 for an unknown alias and an error for a
-configured alias whose local tier cannot serve; it never falls back to another model.
+configured alias whose local tier cannot serve. It answers from another alias only when
+`[router.unavailable_redirects]` declares one for that alias; see
+[unavailable redirects](CONFIGURATION.md#unavailable-redirects).
 
 ## Voice topology
 

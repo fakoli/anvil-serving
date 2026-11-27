@@ -189,6 +189,31 @@ selected.
 [Qualified same-host replicas](../CONFIGURATION.md#qualified-same-host-replicas)
 is the current configuration reference.
 
+**2026-11-26 amendment — configured unavailable redirect.**
+The repository owner has decided to grant one narrow exception to "an alias
+selects exactly one tier". An operator may declare, for one source alias,
+exactly one other alias in `[router.unavailable_redirects]`. When a completed
+readiness probe finds the source alias's tier not serving its model, the
+gateway may bind the request once, before dispatch, to the target alias's
+tier. Because a tier's endpoint is static operator configuration, the two
+tiers may be on different hosts, so this is the one case in which a request
+for an alias is answered from another host.
+
+It is still not a cross-host scheduler or arbitration. The pair is static and
+operator-declared, the gateway compares no load, capacity, quality, or cost,
+and there is one configured outcome. Three safeguards bound it: the opt-in is
+explicit and per alias, the caller's credential must already be granted the
+target alias, and the response and records name what served.
+
+What stays forbidden: chains (one hop only, and an unavailable target returns
+its own error), selection by load, quality, or cost, classifier-driven choice,
+and any retry after dispatch. A replica tier is never a redirect source, and
+the redirect gives the router no placement or lifecycle authority: it starts,
+stops, and moves nothing.
+[ADR-0039](0039-capability-meta-router.md) carries the full rule and
+[Unavailable redirects](../CONFIGURATION.md#unavailable-redirects) is the
+configuration reference.
+
 ### 6. Node capability is declared along three orthogonal axes
 
 Capacity policy stops being a single opaque label. A host declares:

@@ -25,7 +25,8 @@ description is `README.md`; do not contradict it.
 2. **`CLAUDE.md`** — architecture module map, gotchas, design decisions.
 3. **The file(s) you're about to change** — read them fully before editing. The
    gateway is direct-only: extend its explicit route, protocol, readiness, or
-   admission seams; do not reintroduce inferred routing or fallback behavior.
+   admission seams; do not reintroduce inferred routing or any fallback beyond
+   the one operator-declared unavailable redirect in `CLAUDE.md`.
 
 ## Public product and private operator-state policy
 

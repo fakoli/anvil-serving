@@ -269,5 +269,7 @@ The current dual-PRO reference keeps capability aliases independent of Compute
 A/B placement. Entering `dual-gpu-exclusive` is a separate transaction: preview
 it with `serves mode preview`, drain and stop every GPU inference competitor,
 then grant both roles to one TP=2 owner. An unavailable alias remains
-unavailable; it must never fall back to that exclusive model. Any production
+unavailable. It reaches that exclusive model only if the operator has declared
+it as the alias's
+[unavailable redirect](CONFIGURATION.md#unavailable-redirects). Any production
 promotion or mode entry remains a separate, explicit, human-gated operation.
