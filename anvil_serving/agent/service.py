@@ -777,14 +777,20 @@ def make_server(config: AgentConfig, *,
             # Hold the small JSON reply until the slot is free. A client that sends its next
             # request the moment it reads this one must never find its own slot still taken.
             wire, self.wfile = self.wfile, io.BytesIO()
+            body = None
             try:
                 body = self._read_body(length, started)
-                return None if body is None else self._handle_post(path, body, started)
+                if body is not None:
+                    self._handle_post(path, body, started)
             finally:
+                # Drop the upload before the slot is free: the slot bounds buffered bodies, and
+                # the write below can wait on a slow reader after another upload has taken it.
+                body = None
                 reply, self.wfile = self.wfile.getvalue(), wire
                 slots.release()
                 if reply:
                     wire.write(reply)
+            return None
 
         def _handle_post(self, path, body, started):
             try:
