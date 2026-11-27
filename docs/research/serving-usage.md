@@ -174,8 +174,10 @@ Cache-read counts were reported for 10,332 of the 11,173 chat requests.
 - **Clustering.** Three days hold 66% of all unsuccessful chat requests.
 - **Timeouts.** None observed. No chat request ran five minutes; the longest was
   199 s. Two dispatched requests ended in a generation error.
-- **Fallbacks.** None, by design and in the data. When `llm.secondary` could not
-  serve, its 31 callers received errors rather than another tier.
+- **Fallbacks.** None, by design at the time and in the data. When
+  `llm.secondary` could not serve, its 31 callers received errors rather than another tier. An opt-in
+  redirect for exactly this case was added to the gateway afterward and was not
+  deployed during the measured period; see [ship-log.md](ship-log.md).
 
 ## Which hosts sit idle or saturated
 

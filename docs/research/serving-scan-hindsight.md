@@ -21,6 +21,13 @@ Three limits apply to everything below:
 Operator topology, promoted routes, and private evidence are deliberately
 omitted; see [OPERATOR-PRIVACY.md](../OPERATOR-PRIVACY.md).
 
+**Update, 2026-11-27.** Three changes merged after this scan and are not
+reflected in the tables below. ADR-0034 and ADR-0039 now record that same-host
+replica tiers are implemented. Usage accounting now records admission wait,
+first-content time and error codes. And the gateway gained one opt-in redirect
+for an unavailable alias, with an ADR-0039 amendment, so "no fallback" now has
+that single named exception. [ship-log.md](ship-log.md) has the details.
+
 ## What the scan was looking for, and what was actually there
 
 The scan asked for routing, KV cache, prefill/decode disaggregation, speculative
@@ -48,9 +55,9 @@ harnesses, not about serving. The serving-specific set is seven sources.
 | # | Source | Link | Ingested | Idea | Anvil Serving | SGLang / vLLM |
 | --- | --- | --- | --- | --- | --- | --- |
 | S1 | Revisiting Pipeline Parallelism for LLM Serving (OSDI '26) | [osdi26-hwang](https://www.usenix.org/system/files/osdi26-hwang.pdf) | 2026-11-07 | Removes the idle "bubbles" that make layer-split (pipeline) parallelism slow online, using dynamic chunked-prefill sizing and delay scheduling of decode batches. Built on SGLang and tested with four PCIe-connected A100s, where the authors report it beats tensor parallelism; it argues the approach suits GPUs without NVLink. | No. Parallelism mode is engine launch configuration in a recipe or manifest, never a route input. The reference topology declares a TP=2 exclusive mode only. | The paper's changes are to SGLang; whether they are upstream was not checked. vLLM exposes a pipeline-parallel size option. |
-| S2 | StriaTrace: Efficient Tracing and Diagnosis for Online LLM Inference (OSDI '26) | [osdi26-wu-haonan](https://www.usenix.org/system/files/osdi26-wu-haonan.pdf) | 2026-11-07 | Always-on CPU and GPU tracing inside the serving engine that keeps only the telemetry needed to diagnose latency anomalies. Its median per-token overhead falls from 5.2% at concurrency 8 to 0.6% at 256, so it costs most at the low concurrency a small fleet runs. | Partial. The router exports metadata-only OTLP spans for routing decisions ([trace_export.py](../../anvil_serving/router/trace_export.py)) and tracks in-flight workloads. It has no engine-internal tracing and should not grow any. | Both ship OpenTelemetry request tracing. Neither is known to implement this paper's method. |
+| S2 | StriaTrace: Efficient Tracing and Diagnosis for Online LLM Inference (OSDI '26) | [osdi26-wu-haonan](https://www.usenix.org/system/files/osdi26-wu-haonan.pdf) | 2026-11-07 | Always-on CPU and GPU tracing inside the serving engine that keeps only the telemetry needed to diagnose latency anomalies. Its median per-token overhead falls from 5.2% at concurrency 8 to 0.6% at 256, so it costs most at the low concurrency a small fleet runs. | Partial. The router exports metadata-only OTLP spans for routing decisions (`anvil_serving/router/trace_export.py`) and tracks in-flight workloads. It has no engine-internal tracing and should not grow any. | Both ship OpenTelemetry request tracing. Neither is known to implement this paper's method. |
 | S3 | FlashFormer: Whole-Model Kernels for Efficient Low-Batch Inference | [arXiv:2505.22758v2](https://arxiv.org/abs/2505.22758v2) | 2026-10-12 | Generates one fused forward kernel specialized to a model's dimensions, quantization, and GPU. Reports 2–32% more tokens per second than its baseline, but only for decode, at batch size one, on a single H100, with no output-agreement check. | No, and not gateway work. It would arrive as an engine behind a tier under [ADR-0010](../adr/0010-specialized-engine-tier.md). | Neither. Both use general kernels plus CUDA graphs. |
-| S4 | CliffCompaction | [arXiv:2609.26779v1](https://arxiv.org/abs/2609.26779v1) | 2026-10-12 | Compacts agent context only at discrete events, by deletion and truncation rather than recursive summaries, and frames the cost as KV-cache reuse versus re-prefill. Its own stated trade-off is recall for precision: older compacted content is discarded. An earlier note that aggressive compaction lowers task success was not confirmed in the text checked. | Caller-side. The gateway only observes the effect: `cached_tokens` in `DecisionLog` and KV capacity and usage gauges ([router_telemetry.py](../../anvil_serving/router/router_telemetry.py), [model_capacity.py](../../anvil_serving/router/model_capacity.py)). | Both do prefix reuse (SGLang radix cache, vLLM automatic prefix caching), which is what makes the idea pay. Compaction itself is a harness concern. |
+| S4 | CliffCompaction | [arXiv:2609.26779v1](https://arxiv.org/abs/2609.26779v1) | 2026-10-12 | Compacts agent context only at discrete events, by deletion and truncation rather than recursive summaries, and frames the cost as KV-cache reuse versus re-prefill. Its own stated trade-off is recall for precision: older compacted content is discarded. An earlier note that aggressive compaction lowers task success was not confirmed in the text checked. | Caller-side. The gateway only observes the effect: `cached_tokens` in `DecisionLog` and KV capacity and usage gauges (`anvil_serving/router/router_telemetry.py`, `anvil_serving/router/model_capacity.py`). | Both do prefix reuse (SGLang radix cache, vLLM automatic prefix caching), which is what makes the idea pay. Compaction itself is a harness concern. |
 | S5 | An Architecture for Long-Horizon Agents: Levels, Ticks and Cascaded Intelligence | [arXiv:2609.19519v1](https://arxiv.org/abs/2609.19519v1) | 2026-10-12 | Runs a long campaign across heterogeneous model tiers with checkpoints, reviewer gates, and escalation. Evidence is one deployment (211 ticks, 47 resets, 25 escalations), not a comparison. | Excluded inside the gateway: no fallback chain and no substitution ([ADR-0039](../adr/0039-capability-meta-router.md)). A caller may still escalate between aliases, because the caller owns the alias. | Not applicable. |
 | S6 | Inference-systems learning entry: SGLang and vLLM source study | Operator-private notes; no public link | 2026-10-12 | A source-traced walkthrough of both engines pinned to specific commits, ending in a proposed staged path toward a custom engine. Documentation only. | Not applicable. | It is a study of both. |
 | S7 | Hugging Face Grout and NVIDIA's Rust CUDA tooling | Link not retained | 2026-10-12 | A small Rust inference testbed combining tile kernels, cuBLAS, KV-cache operations, and CUDA-graph decode replay. NVIDIA describes the tooling as early-stage research. | Not applicable. | Not applicable. |
@@ -111,9 +118,10 @@ any of it is built:
   selection never creates a second tier candidate or a cross-host scheduler.
   Capacity-aware choice exists only among qualified members of one already
   selected tier on one host
-  ([replica_scheduler.py](../../anvil_serving/router/replica_scheduler.py)).
+  (`anvil_serving/router/replica_scheduler.py`).
 - The gateway has no classifier, fallback chain, or model substitution. The
-  caller owns the alias.
+  caller owns the alias. (True at the time of the scan; see the update note at
+  the top for the one redirect added since.)
 
 Sorted by that line:
 

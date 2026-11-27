@@ -7,8 +7,8 @@ rollback. Findings that motivate the work are in
 withheld as in that document.
 
 Judgment calls in this run (order, design, ship and rollback decisions) are
-delegated by the owner to a Fable advisor and reviewer. That reviewer shares a
-model family with the author, so it is a fresh-context check, not the
+delegated by the owner to an advisor agent and a reviewer agent. The reviewer
+shares a model family with the author, so it is a fresh-context check, not the
 independent review that the repository's own working rules ask for. Each entry
 says who reviewed it.
 
@@ -32,7 +32,7 @@ metrics.
 
 ## Advisor rulings (2026-11-26)
 
-The Fable advisor reviewed the backlog against the code and ruled as follows.
+The advisor agent reviewed the backlog against the code and ruled as follows.
 These rulings set the plan below.
 
 - **Order.** Item 5 first, since it is documentation only and settles the two
@@ -101,7 +101,7 @@ them. Nothing in this log has been deployed unless an entry says so.
   (`assert 503 == 200`). The PR touches no code and `main` passes the same
   job, so this is treated as a timing-sensitive test and the job is rerun, not
   bypassed.
-- **Review.** Fresh-context Fable review approved it after checking each
+- **Review.** Fresh-context agent review approved it after checking each
   claim against the code, with five wording fixes. All five were applied: the
   note now says no member is reselected once one is selected, credits the
   capacity strategy to its own design document rather than the 2026-09-05
@@ -130,7 +130,7 @@ them. Nothing in this log has been deployed unless an entry says so.
   codes, no schema change, no routing change.
 - **Checks.** 897 router tests pass locally, lint and docs audit clean. One
   unrelated test fails on this host with and without the change.
-- **Review.** Fresh-context Fable review: changes required, no blockers. It
+- **Review.** Fresh-context agent review: changes required, no blockers. It
   confirmed by running code that requests cannot be failed or delayed by the
   new paths, that the current release reads every row the new code writes, and
   that the readiness reason stays a closed vocabulary. Two findings mattered:
