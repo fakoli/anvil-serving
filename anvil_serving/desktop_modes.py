@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 from contextlib import ExitStack, redirect_stdout
+import http.client
 import io
 import json
 import os
@@ -18,6 +19,7 @@ import urllib.parse
 import urllib.request
 
 from . import desktop, envfile, paths, serve_recipes, serves
+from .router.config import normalize_model_alias
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -33,7 +35,7 @@ def _profile():
     required = {"schema", "media_manifest", "model_manifests", "worker_containers", "guard_cli", "guard_config"}
     dynamic = {"secondary_router_url", "secondary_router_alias", "secondary_router_token_file",
                "secondary_router_token_env", "secondary_manifest_dir"}
-    optional = {"secondary_manifest", "idle_teardown", "secondary_router_ca_file"} | dynamic
+    optional = {"secondary_manifest", "idle_teardown", "secondary_router_ca_file", "router_container"} | dynamic
     if not required <= set(value) <= required | optional or value["schema"] != "anvil-serving.desktop-modes/v1":
         raise ValueError("Invalid Desktop mode configuration.")
     dynamic_present = dynamic & set(value)
@@ -74,16 +76,23 @@ def _profile():
         router_url = value["secondary_router_url"]
         if not isinstance(router_url, str):
             raise ValueError("Invalid dynamic secondary router URL.")
-        parsed_url = urllib.parse.urlsplit(router_url)
+        try:
+            parsed_url = urllib.parse.urlsplit(router_url)
+            parsed_url.port
+        except ValueError as exc:
+            raise ValueError("Invalid dynamic secondary router URL.") from exc
         if (parsed_url.scheme not in {"http", "https"}
                 or not parsed_url.netloc or parsed_url.username or parsed_url.password
                 or parsed_url.path not in {"", "/"} or parsed_url.query or parsed_url.fragment
                 or parsed_url.hostname == "localhost"
                 or (parsed_url.scheme == "http" and parsed_url.hostname != "127.0.0.1")):
             raise ValueError("Invalid dynamic secondary router URL.")
-        if (not isinstance(value["secondary_router_alias"], str)
-                or not re.fullmatch(r"[a-z][a-z0-9_.-]{0,127}", value["secondary_router_alias"])):
+        if not isinstance(value["secondary_router_alias"], str):
             raise ValueError("Invalid dynamic secondary router alias.")
+        alias = normalize_model_alias(value["secondary_router_alias"])
+        if not alias:
+            raise ValueError("Invalid dynamic secondary router alias.")
+        value["secondary_router_alias"] = alias
         if (not isinstance(value["secondary_router_token_env"], str)
                 or not re.fullmatch(r"[A-Z][A-Z0-9_]{0,127}", value["secondary_router_token_env"])):
             raise ValueError("Invalid dynamic secondary router token name.")
@@ -108,6 +117,7 @@ def _profile():
     control_names = {s["container"] for s in value["media"]}
     if model_names & control_names or set(value["worker_containers"]) & (model_names | control_names):
         raise ValueError("Worker, model and media control assignments must not overlap.")
+    _validate_router_container(value, model_names | control_names | set(value["worker_containers"]))
     binding = value.get("idle_teardown")
     if binding is not None:
         if (not isinstance(binding, dict) or set(binding) != {"worker", "controller", "service", "manifest", "principal"}
@@ -121,6 +131,43 @@ def _profile():
         if serves._is_compose_up(owner.get("up")):
             desktop._local_command(owner["up"])
     return value
+
+
+def _validate_router_container(profile, assigned_containers):
+    """Validate one explicitly preserved router without making it a mode owner."""
+    container = profile.get("router_container")
+    if container is None:
+        return
+    if (not isinstance(container, str)
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", container)):
+        raise ValueError("Invalid preserved router container name.")
+    if container in assigned_containers:
+        raise ValueError("Preserved router container must not overlap a mode owner.")
+
+
+def _router_is_cohost(profile):
+    """A loopback router vanishes with Docker Desktop and must be looked up later."""
+    return (profile.get("router_container") is not None
+            or urllib.parse.urlsplit(profile["secondary_router_url"]).hostname in {"127.0.0.1", "::1"})
+
+
+def _park_started_desktop_if_empty(profile, run, timeout):
+    """Undo only our idle Docker start; active work remains untouched."""
+    preserved = profile.get("router_container")
+    preserved_name = "/" + preserved if preserved else None
+    active = [row for row in desktop._containers(run) if row["status"] not in {"exited", "dead"}
+              and row["name"] != preserved_name]
+    if active:
+        return "active containers could be independent work"
+    desktop._call(["docker", "desktop", "stop", "--timeout", str(timeout)],
+                  run=run, timeout=timeout + 10)
+    return None
+
+
+def _repark_or_explain(profile, run, timeout, failure):
+    reason = _park_started_desktop_if_empty(profile, run, timeout)
+    if reason:
+        raise RuntimeError(f"{failure}. Docker remains running: {reason}") from failure
 
 
 def _dynamic_secondary(profile):
@@ -137,7 +184,7 @@ def _dynamic_secondary(profile):
                 cafile=profile["secondary_router_ca_file"])))
         with urllib.request.build_opener(*handlers).open(request, timeout=5) as response:
             raw = response.read(65537)
-    except (OSError, urllib.error.HTTPError, urllib.error.URLError) as exc:
+    except (OSError, http.client.HTTPException, urllib.error.HTTPError, urllib.error.URLError) as exc:
         raise RuntimeError("Dynamic secondary router assignment is unavailable.") from exc
     if len(raw) > 65536:
         raise RuntimeError("Dynamic secondary router assignment is invalid.")
@@ -198,6 +245,16 @@ def _recipe_start_binding(target):
             or serve.get("port") != target["port"]
             or (recipe.get("expected_container") is not None and recipe["expected_container"] != target["container"])):
         raise ValueError("Dynamic secondary recipe does not match its declared model and port.")
+    try:
+        registry_digest = serve_recipes.registry_digest(registry)
+        if registry_digest is None:
+            raise ValueError
+        serve_recipes.docker_run_argv(
+            recipe, container=target["container"], gpu_device=gpu_device,
+            registry_digest_value=registry_digest,
+        )
+    except (ValueError, serve_recipes.RecipeError):
+        raise ValueError("Dynamic secondary recipe cannot be loaded safely.") from None
     return {"model": selector, "registry": registry, "gpu_device": gpu_device}
 
 
@@ -213,10 +270,9 @@ def _load_recipe(binding, target, timeout):
             del environment[name]
     environment["DOCKER_CONTEXT"] = desktop.CONTEXT
     environment["ANVIL_SERVING_NO_HOME_ENV"] = "1"
-    result = subprocess.run(argv, capture_output=True, text=True, timeout=timeout + 30, env=environment,
-                            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+    result = subprocess.run(argv, timeout=timeout + 30, env=environment)
     if result.returncode:
-        raise RuntimeError("Managed secondary recipe load failed.")
+        raise RuntimeError("Managed secondary recipe load failed (exit %s)." % result.returncode)
 
 
 def _container_for(target, run):
@@ -341,6 +397,8 @@ def _preflight(profile, mode, target, recipe_start, run):
     models = {s["container"]: s for s in profile["models"] + profile["secondary"] + profile["dynamic_models"]}
     controls = {s["container"]: s for s in profile["media"]}
     known = set(models) | set(controls) | set(profile["worker_containers"])
+    if profile.get("router_container"):
+        known.add(profile["router_container"])
     if any(r["name"].lstrip("/") not in known and r["status"] not in {"exited", "dead"} for r in rows):
         raise RuntimeError("Undeclared active container; declare its mode ownership or stop it before switching.")
     idle_workers = 0
@@ -375,18 +433,32 @@ def select_mode(mode, *, confirm=False, dry_run=False, timeout=600, run=desktop.
             raise ValueError("Refusing a non-local Docker Desktop Linux context.")
         state = desktop._state(run)
         result = {"mode": mode, "state": state, "dry_run": dry_run, "changed": False}
-        if state == "stopped" and mode != "gaming" and not dry_run:
-            desktop._call(["docker", "desktop", "start", "--timeout", str(timeout)],
-                          run=run, timeout=timeout + 10)
-            if desktop._state(run) != "running":
-                raise RuntimeError("Docker Desktop did not start; retry the selected mode.")
-            state = "running"
-            result["changed"] = True
-        defer_assignment = dry_run and state == "stopped" and mode == "secondary" and profile["dynamic_secondary"]
+        started_desktop = False
+        defer_assignment = (
+            state == "stopped" and mode == "secondary" and profile["dynamic_secondary"]
+            and _router_is_cohost(profile)
+        )
         target = _secondary(profile) if mode == "secondary" and not defer_assignment else None
         recipe_start = None
         if target and profile["dynamic_secondary"] and target.get("up") and not serves._is_compose_up(target["up"]):
             recipe_start = _recipe_start_binding(target)
+        if state == "stopped" and mode != "gaming" and not dry_run:
+            try:
+                desktop._call(["docker", "desktop", "start", "--timeout", str(timeout)],
+                              run=run, timeout=timeout + 10)
+                if desktop._state(run) != "running":
+                    raise RuntimeError("Docker Desktop did not start; retry the selected mode.")
+                state = "running"
+                started_desktop = True
+                result["changed"] = True
+                if mode == "secondary" and target is None:
+                    target = _secondary(profile)
+                    if target.get("up") and not serves._is_compose_up(target["up"]):
+                        recipe_start = _recipe_start_binding(target)
+            except BaseException as failure:
+                if started_desktop:
+                    _repark_or_explain(profile, run, timeout, failure)
+                raise
         if target is not None:
             result["target"] = {key: target[key] for key in ("name", "container", "served_name", "router_tier") if key in target}
         if dry_run:
@@ -402,7 +474,12 @@ def select_mode(mode, *, confirm=False, dry_run=False, timeout=600, run=desktop.
                 _guard_safe(profile)
             return result
         if state == "running":
-            rows, models, controls, idle_workers = _preflight(profile, mode, target, recipe_start, run)
+            try:
+                rows, models, controls, idle_workers = _preflight(profile, mode, target, recipe_start, run)
+            except BaseException as failure:
+                if started_desktop:
+                    _repark_or_explain(profile, run, timeout, failure)
+                raise
             controls_were_running = any(r["name"].lstrip("/") in controls and r["status"] == "running" for r in rows)
             controls_stopped = False
             secondary_start_attempted = False
@@ -432,6 +509,8 @@ def select_mode(mode, *, confirm=False, dry_run=False, timeout=600, run=desktop.
                     _workers_idle(profile, desktop._containers(run))
                     if mode == "gaming":
                         desktop._snapshot(run, list(models.values()) + list(controls.values()))
+                if target and profile["dynamic_secondary"] and _secondary(profile) != target:
+                    raise RuntimeError("Router assignment changed before model selection. Retry secondary mode.")
                 for owner in models.values():
                     if mode == "secondary" and owner["container"] == target["container"]:
                         continue
@@ -469,6 +548,8 @@ def select_mode(mode, *, confirm=False, dry_run=False, timeout=600, run=desktop.
                         raise RuntimeError("Secondary readiness timed out.")
                     if not serves._serve_identity_ready(target):
                         raise RuntimeError("Secondary served-model identity differs from its declared assignment.")
+                    if profile["dynamic_secondary"] and _secondary(profile) != target:
+                        raise RuntimeError("Router assignment changed during model startup. Retry secondary mode.")
                 else:
                     if not _media_running(profile, desktop._containers(run)):
                         _start_media(profile, run, timeout)
@@ -486,7 +567,8 @@ def select_mode(mode, *, confirm=False, dry_run=False, timeout=600, run=desktop.
                             if live["id"] != started_container_id:
                                 raise RuntimeError("Secondary startup ownership is uncertain. Media remains parked.")
                             # Stop only the observed incarnation. Preserve its container for a retry.
-                            desktop._call(["docker", "stop", started_container_id], run=run, timeout=timeout)
+                            owned_target = {**target, "container": started_container_id}
+                            _lifecycle("stop", [owned_target], [target["name"]], run, timeout)
                     except Exception as exc:
                         recovery_errors.append(str(exc))
                 if controls_stopped and controls_were_running and not recovery_errors and desktop._state(run) == "running":

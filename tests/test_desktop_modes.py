@@ -37,14 +37,6 @@ def setup(monkeypatch, tmp_path):
     monkeypatch.setattr(desktop_modes, "_guard_safe", lambda _: None)
     monkeypatch.setattr(desktop.serves, "_await_healthy", lambda *a, **k: True)
     monkeypatch.setattr(desktop.serves, "_serve_identity_ready", lambda *a, **k: True)
-    docker_call = desktop._call
-    def call(argv, **kwargs):
-        if argv[:2] == ["docker", "stop"]:
-            row = next(row for row in docker.rows if row["id"] == argv[2])
-            row["status"] = "exited"
-            return row["id"]
-        return docker_call(argv, **kwargs)
-    monkeypatch.setattr(desktop, "_call", call)
     operations = []
 
     def lifecycle(action, owners, names, **kwargs):
@@ -52,6 +44,9 @@ def setup(monkeypatch, tmp_path):
         if action == "down":
             assert kwargs["keep_container"] is True
         operations.append((action, names[:]))
+        for owner in owners:
+            if action == "down" and len(owner["container"]) == 64:
+                next(row for row in docker.rows if row["id"] == owner["container"])["status"] = "exited"
         for row in docker.rows:
             if row["name"].lstrip("/") in names or (action == "up" and "gateway" in names and row["name"] == "/lifecycle"):
                 row["status"] = "running" if action == "up" else "exited"
@@ -199,6 +194,9 @@ def test_dynamic_secondary_uses_current_exact_router_assignment(monkeypatch, tmp
 def test_stopped_desktop_defers_router_until_start(monkeypatch, tmp_path):
     docker, _ = setup(monkeypatch, tmp_path)
     dynamic_secondary(monkeypatch, tmp_path)
+    config = tmp_path / "desktop-modes.toml"
+    config.write_text(config.read_text().replace("https://router.example.test", "http://127.0.0.1:8000")
+                      + 'router_container="test-router"\n')
     docker.running = False
     docker.rows[0]["name"] = "/alpha"
     docker.rows[-1]["name"] = "/beta"
@@ -301,6 +299,23 @@ def test_failed_cold_start_preserves_uncertain_container_and_parks_media(monkeyp
         desktop_modes.select_mode("secondary", confirm=True, run=docker)
     assert not any(action == "up" for action, _ in operations)
     assert docker.rows[-1]["status"] == "running"
+
+
+def test_route_change_while_model_starts_rolls_back_exact_target(monkeypatch, tmp_path):
+    docker, operations = setup(monkeypatch, tmp_path)
+    dynamic_secondary(monkeypatch, tmp_path)
+    docker.rows[0]["name"] = "/alpha"
+    docker.rows[-1]["name"] = "/beta"
+    running_lookup = desktop_modes._dynamic_secondary
+    def reassign_after_start(profile):
+        if ("up", ["alpha"]) in operations:
+            return next(m for m in profile["dynamic_models"] if m["container"] == "beta")
+        return running_lookup(profile)
+    monkeypatch.setattr(desktop_modes, "_dynamic_secondary", reassign_after_start)
+    with pytest.raises(RuntimeError, match="assignment changed during"):
+        desktop_modes.select_mode("secondary", confirm=True, run=docker)
+    assert ("down", ["alpha"]) in operations
+    assert docker.rows[0]["status"] == "exited"
 
 
 def test_failed_parked_start_recovers_original_container(monkeypatch, tmp_path):

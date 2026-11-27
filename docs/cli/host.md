@@ -348,8 +348,10 @@ secondary_manifest_dir = "desktop-secondary"
 
 The button reads the assignment from the router on each secondary selection.
 Use configured model metadata so the router can identify the model while its
-serve is parked. When Docker Desktop is stopped, a preview defers the lookup
-and a confirmed selection starts Docker before requesting the assignment.
+serve is parked. If Docker Desktop also hosts the router, set `router_container`
+to its container name. Secondary mode keeps that container running. With Docker
+stopped, an independent router can still be queried. For a co-hosted router,
+a preview defers the lookup until the confirmed selection starts Docker.
 The named credential must be able to read the tier ID and model in the alias's
 capabilities response. To verify HTTPS using a specific trusted PEM bundle,
 set `secondary_router_ca_file` to its path. Register each local backer in a `serves.*.toml` file in
