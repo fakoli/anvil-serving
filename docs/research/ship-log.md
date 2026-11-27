@@ -92,7 +92,7 @@ acknowledgement for the three planned windows. Deploys are recorded under
 | 4c | Accounting: session identifier | Left for the owner |
 | 3 | Conversation-cache budget | Measured; no change justified (see entry) |
 | extra | Two racing tests that kept breaking CI | **Merged**, PR 837, on the owner's instruction |
-| extra | Active-usage read fails while a request streams | **Deployed** 2026-11-27 05:39 UTC (window 4), PR 840. Not yet observed during a live stream |
+| extra | Active-usage read fails while a request streams | **Deployed** 2026-11-27 05:39 UTC (window 4), PR 840. Seen working during a live request (see the last entry) |
 | extra | Widen the secondary-only keys so the redirect can bind them | **Deployed** with window 4, PR 841 (`router keys grant`). Two of three keys widened; the third is Connect-owned and left for the owner |
 
 ## Entries
@@ -627,4 +627,18 @@ That is far short of the 200 requests and the morning
 burst the original gate asked for; the hourly check keeps watching the same
 thresholds on the combined change, and a breach rolls back the latest window
 first.
+
+### 2026-11-27 — PR 840 seen working on the live gateway
+
+Before and after for the active-usage read, under the same condition (one
+request in flight while the read is called every few seconds):
+
+| Image | When (UTC) | Reads answered |
+| --- | --- | --- |
+| PR 836 image, before window 4 | 05:34:54 to 05:36:28 | 0 of 10 |
+| PR 840 image, after window 4 | 05:49:00 to 05:49:19 | 8 of 8, each listing the request in flight |
+
+This closes the third item under "Not verified" in the window 4 entry. The
+other two stand: no request has been redirected, and no client has used a
+widened key.
 
