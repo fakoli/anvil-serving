@@ -196,6 +196,32 @@ def test_dynamic_secondary_uses_current_exact_router_assignment(monkeypatch, tmp
     assert seen[0][0].get_header("Authorization") == "Bearer synthetic"
 
 
+def test_stopped_desktop_defers_router_until_start(monkeypatch, tmp_path):
+    docker, _ = setup(monkeypatch, tmp_path)
+    dynamic_secondary(monkeypatch, tmp_path)
+    docker.running = False
+    docker.rows[0]["name"] = "/alpha"
+    docker.rows[-1]["name"] = "/beta"
+    lookup = desktop_modes._dynamic_secondary
+    def running_lookup(profile):
+        assert docker.running
+        return lookup(profile)
+    monkeypatch.setattr(desktop_modes, "_dynamic_secondary", running_lookup)
+    assert "target" not in desktop_modes.select_mode("secondary", dry_run=True, run=docker)
+    assert desktop_modes.select_mode("secondary", confirm=True, run=docker)["target"]["name"] == "alpha"
+
+
+def test_dynamic_input_errors(monkeypatch, tmp_path):
+    docker, _ = setup(monkeypatch, tmp_path)
+    dynamic_secondary(monkeypatch, tmp_path, model=None)
+    with pytest.raises(RuntimeError, match="identity.*parked"):
+        desktop_modes.select_mode("secondary", dry_run=True, run=docker)
+    path = tmp_path / "desktop-modes.toml"
+    path.write_text(path.read_text().replace('"https://router.example.test"', '42'))
+    with pytest.raises(ValueError, match="router URL"):
+        desktop_modes.select_mode("secondary", dry_run=True, run=docker)
+
+
 def test_dynamic_secondary_starts_parked_exact_router_assignment(monkeypatch, tmp_path):
     docker, ops = setup(monkeypatch, tmp_path)
     dynamic_secondary(monkeypatch, tmp_path)
@@ -293,13 +319,14 @@ def test_failed_parked_start_recovers_original_container(monkeypatch, tmp_path):
     assert ("up", ["gateway"]) in operations
 
 
-def test_dynamic_recipe_load_uses_validated_selector_not_served_name(monkeypatch, tmp_path):
+@pytest.mark.parametrize("entrypoint", ["anvil-serving", "python -m anvil_serving.cli"])
+def test_dynamic_recipe_load_uses_validated_selector_not_served_name(monkeypatch, tmp_path, entrypoint):
     setup(monkeypatch, tmp_path)
     dynamic_secondary(monkeypatch, tmp_path, model="public-a")
     registry = tmp_path / "recipes.toml"
     registry.write_text(registry.read_text(encoding="utf-8").replace('served_model_name = "model-a"', 'served_model_name = "public-a"'), encoding="utf-8")
     alpha = tmp_path / "manifests" / "serves.alpha.toml"
-    alpha.write_text(alpha.read_text(encoding="utf-8").replace('served_name="model-a"', 'served_name="public-a"'), encoding="utf-8")
+    alpha.write_text(alpha.read_text(encoding="utf-8").replace('served_name="model-a"', 'served_name="public-a"').replace("anvil-serving models", entrypoint + " models"), encoding="utf-8")
     target = desktop_modes._secondary(desktop_modes._profile())
     binding = desktop_modes._recipe_start_binding(target)
     seen = {}
@@ -316,7 +343,7 @@ def test_dynamic_secondary_missing_backer_refuses_before_docker_mutations(monkey
     dynamic_secondary(monkeypatch, tmp_path, tier=tier, model=model)
     with pytest.raises(RuntimeError, match="unambiguous"):
         desktop_modes.select_mode("secondary", confirm=True, run=docker)
-    assert docker.calls == ops == []
+    assert not ops and all(argv[1] in {"context", "info"} or argv[0] == "tasklist.exe" for argv in docker.calls)
 
 
 def test_dynamic_secondary_ambiguous_backer_refuses_before_docker_mutations(monkeypatch, tmp_path):
@@ -327,7 +354,7 @@ def test_dynamic_secondary_ambiguous_backer_refuses_before_docker_mutations(monk
         encoding="utf-8")
     with pytest.raises(RuntimeError, match="unambiguous"):
         desktop_modes.select_mode("secondary", confirm=True, run=docker)
-    assert docker.calls == ops == []
+    assert not ops and all(argv[1] in {"context", "info"} or argv[0] == "tasklist.exe" for argv in docker.calls)
 
 
 def test_shared_lock_cooldown_failure_retry_and_cli(monkeypatch, tmp_path):
@@ -407,7 +434,7 @@ def test_worker_assignment_overlap_is_invalid_before_docker_calls(monkeypatch, t
     config.write_text(config.read_text().replace('["worker"]', '["other"]'), encoding="utf-8")
     with pytest.raises(ValueError, match="overlap"):
         desktop_modes.select_mode("media", confirm=True, run=docker)
-    assert docker.calls == ops == []
+    assert not ops and all(argv[1] in {"context", "info"} or argv[0] == "tasklist.exe" for argv in docker.calls)
 
 
 def test_missing_control_postcondition_and_busy_partial_recovery(monkeypatch, tmp_path):

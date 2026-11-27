@@ -72,8 +72,10 @@ def _profile():
     value["dynamic_secondary"] = bool(dynamic_present)
     if dynamic_present:
         router_url = value["secondary_router_url"]
+        if not isinstance(router_url, str):
+            raise ValueError("Invalid dynamic secondary router URL.")
         parsed_url = urllib.parse.urlsplit(router_url)
-        if (not isinstance(router_url, str) or parsed_url.scheme not in {"http", "https"}
+        if (parsed_url.scheme not in {"http", "https"}
                 or not parsed_url.netloc or parsed_url.username or parsed_url.password
                 or parsed_url.path not in {"", "/"} or parsed_url.query or parsed_url.fragment
                 or parsed_url.hostname == "localhost"
@@ -141,6 +143,8 @@ def _dynamic_secondary(profile):
         raise RuntimeError("Dynamic secondary router assignment is invalid.")
     try:
         rows = json.loads(raw)["data"]
+        if isinstance(rows, list) and len(rows) == 1 and isinstance(rows[0], dict) and rows[0].get("model") is None:
+            raise RuntimeError("Desktop startup needs a configured model identity that the router can report while parked.")
         if (not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict)
                 or not isinstance(rows[0].get("aliases"), list) or alias not in rows[0]["aliases"]
                 or "members" in rows[0] or not isinstance(rows[0].get("id"), str)
@@ -162,6 +166,8 @@ def _secondary(profile):
 
 def _recipe_start_binding(target):
     argv = target.get("up") or []
+    if argv[:3] == ["python", "-m", "anvil_serving.cli"]:
+        argv = ["anvil-serving", *argv[3:]]
     prefix = ["anvil-serving", "models", "recipes", "load"]
     if len(argv) < 6 or argv[:4] != prefix or not isinstance(argv[4], str):
         raise ValueError("Dynamic secondary requires its exact managed recipe-load command.")
@@ -363,16 +369,24 @@ def select_mode(mode, *, confirm=False, dry_run=False, timeout=600, run=desktop.
             ignored = desktop._enter_operation(locks, cooldown_path)
             if ignored:
                 return ignored
-        target = _secondary(profile) if mode == "secondary" else None
-        recipe_start = None
-        if target and profile["dynamic_secondary"] and target.get("up") and not serves._is_compose_up(target["up"]):
-            recipe_start = _recipe_start_binding(target)
         endpoint = desktop._call(["docker", "context", "inspect", desktop.CONTEXT, "--format",
                                   "{{.Endpoints.docker.Host}}"], run=run)
         if endpoint != desktop.PIPE:
             raise ValueError("Refusing a non-local Docker Desktop Linux context.")
         state = desktop._state(run)
         result = {"mode": mode, "state": state, "dry_run": dry_run, "changed": False}
+        if state == "stopped" and mode != "gaming" and not dry_run:
+            desktop._call(["docker", "desktop", "start", "--timeout", str(timeout)],
+                          run=run, timeout=timeout + 10)
+            if desktop._state(run) != "running":
+                raise RuntimeError("Docker Desktop did not start; retry the selected mode.")
+            state = "running"
+            result["changed"] = True
+        defer_assignment = dry_run and state == "stopped" and mode == "secondary" and profile["dynamic_secondary"]
+        target = _secondary(profile) if mode == "secondary" and not defer_assignment else None
+        recipe_start = None
+        if target and profile["dynamic_secondary"] and target.get("up") and not serves._is_compose_up(target["up"]):
+            recipe_start = _recipe_start_binding(target)
         if target is not None:
             result["target"] = {key: target[key] for key in ("name", "container", "served_name", "router_tier") if key in target}
         if dry_run:
@@ -382,16 +396,11 @@ def select_mode(mode, *, confirm=False, dry_run=False, timeout=600, run=desktop.
                     result["idle_workers_to_teardown"] = idle_workers
             else:
                 result["deferred_checks"] = ["container ownership and target existence after Docker starts"]
+                if defer_assignment:
+                    result["deferred_checks"].append("router alias assignment after Docker starts")
             if mode == "media":
                 _guard_safe(profile)
             return result
-        if state == "stopped" and mode != "gaming":
-            desktop._call(["docker", "desktop", "start", "--timeout", str(timeout)],
-                          run=run, timeout=timeout + 10)
-            if desktop._state(run) != "running":
-                raise RuntimeError("Docker Desktop did not start; retry the selected mode.")
-            state = "running"
-            result["changed"] = True
         if state == "running":
             rows, models, controls, idle_workers = _preflight(profile, mode, target, recipe_start, run)
             controls_were_running = any(r["name"].lstrip("/") in controls and r["status"] == "running" for r in rows)
