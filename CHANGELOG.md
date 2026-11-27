@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-11-27
+
 ### Added
 
 - **Anvil Scribe**, an eighth product family (ADR-0048, `scribe`). `scribe run`

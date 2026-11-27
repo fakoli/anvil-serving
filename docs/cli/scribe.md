@@ -89,7 +89,7 @@ Build the `scribe` image target, which adds ffmpeg to the shared runtime, then
 manage the container through the generic serve lifecycle:
 
 ```bash
-docker build --target scribe -t anvil-serving-scribe:3.1.0 .
+docker build --target scribe -t anvil-serving-scribe:3.2.0 .
 anvil-serving scribe validate
 anvil-serving serves up scribe --manifest serves.scribe.toml --dry-run
 anvil-serving serves up scribe --manifest serves.scribe.toml --confirm
