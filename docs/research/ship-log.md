@@ -85,10 +85,10 @@ acknowledgement for the three planned windows. Deploys are recorded under
 | # | Item | Status |
 | --- | --- | --- |
 | 5 | ADR-0034 and ADR-0039 amendments match the replica code | **Shipped.** PR 834 merged; nothing to deploy |
-| 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | **Deployed** 2026-11-27 02:34 UTC (window 1). Watch in progress |
-| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | **Merged**, PR 836. Image built; windows 2 and 3 wait for the window 1 gate |
+| 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | **Deployed** 2026-11-27 02:34 UTC (window 1) |
+| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | **Deployed** 2026-11-27: image 04:58 UTC (window 2), redirect entry 05:05 UTC (window 3). Not yet seen redirecting a request |
 | 2 | Fix what the recorded refusal cause shows | Cause found from existing data; no gateway defect (see entry) |
-| 4b | Accounting: emit the new refusal codes | Written by the PR 836 code (context, media and tools refusals return their code); goes live with window 2 |
+| 4b | Accounting: emit the new refusal codes | **Deployed** with window 2 (context, media and tools refusals return their code). No such refusal has occurred yet |
 | 4c | Accounting: session identifier | Left for the owner |
 | 3 | Conversation-cache budget | Measured; no change justified (see entry) |
 | extra | Two racing tests that kept breaking CI | **Merged**, PR 837, on the owner's instruction |
@@ -479,4 +479,69 @@ one with exactly three changes: the secondary tier's model fields, the redirect
 entry, and a new route state path. The builder proves it reproduces the live
 file byte for byte before changing it, and the result loads and validates in
 the PR 836 image with no network. It runs after window 2 has passed its gate.
+
+### 2026-11-27 — Windows 2 and 3: the redirect is live
+
+**Owner instruction.** At about 04:50 UTC the owner said to go ahead and
+deploy, to handle the key grants, and to get the open pull requests merged. The
+window 1 gate asked for 200 `llm.primary` requests through a morning burst and
+had 39. Windows 2 and 3 ran on the instruction without waiting. The advisor did
+not object and replaced the wait with checks per window: the rollback target
+after window 2 is the window 1 image; the first decision records after window 2
+must show an unchanged configuration and route; any HTTP 500, traceback,
+accounting failure or restart rolls back the latest window. The watch on the
+original thresholds continues over the combined change through the morning
+burst.
+
+**Window 1 at the cut** (02:34 to 04:55 UTC, `llm.primary`): 39 requests, 100%
+success, no refusals, median 2.41 s, 95th percentile 48.9 s, every row with an
+admission wait and an upstream duration, 34 with a first-content time, 0
+accounting failures. Before the window the day stood at 91.0% success, median
+2.25 s and 51.7 s.
+
+**Window 2: PR 836 image, configuration unchanged.** Image-only swap, same
+method as window 1. Ingress was closed from 04:55:36 to about 04:57:55 UTC.
+After it: health endpoint 200, no error line in the gateway log, no restart,
+fleet status as before. The first two requests (05:00 UTC) succeeded with
+finalized accounting, and their decision records show route revision 0 and the
+same configuration and route digests as before the window. This window also
+turns on the three refusal codes of backlog item 4b. A rollback to the window 1
+image was staged and its plan passed.
+
+**Window 3: the secondary tier and the redirect entry.** Configuration-only
+swap on the same image, 05:03:02 to about 05:05:20 UTC. The new boot
+configuration is the previous one with exactly three changes: the secondary
+tier's model fields (24,576-token context, one request at a time, text only),
+`llm.secondary = "llm.primary"` under `[router.unavailable_redirects]`, and a new
+route state path. Route state revision 0 for the new bytes was created before
+the window, and its route digest matches the one computed offline. After it:
+health endpoint 200, no error line, no restart, all eight routes reachable. The
+gateway's own readiness probe, run inside the live container, reports the
+secondary tier ready with served identity equal to expected identity. A
+rollback to the previous configuration and its own route state is staged and
+its plan passes.
+
+**Not verified.** No request has exercised the redirect. The three cases the
+advisor asked for (secondary served and not redirected; secondary stopped and
+redirected with `X-Anvil-Redirected-From`; a prompt too large for the secondary
+refused without a redirect) each need a request made with a caller's key, and
+this run does not use caller keys. Traffic on the secondary alias is about one
+request a day, so the cases will not show up on their own soon. Until a
+redirected response is captured, the redirect is deployed and configured, not
+proven in production.
+
+### 2026-11-27 — PR 840: the active-usage read while a request streams
+
+Follow-up to the second observation under window 1. The cause recorded there
+was half right. The read does refuse when the in-flight registry changes while
+it reads the ledger, but the change was not token updates: every delivery poll
+of a streaming request, at least every 50 ms, recorded a diagnostic sample and
+advanced the registry revision. A retry alone would not have fixed it; in a
+probe with 10 ms polling, 1 of 150 attempts was stable. The fix stops
+diagnostic samples from advancing the revision (ledger writes and lifecycle
+changes still do, so the read still notices a request that starts or finishes
+under it) and retries the fenced read up to four times, 10 ms apart. The
+implementer was a separate agent session; the review read the diff, checked
+that the revision has only two consumers and both use it as a fence, and reran
+the router tests (1008 passed) and lint. Merged after CI passed on all jobs.
 
