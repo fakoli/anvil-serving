@@ -78,10 +78,12 @@ def test_roster_rejects_ambiguous_or_inconsistent_authority(monkeypatch, mutatio
 def test_transport_bounds_output_and_timeout_and_passes_stdin(tmp_path):
     adapter = tmp_path / 'adapter.py'
     adapter.write_text('import sys\nsys.stdout.buffer.write(sys.stdin.buffer.read())\n')
-    assert roles.invoke(str(adapter), b'bounded', timeout=5) == b'bounded'
+    # Only the last call is about time. A cold system interpreter can take seconds to start
+    # (macOS resolves /usr/bin/python3 through a shim), so these two keep the default bound.
+    assert roles.invoke(str(adapter), b'bounded') == b'bounded'
     adapter.write_text('import sys\nsys.stdout.buffer.write(b"x"*1000000)\n')
     with pytest.raises(manage.ManageError, match='bound'):
-        roles.invoke(str(adapter), b'bounded', timeout=5)
+        roles.invoke(str(adapter), b'bounded')
     adapter.write_text('import time\ntime.sleep(5)\n')
     with pytest.raises(manage.ManageError, match='bound'):
         roles.invoke(str(adapter), b'', timeout=.1)

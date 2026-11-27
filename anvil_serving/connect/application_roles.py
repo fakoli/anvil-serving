@@ -175,8 +175,8 @@ def invoke(adapter_path, payload, *, timeout=45):
     except BaseException as exc:
         try:
             os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
+        except (ProcessLookupError, PermissionError):
+            pass  # already gone; macOS answers EPERM for a group that holds only an exited child
         process.wait(timeout=1)
         if isinstance(exc, (KeyboardInterrupt, SystemExit)):
             raise

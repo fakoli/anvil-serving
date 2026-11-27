@@ -336,6 +336,21 @@ def test_command_bounds_combined_stdout_and_stderr_and_classifies_timeout():
     assert raised.value.code == "timeout"
 
 
+def test_interval_capture_tolerates_eperm_from_an_exited_group(monkeypatch):
+    # Simulates macOS: killpg on a group with only exited members is EPERM, not ESRCH.
+    from anvil_serving.service_runtime import docker
+    from anvil_serving.service_runtime.contracts import ServiceError
+
+    def killpg(pgid, sig):
+        raise PermissionError(1, "Operation not permitted")
+
+    monkeypatch.setattr(docker.os, "killpg", killpg)
+    program = "import sys; sys.stdout.write('x' * 1100000); sys.stdout.flush()"
+    with pytest.raises(ServiceError) as caught:
+        docker._bounded_log_capture([sys.executable, "-c", program], timeout=5)
+    assert caught.value.code == "output_too_large"
+
+
 @pytest.mark.parametrize(("program", "error"), [
     ("import time; time.sleep(10)", "timeout"),
     ("import os,time; os.close(1); os.close(2); time.sleep(10)", "timeout"),
