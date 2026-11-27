@@ -86,14 +86,15 @@ acknowledgement for the three planned windows. Deploys are recorded under
 | --- | --- | --- |
 | 5 | ADR-0034 and ADR-0039 amendments match the replica code | **Shipped.** PR 834 merged; nothing to deploy |
 | 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | **Deployed** 2026-11-27 02:34 UTC (window 1) |
-| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | **Deployed** 2026-11-27: image 04:58 UTC (window 2), redirect entry 05:05 UTC (window 3). Not yet seen redirecting a request. The secondary tier change made in window 3 was reverted at 07:30 UTC (see the correction entry) |
+| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | **Deployed** 2026-11-27: image 04:58 UTC (window 2), redirect entry 05:05 UTC (window 3). **Verified on real requests** 08:57 UTC (see the entry). The secondary tier change made in window 3 was reverted at 07:30 UTC (see the correction entry) |
 | 2 | Fix what the recorded refusal cause shows | Cause found from existing data; no gateway defect (see entry) |
-| 4b | Accounting: emit the new refusal codes | **Deployed** with window 2 (context, media and tools refusals return their code). No such refusal has occurred yet |
+| 4b | Accounting: emit the new refusal codes | **Deployed** with window 2 (context, media and tools refusals return their code). None of those three refusals has occurred yet; a failed request has now been seen carrying its error code (`backend_error`) |
 | 4c | Accounting: session identifier | Left for the owner |
 | 3 | Conversation-cache budget | Measured; no change justified (see entry) |
 | extra | Two racing tests that kept breaking CI | **Merged**, PR 837, on the owner's instruction |
 | extra | Active-usage read fails while a request streams | **Deployed** 2026-11-27 05:39 UTC (window 4), PR 840. Seen working during a live request (see the last entry) |
 | extra | Widen the secondary-only keys so the redirect can bind them | **Deployed** with window 4, PR 841 (`router keys grant`). Two of three keys widened; the third is Connect-owned and left for the owner |
+| extra | Intermittent CI failures | **Merged**, PR 845. Six tests fixed at their causes; two were product defects. Not deployed to the gateway |
 
 ## Entries
 
@@ -728,4 +729,63 @@ admission wait was 0 all day, and the short-request median never passed 1.86 s.
 Median above 3.5 s still breaches, from 200 requests. Success, refusal,
 accounting, traceback and restart rules are unchanged. The original breach line
 stays in the watch log.
+
+### 2026-11-27 — The redirect, seen on real requests
+
+The owner ran one scripted check at 08:57 UTC with an existing caller key that
+holds both aliases. This session could not run it: its permission guard refused
+both creating a test key and using an existing one, so the check was written as
+a single command and its key-free parts were dry-run first. The script sends
+tiny requests to `llm.secondary`, stops the secondary serve with the supported
+unload, and starts it again with the supported load. It records routing
+metadata only.
+
+| Time (UTC) | Secondary serve | HTTP | `model` in reply | Redirect header | Served by (usage row) |
+| --- | --- | --- | --- | --- | --- |
+| 08:57:49 | running | 200 | `llm.secondary` | none | secondary tier |
+| 08:57:53 | just stopped | 500 | none | none | secondary tier, outcome error, code `backend_error` |
+| 08:57:58 | stopped | 200 | `llm.primary` | `X-Anvil-Redirected-From: llm.secondary` | primary tier, under the requested alias |
+| 08:58:29 | running again | 200 | `llm.secondary` | none | secondary tier |
+
+- **The redirect works as specified.** The reply names the alias that served
+  it and carries the header. The decision record keeps the secondary as the
+  requested tier and shows the secondary attempt as skipped for `unavailable`
+  with the readiness reason, then the primary as served. The usage row keeps
+  the requested alias with the primary tier as backend.
+- **It turns off again on its own.** Thirty-one seconds after the redirected
+  request, with the serve back, the secondary answered directly with no header.
+- **The one failure is the documented gap, not a fault.** The request at
+  08:57:53 arrived three seconds after the stop, while the gateway's last
+  readiness result still said ready. It was dispatched, the upstream call
+  failed, and a failure after dispatch never redirects. The caller got HTTP 500
+  with no traceback in the gateway log. So for up to one readiness interval
+  after a secondary dies, a request can fail before redirects begin.
+- **First failed request with an error code.** Its usage row carries
+  `backend_error`, the field PR 835 added. Before that change it would have
+  been a failure with no cause.
+- All four rows were accounted and finalized. The secondary was unavailable for
+  about 35 seconds.
+
+Two notes for later, neither acted on here. That 500 is how the gateway has
+always reported an upstream relay failure (the mapping is in the release this
+train started from); a 502 with a typed error would describe it better. And the
+watch rule "any HTTP 500 rolls back the latest window" would have fired on this
+deliberate test if it read the gateway log for status lines; it was judged by
+hand as test-induced, on the secondary alias, with no primary request affected.
+
+### 2026-11-27 — PR 845: intermittent CI failures
+
+Twelve of the previous sixty CI runs had failed, each on a different test and
+none on the change under review, two of them on `main`. PR 845 fixed the six
+tests behind those failures. Two were product defects: Anvil Agent kept a
+request's intake slot until after its reply was written, so a client sending
+its next request at once could get `503 busy`; and bounded Docker log capture
+let a `PermissionError` escape on macOS when the child's process group had
+already exited. Four were tests that bet on runner speed. On a macOS
+workstation under full CPU load the unfixed tests failed 2 of 25 loops and the
+fixed ones 0 of 25. Review found two gaps in the first version of the fix (the
+slot was released while the upload was still held in memory, and the new kill
+test could pass without the fix); both were corrected before merge. None of
+this is in the gateway image; it is recorded here because the failures kept
+blocking merges during this train.
 
