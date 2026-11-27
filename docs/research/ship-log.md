@@ -80,8 +80,8 @@ them. Nothing in this log has been deployed unless an entry says so.
 | # | Item | Status |
 | --- | --- | --- |
 | 5 | ADR-0034 and ADR-0039 amendments match the replica code | **Shipped.** PR 834 merged; nothing to deploy |
-| 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | PR 835 approved, merging on green CI. Deploy left for the owner |
-| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | Implemented locally, 974 router tests pass. One design question with the advisor; review next |
+| 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | **Merged**, PR 835. Not deployed: cutover left for the owner |
+| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | Implemented and reviewed once; review fixes in progress |
 | 2 | Fix what the recorded refusal cause shows | Blocked on data from 2+4a |
 | 4b | Accounting: emit the new refusal codes | Queued behind 2+4a deploy |
 | 4c | Accounting: session identifier | Left for the owner |
@@ -144,8 +144,8 @@ them. Nothing in this log has been deployed unless an entry says so.
   The second review pass approved the fix commit after rerunning its mutations
   and probes; its two remaining nits (a wall-clock test bound and one sentence
   of the contract) were applied.
-- **CI.** All 18 required checks passed on the first commit. The final commit is
-  set to merge once its checks pass.
+- **CI.** All 18 required checks passed on the first commit. The final commit
+  passed all 19 checks and merged on 2026-11-27 00:01 UTC as `9d067fc6`.
 - **Deploy.** Not deployed. Before numbers are the baseline table above; the
   after numbers need the owner's cutover and the watch period.
 
@@ -177,8 +177,18 @@ them. Nothing in this log has been deployed unless an entry says so.
   alias keep getting the unavailable response, because the redirect never
   widens a grant. The shared master credential and clients without per-model
   grants do redirect.
-- **Review.** Fresh-context Fable review in progress. No pull request yet; it
-  is stacked on PR 835 and opens once that merges.
+- **Review, first pass.** Changes required, no blocker. The reviewer found no
+  way for a credential to reach an alias it was not granted, and confirmed that
+  a configuration without the table behaves and hashes exactly as before. It
+  did reproduce four contract gaps, all being fixed:
+  - a quiesce that lands while the source is being probed still redirected;
+  - a stale result returned during another thread's probe was accepted as a
+    completed negative, so a recovered source could still be redirected;
+  - the decision record lost the target when the target was a replica tier
+    that did not admit;
+  - a source tier with no health path loads without error although its
+    redirect can never fire.
+  It also listed safeguards whose removal no test caught.
 
 ### 2026-11-26 — Item 3, measurement only (no change)
 
