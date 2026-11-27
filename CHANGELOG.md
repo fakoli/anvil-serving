@@ -60,7 +60,7 @@ All notable changes to this project are documented here. The format is based on
   redirected request; the decision record keeps the source tier as
   `requested_tier` and usage keeps the requested alias with the serving tier.
   Without the table nothing changes.
-  See [unavailable redirects](docs/CONFIGURATION.md#unavailable-redirects).
+  See "Unavailable redirects" in `docs/CONFIGURATION.md`.
 
 ### Changed
 
