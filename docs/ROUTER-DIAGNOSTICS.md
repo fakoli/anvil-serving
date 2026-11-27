@@ -97,6 +97,28 @@ output ceiling and reasoning budget; it does not prove the visible answer was
 complete. A tool-call finish identifies a protocol transition, not successful
 tool execution or model quality.
 
+A chat request refused because its direct tier failed the readiness check has
+attempt reason `unavailable`. Its decision record, from
+`GET /v1/requests/{request_id}`, `GET /v1/decisions`, or the persisted JSONL,
+also carries `readiness_reason`, one of a closed set:
+
+| `readiness_reason` | What the readiness check found |
+| --- | --- |
+| `health_http` | The health endpoint answered with a failing status. |
+| `health_transport` | The health request failed in transport, for example a refused connection or a timeout. |
+| `identity_http`, `identity_transport` | The model-identity request failed in the same two ways. |
+| `identity_malformed`, `identity_oversized` | The identity response could not be used. |
+| `identity_mismatch` | The service reported a different model than the tier declares. |
+| `probe_pending` | Another request was probing the tier and no earlier result existed. |
+| `probe_invalidated` | Readiness was invalidated while the probe ran, so its result was discarded. |
+| `availability_check` | The readiness checker itself failed. |
+
+The status code or exception name behind a category is not recorded;
+`GET /v1/health/tiers` reports the current one. The field is null on every
+other record, including a replica-tier refusal, a quiesced tier (attempt reason
+`quiesced`), and a tier whose upstream metadata is unavailable. The diagnostic
+envelope does not include it.
+
 ## Evidence boundaries
 
 The diagnostic envelope is `anvil-router-diagnosis/v1`. `request` contains

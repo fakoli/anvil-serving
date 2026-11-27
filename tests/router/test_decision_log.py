@@ -156,3 +156,29 @@ def test_invalid_scheduler_never_leaks_private_nested_values_to_any_audit_surfac
     combined = repr(log.last) + repr(log.summary()) + decision_line(log.last) + path.read_text()
     assert "private-token" not in combined
     assert log.last.replica_member_id == "member-a"
+
+
+@pytest.mark.parametrize("raw,kept", [
+    ("identity_mismatch", "identity_mismatch"),
+    ("probe_pending", "probe_pending"),
+    ("health_transport_ConnectionRefusedError", "health_transport"),
+    ("health_http_503", "health_http"),
+    ("Bearer this-is-a-token", None),
+    ("tier refused; see the operator notes", None),
+    ("health_passed", None),
+    (503, None),
+])
+def test_readiness_reason_is_a_closed_vocabulary_on_every_audit_surface(tmp_path, raw, kept):
+    path = tmp_path / "decisions.jsonl"
+    log = DecisionLog(sink=DecisionLogWriter(str(path)))
+    log.record(dataclasses.replace(_record(reason="unavailable", served=False), readiness_reason=raw))
+
+    assert log.last.readiness_reason == kept
+    assert log.summary()["records"][0]["readiness_reason"] == kept
+    assert json.loads(path.read_text()).get("readiness_reason") == kept
+    # A captured JSON artifact is projected exactly like a live record.
+    assert summarize_decisions([{"readiness_reason": raw}])["records"][0]["readiness_reason"] == kept
+    # The line grammar is unchanged, and nothing outside the vocabulary survives.
+    assert "readiness" not in decision_line(log.last)
+    if type(raw) is str and kept != raw:
+        assert raw not in repr(log.last) + repr(log.summary()) + path.read_text()
