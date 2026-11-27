@@ -438,3 +438,45 @@ branches are on the remote as `deploy/3.1.0-usage-timings` and
 requests, 100% success, median 2.72 s, 95th percentile 46.7 s, all with timing
 fields.
 
+### 2026-11-27 — The secondary host serves a model again (owner instruction)
+
+The owner asked for a model to be brought up on the secondary host so the
+redirect could be verified in both states. The model the secondary tier names
+can no longer start there: host-memory admission refuses its recipe. A smaller
+candidate that fits was started instead, with the supported recipe load, at its
+only configuration that has completed quality work: a 24,576-token context and
+one request at a time.
+
+- Functional preflight over the same private network path the gateway uses:
+  short coding, structured JSON, 20 of 20 shared-prefix tool calls, a streaming
+  tool call, a tool-result continuation and a 16K needle all pass. A first run
+  with a 256-token cap failed the evidence policy on a length stop, because
+  thinking used the budget; the rerun with reasoning headroom passed. Both
+  results are kept.
+- **This is not a qualification.** The published evaluation of this candidate
+  on this hardware ends in no promotion, and its recipe says the same. It is
+  recorded as served on the owner's instruction.
+- The gateway does not route to it yet. The live tier names the old model and
+  checks the served identity, so the alias stays refused until the tier
+  definition changes.
+
+**Advisor ruling.** Do not change the tier with a live route update: route
+authority is bound to the boot configuration, so the restart that adds the
+redirect table needs a new authority that would not carry a live change, and
+the alias would silently fall back to the old identity and redirect. The tier
+definition and the redirect table therefore go into one configuration window
+(window 3), verified in three cases: served and not redirected, stopped and
+redirected, and too large for the smaller context and refused.
+
+**What changes for callers of the secondary alias.** Context drops from 262K to
+24K tokens and concurrency from four to one. A request too large for 24K gets
+an over-context refusal, which by design never redirects, while a stopped
+secondary redirects to the primary. The largest prompt sent to the secondary in
+the last 30 days was 1,276 tokens, so nothing current is affected.
+
+**Window 3 prepared, not run.** The candidate boot configuration is the live
+one with exactly three changes: the secondary tier's model fields, the redirect
+entry, and a new route state path. The builder proves it reproduces the live
+file byte for byte before changing it, and the result loads and validates in
+the PR 836 image with no network. It runs after window 2 has passed its gate.
+
