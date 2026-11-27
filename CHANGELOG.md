@@ -29,6 +29,23 @@ All notable changes to this project are documented here. The format is based on
   custom profiles are managed over `/v1/memos/profiles` and stored with the
   memos, and `GET /v1/memos` (cursor paged), `GET` and `DELETE /v1/memos/{id}`
   provide history.
+- `[router.unavailable_redirects]`, an optional table that lets one alias be
+  answered by one other configured alias while its own tier is not serving
+  its model. This is the gateway's only fallback and a deliberate, narrow
+  exception to "a tier that cannot serve is not replaced" (ADR-0039 and
+  ADR-0034 amendments of 2026-11-26). The redirect is decided once, before
+  dispatch, and only when a completed readiness probe failed for a direct,
+  admitting source tier, the caller's credential already grants the target
+  alias, and the request fits the target's own limits. Chains, load- or
+  quality-based selection, and any retry after dispatch stay forbidden, and a
+  quiesce, route hold, context, media or tools refusal, rate limit, replica
+  limit or pending probe never redirects. The source tier must declare
+  `health_path`. A redirected response names the target alias in `model` and
+  carries `X-Anvil-Redirected-From`, as does an error returned for a
+  redirected request; the decision record keeps the source tier as
+  `requested_tier` and usage keeps the requested alias with the serving tier.
+  Without the table nothing changes.
+  See "Unavailable redirects" in `docs/CONFIGURATION.md`.
 
 ### Changed
 

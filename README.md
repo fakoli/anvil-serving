@@ -21,8 +21,10 @@
 Anvil Serving is an authenticated gateway for the models you run on your own
 machines. Point it at a local model server and both OpenAI and Anthropic
 clients reach that model through one token-protected endpoint, under a stable
-name such as `llm.primary`. It never substitutes a different model, falls back
-to a cloud API, or guesses which model you meant. The same package can also
+name such as `llm.primary`. It never falls back to a cloud API or guesses
+which model you meant, and it answers from a different model only through a
+[redirect you declare](docs/CONFIGURATION.md#unavailable-redirects) for an
+alias whose model is not being served. The same package can also
 run the model servers for you, qualify them, and benchmark them.
 
 **Who it is for:** people who already run Ollama, LM Studio, llama.cpp

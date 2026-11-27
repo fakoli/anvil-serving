@@ -70686,7 +70686,7 @@
       "promise": "Discover, pin, start, inspect, switch, and stop local model serves."
     },
     {
-      "boundary": "Owns auth, exact alias resolution, dialect translation, readiness, admission, streaming, and relay; it never classifies intent, selects a model semantically, or falls back to another tier.",
+      "boundary": "Owns auth, exact alias resolution, dialect translation, readiness, admission, streaming, and relay; it never classifies intent or selects a model semantically, and falls back to another tier only through one operator-declared unavailable redirect.",
       "commands": [
         "router"
       ],

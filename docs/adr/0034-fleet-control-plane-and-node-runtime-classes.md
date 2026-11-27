@@ -151,7 +151,7 @@ result in a heterogeneous fleet and must not be reported as failure.
 What is fleet-level is the capability question — is `llm.primary` served
 anywhere, and by what — not placement.
 
-**2026-09-05 amendment — bounded same-host replicas (design pending implementation).**
+**2026-09-05 amendment — bounded same-host replicas (implemented; see the 2026-11-26 amendment below).**
 This no-arbitration boundary permits one already-selected logical tier to
 declare an optional set of 2–16 equivalent members on its one declared host.
 Alias resolution remains one decision: an alias selects exactly one tier. Only
@@ -168,6 +168,51 @@ does not authorize lifecycle control, a different tier/model/host/capability,
 or post-dispatch replay: after selecting one member, any later failure is
 returned to the caller without selecting another member. Until the bounded
 replica contract is implemented, a tier continues to have one endpoint.
+
+**2026-11-26 amendment — replica implementation status.**
+The bounded same-host replica contract above is implemented, not pending: PR #472
+delivered replica tiers in the router request path within a day of that
+amendment. Two of its statements are out of date. First, a tier may
+now declare 2–16 member endpoints on one `host_id`, and configuration whose
+members name different hosts is rejected. Second, member selection is no longer
+round robin only. `replica_strategy` is `round_robin`, the default, or
+`capacity`, which orders already eligible members by local reservation ratio,
+then by bounded upstream pressure, then by a rotating member-ID tie. The
+capacity strategy comes from the
+[capacity scheduler PRD](../prds/replica-capacity-scheduler.md) and shipped in
+the same change; this ADR had specified round robin only. Both strategies
+choose only among ready, admitted members of the one tier the alias selected.
+
+Nothing else in this section changes. There is still no cross-host scheduler,
+no second tier candidate, and no selection of another member once one has been
+selected.
+[Qualified same-host replicas](../CONFIGURATION.md#qualified-same-host-replicas)
+is the current configuration reference.
+
+**2026-11-26 amendment — configured unavailable redirect.**
+The repository owner has decided to grant one narrow exception to "an alias
+selects exactly one tier". An operator may declare, for one source alias,
+exactly one other alias in `[router.unavailable_redirects]`. When a completed
+readiness probe finds the source alias's tier not serving its model, the
+gateway may bind the request once, before dispatch, to the target alias's
+tier. Because a tier's endpoint is static operator configuration, the two
+tiers may be on different hosts, so this is the one case in which a request
+for an alias is answered from another host.
+
+It is still not a cross-host scheduler or arbitration. The pair is static and
+operator-declared, the gateway compares no load, capacity, quality, or cost,
+and there is one configured outcome. Three safeguards bound it: the opt-in is
+explicit and per alias, the caller's credential must already be granted the
+target alias, and the response and records name what served.
+
+What stays forbidden: chains (one hop only, and an unavailable target returns
+its own error), selection by load, quality, or cost, classifier-driven choice,
+and any retry after dispatch. A replica tier is never a redirect source, and
+the redirect gives the router no placement or lifecycle authority: it starts,
+stops, and moves nothing.
+[ADR-0039](0039-capability-meta-router.md) carries the full rule and
+[Unavailable redirects](../CONFIGURATION.md#unavailable-redirects) is the
+configuration reference.
 
 ### 6. Node capability is declared along three orthogonal axes
 

@@ -26,7 +26,8 @@ The gateway accepts Anthropic Messages, OpenAI Chat Completions, and the
 supported stateless Responses subset. `[router.model_routes]` is the complete
 chat vocabulary: one normalized caller alias maps to exactly one local tier.
 Unknown or missing aliases return 404. A selected tier that cannot serve returns
-an error; it is not replaced by another tier.
+an error; it is not replaced by another tier. The one exception is an explicit
+`[router.unavailable_redirects]` entry, described under the routing contract.
 
 A tier is either direct or an explicit set of 2–16 qualified equivalent
 replicas on one host. Replica tiers require configured metadata. Round-robin
@@ -46,9 +47,11 @@ upstream SSE relay, readiness, admission control, and metadata-only
 `DecisionLog` records. It also hosts deterministic purpose-model and audio
 routes. It has no classifier, presets, policy/profile routing, residency
 selection, fallback chain, cloud tier, response verifier, commit window, or
-routing calibration loop. Named media workflows may separately expose explicit
-caller-selected quality profiles whose exact parameters remain locked by that
-one workflow; those profiles never choose a route or substitute a model.
+routing calibration loop. Its only fallback is the one-hop unavailable redirect
+an operator declares per alias. Named media workflows may separately expose
+explicit caller-selected quality profiles whose exact parameters remain locked
+by that one workflow; those profiles never choose a route or substitute a
+model.
 
 Two dashboard surfaces exist and must not be conflated. **Anvil Workbench** is
 this repository's built-in dashboard (`anvil-serving dashboard serve`,
@@ -66,7 +69,8 @@ use these names; "the dashboard" alone is ambiguous.
   serve on both cards and blocks every other GPU inference start.
 - **Capability placement:** `llm.primary`, `llm.voice`, and `vision.*` remain
   capability aliases, not physical GPU classes. An unavailable backing serve
-  never falls back to the exclusive model or another tier.
+  never falls back to the exclusive model, and reaches another tier only
+  through an explicitly configured unavailable redirect.
 - **Companion Node:** OpenClaw Gateway and voice Realtime/proxy only. It is
   model-free in the reference topology. Mini loopback audio proxy ports forward
   to Dark; they do not host models.
@@ -135,6 +139,25 @@ vision.video = "primary-local"
 Aliases are lowercase after trimming; compatibility prefixes are not accepted.
 They map only to local tiers. The tier's `model` is the concrete
 upstream served model name and must not be confused with the public alias.
+
+```toml
+[router.unavailable_redirects]
+llm.secondary = "llm.primary"
+```
+
+This optional table is the gateway's only fallback, and it is absent by
+default. It maps a source alias to one other configured alias on a different
+tier; a target is never itself a source. When a completed readiness probe
+finds the source's direct tier not serving its model, the gateway binds the
+request to the target once, before dispatch. It does so only if the caller's
+credential already grants the target alias and the request fits the target's
+own context, media, tool, and output limits. An operator quiesce or route hold,
+a context, media, or tool refusal, rate limiting, replica capacity, a pending
+probe, and any failure after dispatch never redirect. A redirected response
+names the target alias as `model` and carries `X-Anvil-Redirected-From`. The
+rule and what stays forbidden are in the
+[ADR-0039 amendment](docs/adr/0039-capability-meta-router.md) and
+[unavailable redirects](docs/CONFIGURATION.md#unavailable-redirects).
 
 `engine`, `quantization`, runtime image, and engine-specific parameters are
 deployment or observability metadata, not route-selection inputs. Engine-specific

@@ -116,7 +116,8 @@ workloads independently on either role. `dual-gpu-exclusive` mode drains and
 stops every GPU inference competitor, then grants both roles to one explicitly
 configured TP=2 serve. The router and controller may remain online, but an
 alias whose backing serve is offline returns unavailable and never substitutes
-the TP=2 model.
+the TP=2 model, unless the operator has declared that alias's one
+[unavailable redirect](CONFIGURATION.md#unavailable-redirects).
 
 The broader multi-device example keeps a lightweight harness node model-free,
 places the voice agent and STT/TTS on a voice/audio node, and places ComfyUI
@@ -300,7 +301,11 @@ The direct inference relay has no workload classifier, intent presets,
 quality-profile router, policy engine, residency selector, verification chain,
 circuit-breaker fallback, cloud route, or routing calibration loop. A selected
 tier that cannot serve returns an error rather than changing the request's
-capability. Named media workflows may expose explicit caller-selected quality
+capability. The single exception is an operator-declared
+[unavailable redirect](CONFIGURATION.md#unavailable-redirects): one alias, one
+target alias the caller already holds, decided once before dispatch, with the
+serving alias named in the response. Named media workflows may expose
+explicit caller-selected quality
 profiles, but each profile is only a locked parameter set inside the same
 workflow; it cannot select another route, model, host, or backend. There is
 likewise no fleet registry service and no background reconciler daemon: the
