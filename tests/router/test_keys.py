@@ -214,17 +214,28 @@ def test_model_grant_is_additive_routable_and_compare_and_swap(tmp_path):
         store.grant_models(meta["key_id"], ["vision.ocr"], current, frozenset({"vision.ocr"}))
 
 
-def test_model_grant_refuses_a_connect_owned_key(tmp_path):
+def test_model_grant_refuses_connect_owned_and_expired_keys(tmp_path, monkeypatch):
     from anvil_serving.router import connect_keys
     store = _store(tmp_path)
     connect_keys.migrate(store)
-    meta, _ = store.create("phone", ["llm.secondary"], ["/v1/chat/completions"])
+    store.owner_check = lambda *_: True
+    owner = ("human:" + "a" * 64, "1", "f" * 64)
+    models, paths = store._grants(["llm.secondary", "llm.primary"], ["/v1/chat/completions"])
     with store._write() as connection:
-        connection.execute("INSERT INTO connect_key_owners VALUES (?, ?, ?, ?, ?)",
-                           (meta["key_id"], "human:" + "a" * 64, "1", "f" * 64, 1))
-    with pytest.raises(KeyStoreError):
-        store.grant_models(meta["key_id"], ["llm.primary"], ["llm.secondary"], frozenset({"llm.primary"}))
-    assert store.list_keys()[0]["models"] == ["llm.secondary"]
+        connection.execute("INSERT INTO connect_accounts VALUES (?,?,?,?,?,?,?,?,?,?,?)", (
+            *owner, 1, "approved", json.dumps(models), json.dumps(paths), 60, 90, int(time.time()), owner[0]))
+    owned, secret = store.create("owned", ["llm.secondary"], ["/v1/chat/completions"], expires_days=7, owner=(*owner, 1))
+    assert store.authenticate(secret).owner is not None
+    # A Connect-owned key takes its grants from its approved account, even one that allows the name.
+    with pytest.raises(KeyStoreError, match="ordinary credential key is unavailable"):
+        store.grant_models(owned["key_id"], ["llm.primary"], ["llm.secondary"], frozenset({"llm.primary"}))
+
+    plain, _ = store.create("plain", ["llm.secondary"], ["/v1/chat/completions"], expires_days=1)
+    monkeypatch.setattr(keys.time, "time", lambda: plain["expires_at"] + 1.0)
+    with pytest.raises(KeyStoreError, match="ordinary credential key is unavailable"):
+        store.grant_models(plain["key_id"], ["llm.primary"], ["llm.secondary"], frozenset({"llm.primary"}))
+    assert {row["key_id"]: row["models"] for row in store.list_keys()} == {
+        owned["key_id"]: ["llm.secondary"], plain["key_id"]: ["llm.secondary"]}
 
 
 def test_cli_grant_checks_the_selected_config_and_prints_both_digests(tmp_path, monkeypatch, capsys):

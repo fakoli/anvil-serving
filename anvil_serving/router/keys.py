@@ -1319,7 +1319,8 @@ class KeyStore:
         try:
             with self._write() as connection:
                 connection.execute("BEGIN IMMEDIATE")
-                before = self._caller_candidate(connection, key_id, time.time(), snapshot=True)
+                now = time.time()  # One clock for both reads: a key cannot expire between them.
+                before = self._caller_candidate(connection, key_id, now, snapshot=True)
                 if before is None or before.owner is not None:
                     raise KeyStoreError("ordinary credential key is unavailable")
                 if list(before.models) != expected:
@@ -1328,7 +1329,7 @@ class KeyStore:
                 if not routable.issuperset(granted[len(expected):]):
                     raise KeyStoreError("model grant is not routable")
                 connection.execute("UPDATE keys SET models=? WHERE key_id=?", (json.dumps(granted), key_id))
-                after = self._caller_candidate(connection, key_id, time.time(), snapshot=True)
+                after = self._caller_candidate(connection, key_id, now, snapshot=True)
                 connection.execute("ROLLBACK" if dry_run else "COMMIT")
         except sqlite3.Error:
             raise KeyStoreError("model grant is unavailable") from None
