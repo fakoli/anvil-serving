@@ -756,6 +756,9 @@ class RouteBinding:
     # Set only when a configured unavailable redirect bound ``alias`` and
     # ``tier`` in place of the caller's own; it names that skipped source.
     redirect: Optional[UnavailableRedirect] = None
+    # Seconds the redirect decision took, readiness probe included.  It runs
+    # before admission, so request latency adds it back.
+    planning_s: float = 0.0
 
 
 class RoutingBackend:
@@ -890,6 +893,14 @@ class RoutingBackend:
         probe, and before usage accounting names a route.  Every doubt answers
         ``None``: the caller stays on its own alias and gets today's response.
         """
+        try:
+            return self._decide_unavailable_redirect(request, alias, allowed)
+        except Exception:  # noqa: BLE001 - an optional decision never costs the request its own alias
+            return None
+
+    def _decide_unavailable_redirect(
+        self, request: InternalRequest, alias: str, allowed: Optional[Callable[[str], bool]],
+    ) -> Optional[tuple[RouteRuntimeSnapshot, str, Tier, str]]:
         snapshot = self.active_route_snapshot()
         config = snapshot.config
         target_alias = config.unavailable_redirects.get(alias)
@@ -904,10 +915,11 @@ class RoutingBackend:
         # never causes a probe.
         if allowed(target_alias) is not True:
             return None
-        # An operator quiesce is a decision about the source, not an outage.
-        if self._admission is None or self._admission.snapshot(source.id).state != "admitting":
-            return None
-        readiness = self._availability_for(source)
+        # Only a current, completed observation counts.  An availability
+        # provider that cannot attest one never triggers a redirect, and an
+        # expired result served while another probe is in flight is not one.
+        completed = getattr(self._availability, "check_completed", None)
+        readiness = completed(source) if callable(completed) else None
         if not probe_found_unavailable(readiness):
             return None
         # Today's answer must be the unavailable one: a request the source
@@ -935,7 +947,9 @@ class RoutingBackend:
             return existing
         from .usage_store import RouteAssociation
         alias = normalize_model_alias(request.model)
+        plan_started = time.monotonic()
         planned = self._plan_unavailable_redirect(request, alias, redirect_allowed)
+        planning_s = time.monotonic() - plan_started
         with self._route_lock:
             snapshot = self._active_route_runtime
             tier = snapshot.config.route_tier(alias)
@@ -945,8 +959,15 @@ class RoutingBackend:
                 raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
             redirect = None
             # The plan is honored only for the exact snapshot it was made
-            # against, and never into a route an operator is holding.
-            if planned is not None and planned[0] is snapshot and not self._held_route(planned[1], planned[2].id):
+            # against and never into a route an operator is holding.  An
+            # operator quiesce of the source is a decision, not an outage, and
+            # it is read here, after the probe, so one that landed meanwhile wins.
+            if (
+                planned is not None
+                and planned[0] is snapshot
+                and not self._held_route(planned[1], planned[2].id)
+                and self._admission.snapshot(tier.id).state == "admitting"
+            ):
                 redirect = UnavailableRedirect(alias, tier, planned[3])
                 alias, tier = planned[1], planned[2]
             fingerprint_fields = (tier.params or {}).get("fingerprint")
@@ -963,7 +984,8 @@ class RoutingBackend:
             lease = _RouteTerminalLease(self, snapshot.route_revision, tier.id)
             key = (snapshot.route_revision, tier.id)
             self._route_terminals[key] = self._route_terminals.get(key, 0) + 1
-            binding = RouteBinding(snapshot, alias, tier, snapshot.backends.get(tier.id), association, lease, redirect)
+            binding = RouteBinding(snapshot, alias, tier, snapshot.backends.get(tier.id), association, lease,
+                                   redirect, planning_s)
             request.raw["_anvil_route_binding"] = binding
             return binding
 
@@ -1207,6 +1229,12 @@ class RoutingBackend:
         binding = request.raw.get("_anvil_route_binding")
         redirect = binding.redirect if isinstance(binding, RouteBinding) else None
         if redirect is not None:
+            if not attempts:
+                # A replica target that admitted no member has no member
+                # attempt, but the record still names the tier that was tried.
+                attempts = (AttemptRecord(
+                    tier.id, served, reason, prompt_tokens, completion_tokens, outcome,
+                ),)
             # The caller's own tier was skipped as unavailable before this one
             # was tried; keep both attempts, source first.
             attempts = (AttemptRecord(
@@ -1456,7 +1484,12 @@ class RoutingBackend:
             )
             return result
 
+        prebound = isinstance(request.raw.get("_anvil_route_binding"), RouteBinding)
         binding = self.bind_route_request(request)
+        if prebound:
+            # The front door bound this route, and any redirect planning with
+            # its readiness probe, before this call started its clock.
+            started -= binding.planning_s
         configured_tier = binding.tier
 
         if workload_token is not None:

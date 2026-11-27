@@ -262,6 +262,21 @@ class HttpHealthAvailability:
             return AvailabilityResult(False, "unavailable", "member_selection_required")
         return self._check(tier, self._cache_key(tier))
 
+    def check_completed(self, tier: Tier) -> Optional[AvailabilityResult]:
+        """The tier's result only when it is a current, completed observation.
+
+        ``None`` when :meth:`check` could only serve an expired last-known
+        result, ``probe_pending`` or ``probe_invalidated``: another probe is in
+        flight or was discarded, and the endpoint may have recovered.  A caller
+        that acts on an outage, rather than merely refusing, must use this.
+        """
+        result = self.check(tier)
+        with self._lock:
+            cached = self._cache.get(self._cache_key(tier))
+        if cached is None or cached[1] is not result or self._clock() - cached[0] >= self._probe_interval:
+            return None
+        return result
+
     def check_member(self, tier: Tier, member_id: str) -> AvailabilityResult:
         endpoint, failure = self._member_endpoint(tier, member_id)
         if failure is not None:

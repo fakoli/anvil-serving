@@ -80,8 +80,9 @@ readmits the target tier, so success means the declared alias is actually
 routable. A failed start, profile install, or readmission restores both the
 rollback router profile and named split group. While exclusive mode is active,
 ordinary serve starts and ad-hoc Compose experiments fail before a container
-command. Other aliases whose backing serves are offline return unavailable;
-they never fall back to the TP=2 serve.
+command. Other aliases whose backing serves are offline return unavailable.
+They never fall back to the TP=2 serve unless the operator has declared it as
+that alias's [unavailable redirect](CONFIGURATION.md#unavailable-redirects).
 
 Leave in the reverse order:
 

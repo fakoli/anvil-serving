@@ -594,8 +594,11 @@ the configuration loads:
   (case-insensitive after trimming);
 - the two aliases must resolve to different tiers;
 - the source's tier must be direct, because a replica tier never redirects;
-  and
+- the source's tier must declare `health_path`, because a tier with no
+  readiness probe always reads ready and its redirect could never fire; and
 - a target must not itself be a source, so a redirect is always one hop.
+
+The target may be a direct tier or a replica tier.
 
 Changing the table requires a router restart. A live route update that would
 change it is refused.
@@ -606,8 +609,8 @@ received without the table.
 
 | Condition | Detail |
 | --- | --- |
-| The source is verifiably not serving | A completed readiness probe failed its health check, its served-model identity check, or its upstream metadata resolution. A pending or invalidated probe is not enough. |
-| The source is admitting | A quiesced tier or a route under a live-update hold never redirects. |
+| The source is verifiably not serving | A completed readiness probe, still inside `availability_probe_interval`, failed its health check, its served-model identity check, or its upstream metadata resolution. A pending or invalidated probe is not enough, and neither is an expired result served while a new probe is in flight. |
+| The source is admitting | A quiesced tier or a route under a live-update hold never redirects, including a quiesce that lands while the source is being probed. |
 | The source would not refuse the request itself | A request over the source's context, media, or tool policy keeps that refusal. |
 | The caller already holds the target | A device key must grant the target alias. The operator token and configured-scope clients are not model-scoped and can already use every alias. |
 | The request fits the target | The target's own context, media, and tool policy applies, and so does its `max_output_tokens`. |
@@ -620,12 +623,23 @@ second redirect and no return to the source.
 A redirected response is identifiable:
 
 - its `model` field is the target alias, in every dialect, streaming or not;
-- it carries `X-Anvil-Redirected-From` with the source alias;
+- it carries `X-Anvil-Redirected-From` with the source alias,
+  percent-encoded. An error returned for a redirected request carries the
+  header too, so a failure of the target is not mistaken for one of the
+  source;
 - the decision record keeps `route` as the requested alias and
   `requested_tier` as the source tier, lists the skipped source attempt before
-  the target attempt, and sets `served_tier` to the target tier; and
+  the target attempt, and sets `served_tier` to the target tier. A replica
+  target that admits no member is still listed as a skipped attempt; and
 - usage accounting keeps `model` as the requested alias and associates the
   request with the target tier.
+
+Declaring a redirect has one cost for the source alias. Its readiness is read
+when the request arrives, before admission, so a request that finds the cached
+result expired waits for one probe of at most `availability_probe_timeout`
+there instead of later. That time is included in the request's recorded
+latency. A fault while deciding never fails the request: it is served or
+refused on its own alias.
 
 A redirect changes which model answers. Declare one only where callers of the
 source alias can accept the target model, and have a client that depends on

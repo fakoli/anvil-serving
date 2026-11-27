@@ -1797,6 +1797,11 @@ def _parse_router_config(
                 f"unavailable redirect {alias!r} requires a direct source tier; "
                 "a replica tier never redirects"
             )
+        if not tiers_by_id[model_routes[source]].health_path:
+            raise ConfigError(
+                f"unavailable redirect {alias!r} requires health_path on its source tier; "
+                "a tier with no readiness probe always reads ready, so the redirect could never fire"
+            )
         unavailable_redirects[source] = destination
     chained = sorted(set(unavailable_redirects) & set(unavailable_redirects.values()))
     if chained:

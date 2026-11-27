@@ -1,10 +1,15 @@
 """The gateway's one fallback: an unavailable alias redirected exactly one hop."""
 from dataclasses import replace
+import http.client
 import json
+import secrets
+import threading
+import time
 
 import pytest
 
-from anvil_serving.router.availability import AvailabilityResult, RuntimeModelMetadata, probe_found_unavailable
+from anvil_serving.router.availability import (AvailabilityResult, HttpHealthAvailability, RuntimeModelMetadata,
+                                               probe_found_unavailable)
 from anvil_serving.router.backends.relay import RelayBackend
 from anvil_serving.router.config import ConfigError, ServerConfig, load_bytes
 from anvil_serving.router.decision_log import DecisionLog
@@ -12,6 +17,7 @@ from anvil_serving.router.internal import InternalRequest, Message, NoAvailableT
 from anvil_serving.router.model_metadata import build_router_status
 from anvil_serving.router.serve import ReplicaRuntime, RoutingBackend
 from anvil_serving.router.usage_store import RouteAssociation
+from tests.router.helpers import server_context
 from tests.router.key_fixtures import tmp_path as tmp_path
 from tests.router.test_usage_dispatch import CHAT, server, wait_details
 from tests.router.test_usage_lifecycle import rows, store as store
@@ -55,12 +61,17 @@ def configured(redirects=REDIRECT, **changes):
 
 
 class Probes:
-    """Readiness by tier; a tier that is not named is ready."""
+    """Readiness by tier; a tier that is not named is ready.
 
-    def __init__(self, **reasons):
-        self.reasons = reasons
+    Every answer is a completed observation, and ``during`` runs inside the
+    source's probe, where a real one would be waiting on the network.
+    """
+
+    def __init__(self, during=None, **reasons):
+        self.reasons, self.during, self.checked = reasons, during, []
 
     def check(self, tier):
+        self.checked.append(tier.id)
         reason = self.reasons.get(tier.id.removesuffix("-local"))
         if reason is None:
             return AvailabilityResult(True, "ready", "health_passed")
@@ -68,8 +79,18 @@ class Probes:
             return reason
         return AvailabilityResult(False, "unavailable", reason)
 
+    def check_completed(self, tier):
+        if self.during is not None:
+            self.during()
+        return self.check(tier)
 
-def rig(config=None, *, probes=None, fail=(), log=None):
+    def check_member(self, tier, member_id):
+        if self.reasons.get(tier.id.removesuffix("-local")) is not None:
+            return AvailabilityResult(False, "unavailable", "health_http_503")
+        return AvailabilityResult(True, "ready", "identity_passed", tier.model, tier.model)
+
+
+def rig(config=None, *, probes=None, fail=(), log=None, extra=None):
     """A routed gateway whose two upstreams record exactly what they were sent."""
     config = config or configured()
     sent = {"primary": [], "secondary": []}
@@ -82,7 +103,7 @@ def rig(config=None, *, probes=None, fail=(), log=None):
             return json.dumps({"choices": [{"message": {"content": name}, "finish_reason": "stop"}]}).encode()
         return RelayBackend(config.tier(f"{name}-local"), transport=transport)
 
-    routing = RoutingBackend(config, {f"{name}-local": upstream(name) for name in sent},
+    routing = RoutingBackend(config, {**{f"{name}-local": upstream(name) for name in sent}, **(extra or {})},
                              availability=probes or Probes(secondary=DOWN), decision_log=log)
     return routing, sent
 
@@ -95,8 +116,8 @@ def call(conn, path=CHAT, *, alias="llm.secondary", token=TOKEN, content="hello"
         body["messages"] = [{"role": "user", "content": content}]
         if path == "/v1/messages":
             body.setdefault("max_tokens", 20)
-    conn.request("POST", path, json.dumps(body),
-                 {"Content-Type": "application/json", "Authorization": "Bearer " + token})
+    conn.request("POST", path, json.dumps(body), {
+        "Content-Type": "application/json", **({"Authorization": "Bearer " + token} if token else {})})
     response = conn.getresponse()
     return response.status, dict(response.getheaders()), response.read()
 
@@ -135,6 +156,9 @@ def test_absent_and_empty_tables_are_the_same_configuration():
     assert absent == empty
     identity = [build_router_status(config, started_at=0)["config_sha256"] for config in (absent, empty, declared)]
     assert identity[0] == identity[1] != identity[2]
+    # Computed by the release before this table existed: a table-less
+    # configuration keeps the identity it always had.
+    assert identity[0] == "0be5baf20bccd99faa3aa444cd39ac488d5d25018238ad089c5b7941116b3c5a"
     assert dict(declared.unavailable_redirects) == {"llm.secondary": "llm.primary"}
     # Spelling is normalized exactly like [router.model_routes].
     spelled = load_bytes(toml('"LLM.Secondary" = " LLM.Primary "'))
@@ -176,6 +200,15 @@ replica_identity = { model_revision = "revision-1", engine_version = "engine-1.0
 def test_invalid_redirect_tables_are_rejected_at_load(redirects, routes, tiers, message):
     with pytest.raises(ConfigError, match=message):
         load_bytes(toml(redirects, routes, tiers))
+
+
+def test_a_source_tier_with_no_readiness_probe_is_rejected():
+    probe = b'health_path = "/health"\n'
+    head, _, tail = toml().rpartition(probe)  # the secondary tier is declared last
+    with pytest.raises(ConfigError, match="requires health_path on its source tier"):
+        load_bytes(head + tail)
+    # Only the source needs one: it is the tier whose outage is the trigger.
+    assert load_bytes(toml().replace(probe, b"", 1)).unavailable_redirects
 
 
 def test_table_shape_and_unknown_router_keys_are_rejected():
@@ -294,9 +327,13 @@ def test_target_alias_itself_never_redirects(store):
 
 
 def test_the_targets_output_cap_applies(store):
-    routing, sent = rig(configured(primary={"max_output_tokens": 64}))
+    # Media admission counts the requested completion budget, so this request
+    # fits the target only once the target's own cap has been applied to it.
+    media = {"params": {"capacity": {"media_admission_enabled": True, "image_limit": 1, "video_limit": 0,
+                                     "image_tokens_estimate": 1, "video_tokens_estimate": 1}}}
+    routing, sent = rig(configured(primary={"max_output_tokens": 64, **media}))
     with server(routing, store, accounting=False) as conn:
-        status, headers, _ = call(conn, max_tokens=2048)
+        status, headers, _ = call(conn, max_tokens=100_000)
     assert status == 200 and headers[HEADER] == "llm.secondary"
     assert headers["X-Anvil-Max-Tokens-Applied"] == "64"
     assert [request["max_tokens"] for request in sent["primary"]] == [64]
@@ -517,8 +554,9 @@ def test_a_failure_after_dispatch_is_returned_not_retried(store, failing, alive)
     routing, sent = rig(probes=alive, fail=(failing,))
     with server(routing, store, accounting=False) as conn:
         status, headers, _ = call(conn)
-    assert status >= 500 and HEADER not in headers
-    assert (len(sent[failing]), sent[other]) == (1, [])
+    assert status >= 500 and (len(sent[failing]), sent[other]) == (1, [])
+    # An error from the target still says the request was redirected to it.
+    assert headers.get(HEADER) == ("llm.secondary" if failing == "primary" else None)
 
 
 def test_an_unavailable_target_answers_for_itself_with_no_bounce(store):
@@ -526,7 +564,9 @@ def test_an_unavailable_target_answers_for_itself_with_no_bounce(store):
     log = DecisionLog()
     routing, sent = rig(probes=Probes(secondary=DOWN, primary="health_http_503"), log=log)
     with server(routing, store) as conn:
-        refused(call(conn), sent)
+        status, headers, body = call(conn)
+    assert (status, body, headers[HEADER]) == (503, UNAVAILABLE, "llm.secondary")
+    assert sent == {"primary": [], "secondary": []}
     record = log.last
     assert (record.requested_tier, record.served_tier) == ("secondary-local", None)
     assert [(a.tier_id, a.reason, a.outcome) for a in record.attempts] == [
@@ -535,3 +575,212 @@ def test_an_unavailable_target_answers_for_itself_with_no_bounce(store):
     assert record.readiness_reason == "health_http"
     [terminal] = wait_details(usage)
     assert (terminal.route.route_id, terminal.error_code, terminal.dispatched) == ("primary-local", "unavailable", False)
+
+
+# --- review hardening ------------------------------------------------------
+
+def bound(routing, allowed=lambda alias: True):
+    return routing.bind_route_request(asked(), redirect_allowed=allowed).redirect
+
+
+def test_a_quiesce_that_lands_during_the_source_probe_wins(store):
+    probes = Probes(secondary=DOWN)
+    routing, sent = rig(probes=probes)
+    probes.during = lambda: routing._admission.quiesce("secondary-local", "operator")
+    with server(routing, store, accounting=False) as conn:
+        refused(call(conn), sent)
+
+
+def test_an_expired_result_served_while_a_probe_is_in_flight_never_redirects():
+    config, now, recovered = configured(), [0.0], []
+    entered, release = threading.Event(), threading.Event()
+    source = config.tier("secondary-local")
+
+    class Healthy:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+    def opener(request, timeout):
+        if ":30003/" not in request.full_url:
+            return Healthy()
+        if not recovered:
+            raise ConnectionRefusedError("synthetic outage")
+        entered.set()
+        assert release.wait(5)
+        return Healthy()
+
+    availability = HttpHealthAvailability(config, opener=opener, clock=lambda: now[0])
+    routing, _ = rig(config, probes=availability)
+    assert bound(routing).readiness_reason == DOWN  # a current, completed failure redirects
+    now[0] += config.availability_probe_interval + 1
+    recovered.append(True)
+    prober = threading.Thread(target=availability.check, args=(source,))
+    prober.start()
+    try:
+        assert entered.wait(5)
+        # check() still serves the expired failure, which is right for a refusal
+        # and is not evidence of an outage.
+        assert availability.check(source).reason == DOWN
+        assert availability.check_completed(source) is None
+        assert bound(routing) is None
+    finally:
+        release.set()
+        prober.join(5)
+    assert availability.check_completed(source).available and bound(routing) is None
+
+
+def test_a_provider_that_cannot_attest_a_completed_probe_never_redirects():
+    class Unattested:
+        def check(self, tier):
+            return AvailabilityResult(False, "unavailable", DOWN)
+
+    routing, _ = rig(probes=Unattested())
+    assert bound(routing) is None
+
+
+def test_a_plan_made_against_a_replaced_route_snapshot_is_dropped():
+    probes = Probes(secondary=DOWN)
+    routing, _ = rig(probes=probes)
+
+    def republish():
+        active = routing.active_route_snapshot()
+        if active.route_revision == 0:
+            routing.publish_route_runtime(replace(active, route_revision=1), expected_revision=0)
+
+    probes.during = republish
+    assert bound(routing) is None
+    # The next request plans against the published snapshot.
+    assert bound(routing) is not None
+
+
+def test_an_unauthorized_caller_never_causes_a_probe():
+    probes = Probes(secondary=DOWN)
+    routing, _ = rig(probes=probes)
+    assert bound(routing, lambda alias: False) is None and probes.checked == []
+    assert bound(routing) is not None and probes.checked == ["secondary-local"]
+
+
+@pytest.mark.parametrize("fault", ["probe", "grant"])
+def test_a_fault_while_planning_leaves_the_request_on_its_own_alias(store, fault):
+    def broken(*args):
+        raise RuntimeError("synthetic planning fault")
+
+    probes = Probes(secondary=DOWN, during=broken if fault == "probe" else None)
+    routing, sent = rig(probes=probes)
+    assert bound(routing, broken if fault == "grant" else (lambda alias: True)) is None
+    if fault == "probe":
+        with server(routing, store, accounting=False) as conn:
+            refused(call(conn), sent)
+
+
+def test_planning_time_is_part_of_the_recorded_latency(store):
+    usage, *_ = store
+    log = DecisionLog()
+    routing, _ = rig(probes=Probes(secondary=DOWN, during=lambda: time.sleep(0.08)), log=log)
+    # The direct path has no delivery poll, so nothing else is this slow.
+    with server(routing, store, managed=False) as conn:
+        assert call(conn)[0] == 200
+    [terminal] = wait_details(usage)
+    assert log.last.latency_ms >= 70 and terminal.latency_ms >= 70
+
+
+def test_the_header_value_is_percent_encoded():
+    from types import SimpleNamespace
+    from anvil_serving.router.front_door import _response_headers
+    binding = SimpleNamespace(alias="llm.primary", redirect=SimpleNamespace(alias="llm.s\u00e9condary\r\nX: y"))
+    request = SimpleNamespace(raw={"_anvil_route_binding": binding})
+    assert _response_headers(request)[HEADER] == "llm.s%C3%A9condary%0D%0AX%3A%20y"
+
+
+def test_with_authentication_disabled_every_alias_is_already_reachable():
+    routing, sent = rig()
+    with server_context(routing, token=None) as address:
+        conn = http.client.HTTPConnection(*address, timeout=5)
+        try:
+            status, headers, _ = call(conn, token=None)
+        finally:
+            conn.close()
+    assert status == 200 and headers[HEADER] == "llm.secondary" and len(sent["primary"]) == 1
+
+
+def test_a_quiesced_target_answers_for_itself(store):
+    log = DecisionLog()
+    routing, sent = rig(log=log)
+    routing._admission.quiesce("primary-local", "operator")
+    with server(routing, store, accounting=False) as conn:
+        status, headers, body = call(conn)
+    assert (status, body, headers[HEADER]) == (503, UNAVAILABLE, "llm.secondary")
+    assert sent == {"primary": [], "secondary": []}
+    assert [(a.tier_id, a.reason) for a in log.last.attempts] == [
+        ("secondary-local", "unavailable"), ("primary-local", "quiesced")]
+
+
+@pytest.mark.parametrize("admitted", [True, False])
+def test_a_replica_target_is_served_or_named_in_the_record(store, admitted):
+    config = load_bytes(toml('llm.secondary = "llm.pool"', 'llm.pool = "pool-local"', _REPLICA_SOURCE))
+    served = []
+
+    class Member:
+        def generate(self, request):
+            served.append(request)
+            yield "pool"
+
+    log = DecisionLog()
+    probes = Probes(secondary=DOWN) if admitted else Probes(secondary=DOWN, pool=DOWN)
+    routing, sent = rig(config, probes=probes, log=log,
+                        extra={"pool-local": ReplicaRuntime({"member-a": Member(), "member-b": Member()})})
+    with server(routing, store, accounting=False) as conn:
+        status, headers, body = call(conn)
+    record = log.last
+    assert headers[HEADER] == "llm.secondary" and sent == {"primary": [], "secondary": []}
+    assert (record.requested_tier, record.attempts[0].tier_id) == ("secondary-local", "secondary-local")
+    if admitted:
+        assert status == 200 and named_models(body, False) == {"llm.pool"} and len(served) == 1
+        assert (record.served_tier, record.replica_selection) == ("pool-local", "identity_passed")
+        assert [(a.tier_id, a.reason) for a in record.attempts[1:]] == [("pool-local", "served")]
+    else:
+        assert (status, body, served) == (503, UNAVAILABLE, [])
+        # No member was tried, and the record still names the tier that was.
+        assert (record.served_tier, record.replica_selection) == (None, "not_admitted")
+        assert [(a.tier_id, a.reason, a.outcome) for a in record.attempts[1:]] == [
+            ("pool-local", "unavailable", "skipped")]
+
+
+@pytest.mark.parametrize("models,redirected", [(["llm.secondary"], False), (["llm.secondary", "llm.primary"], True)])
+def test_a_connect_key_follows_the_same_grant_rule(store, monkeypatch, models, redirected):
+    from anvil_serving.router import connect_keys
+    usage, *_ = store
+    keys = usage.key_store
+    keys.owner_check = lambda *actor: True
+    owner, administrator, fence = "human:" + "a" * 64, "human:" + "c" * 64, "f" * 64
+    portal = connect_keys.ConnectKeys(keys, ["llm.primary", "llm.secondary"])
+
+    def dispatch(principal, admin=False, **operation):
+        return portal.dispatch({"principal": principal, "generation": "1", "epoch": fence,
+                                "administrator": admin, "operation": operation})
+
+    dispatch(owner, action="request")
+    dispatch(administrator, True, action="approve", owner=owner, status="approved", models=models, paths=[CHAT],
+             rpm=60, expires_days=30, revision=dispatch(owner, action="view")["account"]["revision"])
+    account = dispatch(owner, action="view")["account"]
+    secret = dispatch(owner, action="create", name="Laptop", models=models, paths=[CHAT], rpm=account["rpm"],
+                      expires_days=30, revision=account["revision"])["secret"]
+    monkeypatch.setenv("SYNTHETIC_CONNECT_SIGNING", secrets.token_urlsafe(32))
+    monkeypatch.setenv("SYNTHETIC_CONNECT_CHECK", secrets.token_urlsafe(32))
+    monkeypatch.setattr(connect_keys, "principal_checker", lambda *args: keys.owner_check)
+    config = ServerConfig(api_keys_path=str(keys.path), connect_keys_env="SYNTHETIC_CONNECT_SIGNING",
+                          connect_check_env="SYNTHETIC_CONNECT_CHECK", connect_home_url="https://home.example.test")
+    routing, sent = rig()
+    with server(routing, store, server_config=config) as conn:
+        response = call(conn, token=secret)
+    if redirected:
+        assert response[0] == 200 and response[1][HEADER] == "llm.secondary" and len(sent["primary"]) == 1
+    else:
+        refused(response, sent)
+    [terminal] = wait_details(usage)
+    assert terminal.route.route_id == ("primary-local" if redirected else "secondary-local")

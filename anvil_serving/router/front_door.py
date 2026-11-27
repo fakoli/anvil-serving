@@ -862,6 +862,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self._anvil_router_permit = None
             self._anvil_router_binding = None
             self._anvil_key_permit = None
+            self._anvil_redirected_from = None
 
         def _admit_key_store(self, *, quiet=False):
             if getattr(self, "_anvil_key_permit", None) is not None:
@@ -1079,6 +1080,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self.send_header("Connection", "close")
             for _h_name, _h_val in self._correlation_headers().items():
                 self.send_header(_h_name, _h_val)
+            # An admitted, redirected request says so on every JSON answer,
+            # errors included; the served paths pass the same header.
+            redirected_from = getattr(self, "_anvil_redirected_from", None)
+            if redirected_from is not None:
+                extra_headers = {**(extra_headers or {}), "X-Anvil-Redirected-From": redirected_from}
             if extra_headers:
                 for _h_name, _h_val in extra_headers.items():
                     self.send_header(_h_name, _h_val)
@@ -3238,6 +3244,10 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                                      redirect_alias=(redirected.alias if redirected is not None else None)):
                 getattr(backend, "finish_route_request", lambda _request: None)(request)
                 return
+            self._anvil_redirected_from = _response_headers(request).get("X-Anvil-Redirected-From")
+            if self._anvil_usage is not None and route_binding is not None:
+                # Redirect planning, readiness probe included, ran before admission.
+                self._anvil_usage.started -= getattr(route_binding, "planning_s", 0.0)
             request.raw.pop("_anvil_usage", None)
             request.raw.pop("_anvil_parent", None)
 
