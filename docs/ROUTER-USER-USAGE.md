@@ -483,7 +483,10 @@ remain unchanged and identity-free. The generic `/v1/requests` projection never
 serializes the new caller/grant fields. `usage_snapshot()` supplies revision,
 immutable admitted entries and bounded omissions; it refuses while any ledger
 mutation is in flight. A collector reads that revision again after ledger
-collection and refuses/retries changed snapshots. No registry lock spans SQLite.
+collection and refuses/retries changed snapshots. The revision advances on every
+ledger write and every request lifecycle or accounting change. It does not advance
+on a delivery poll's diagnostic sample, which is not ledger state and arrives for
+the whole life of a request. No registry lock spans SQLite.
 The front door copies normalized observations on the actual generating worker
 after upstream close, before worker completion and delivery finalization.
 Relay, purpose, audio and memory record attempts immediately before their actual
@@ -545,9 +548,13 @@ reset upstream activity age. Existing validated CallerSnapshot, route and
 token serializers retain their closed allowlists; diagnostic session/client
 strings are excluded. The phase uses owned RequestControl diagnostics where
 available, with finalizing retained until actual owned completion. The bounded
-registry snapshot is fenced around native ledger health; busy/changed state
-returns503. `freshness=fresh` attests this direct in-process sample, not deployment
-or upstream compute freshness. `available` follows ledger health; unresolved and
+registry snapshot is fenced around native ledger health: the ledger is not read
+while a ledger write is in progress, and an attempt is discarded when the revision
+changed during the health read. The read makes up to four attempts 10 ms apart and
+then returns503 `accounting_unavailable`, which here means a refused read and not
+an accounting failure. `registry_revision` is the revision that held across the
+health read, and a streaming request does not refuse the read. `freshness=fresh`
+attests this direct in-process sample, not deployment or upstream compute freshness. `available` follows ledger health; unresolved and
 unknown-run counts remain health/history, not invented live records. Truncation
 reports returned, omitted (null when unrepresented), unrepresented and truncated;
 filtered omissions remain unknown when the registry overflowed. Generic workload
