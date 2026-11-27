@@ -75,13 +75,18 @@ review and merge, but **cannot deploy to the live gateway**. Deploys and the
 watch period after each one are left for the owner. The backlog table marks
 them. Nothing in this log has been deployed unless an entry says so.
 
+**Update, 2026-11-27.** The owner authorized this run to perform the cutovers
+through a root login on the serving host, with the console's unattended
+acknowledgement for the three planned windows. Deploys are recorded under
+[Deploys](#deploys).
+
 ## Backlog and status
 
 | # | Item | Status |
 | --- | --- | --- |
 | 5 | ADR-0034 and ADR-0039 amendments match the replica code | **Shipped.** PR 834 merged; nothing to deploy |
-| 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | **Merged**, PR 835. Not deployed: cutover left for the owner |
-| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | **Merged**, PR 836. Not deployed and not configured: left for the owner |
+| 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | **Deployed** 2026-11-27 02:34 UTC (window 1). Watch in progress |
+| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | **Merged**, PR 836. Image built; windows 2 and 3 wait for the window 1 gate |
 | 2 | Fix what the recorded refusal cause shows | Cause found from existing data; no gateway defect (see entry) |
 | 4b | Accounting: emit the new refusal codes | Queued behind 2+4a deploy |
 | 4c | Accounting: session identifier | Left for the owner |
@@ -276,6 +281,11 @@ the strict docs build locally for any change that touches the changelog.
 
 ## Handing the deploys to the owner
 
+*Superseded on 2026-11-27: the owner authorized this run to perform the
+cutovers, and the images were built from the deployed release line rather than
+from the two `main` commits named below. See [Deploys](#deploys). The order and
+the gate are unchanged.*
+
 Two merged or pending changes need the gateway cutover, in this order, one at a
 time. The supported procedure is the acknowledged maintenance cutover in
 [router-maintenance-console.md](../cli/router-maintenance-console.md); the
@@ -348,3 +358,72 @@ qualify on the qualification host, or pause scheduled callers during a window.
 - Not done, by ruling or by constraint: a session identifier in accounting, the
   three new refusal codes being written, and any engine cache change. The pre-dispatch refusals turned out to need no
   fix.
+
+## Deploys
+
+### 2026-11-27 — Window 1: PR 835 deployed
+
+**What was deployed.** Not the `main` commit. The live gateway runs a release
+line (v3.1.0 plus backports), and `main` is 14 commits ahead of v3.1.0 with
+unrelated changes: a new product family, media worker telemetry and others.
+Building from `main` would have shipped all of them at once. To keep one change
+per deploy, PR 835 was cherry-picked onto the release line (same patch as
+`9d067fc6`; 897 router tests pass there) and the gateway image was built the way
+the previous one was, by layering the new wheel over the release base image.
+The new wheel differs from the live wheel in the five router files of PR 835,
+plus one already-released dictation prompt file that the gateway never runs.
+The image for PR 836 was built the same way on top (995 router tests pass) and
+is not deployed.
+
+**Cutover.** Image only. The successor Compose file differs from the live one
+in the image identifier and nothing else; gateway configuration, live route
+state, key store and mounts are unchanged. The cutover script's read-only plan
+passed, then it quiesced, drained, stopped the old container, started the new
+one and reopened. Ingress was closed from 02:32:04 to about 02:34:25 UTC, about
+2 minutes 20 seconds. A rollback to the previous image is staged and its plan
+passes; it has not been needed.
+
+**Before** (24 hours to 02:30 UTC, `llm.primary`): 523 requests, 91.0% success,
+9.0% refused before dispatch, median 2.25 s, 95th percentile 51.7 s. All 47
+refusals fall in one window between 13:00 and 14:10 UTC; the other hours have
+none. No row carried an admission wait, an upstream duration, a first-content
+time or an error code.
+
+**After** (first eight requests, 02:39 to 02:41 UTC): 8 of 8 succeeded, and all
+eight rows carry admission wait (0 ms each), upstream duration and
+first-content time. Accounting failures 0, unresolved requests 0, container
+restarts 0, no traceback in the gateway log, health endpoint 200, and the fleet
+status is the same as before the window. No refusal has occurred yet, so the
+error code on a refused row is still unobserved.
+
+**Advisor review** (independent, read-only). The backport is acceptable and
+preferable to a `main` build: same patch, every package file in the wheel
+matches the commit, and the usage store schema version is unchanged, so the
+previous image can read rows the new one writes. It set one rule for later:
+once the PR 836 image is live, the rollback target is this window's image, not
+the original, because the PR 836 image writes three refusal codes the original
+image's reader rejects. Its verdict arrived after the window had run on the
+owner's direct instruction; it would have been a conditional go.
+
+**Two things seen and explained.**
+
+- Five `key_audit_unavailable` lines in the first eight seconds of the new
+  container, none since. That line is logged when an authenticated control
+  call arrives while the key store is still closed, which is the console's own
+  handshake between container start and reopening.
+- The active-usage read (`router usage active`) answered "accounting
+  unavailable" three times while a 46-second generation was streaming, and
+  answered normally once the gateway was idle. The read takes a consistent
+  snapshot and refuses if the in-flight registry changed while it read the
+  ledger; a streaming request changes it continuously. That code is identical
+  in the previous image, no accounting failure was counted, and every request
+  row was finalized. It is not a regression, but it means the read that shows
+  in-flight work fails exactly when there is in-flight work. Candidate
+  follow-up: retry the snapshot inside the read.
+
+**Gate.** The watch for 200 `llm.primary` requests including one morning burst
+is running against the thresholds in the advisor rulings. Refusals are judged
+per window, not per day: the baseline day already exceeds the 8% refusal
+threshold because of one deliberate unload window. Windows 2 (PR 836 image,
+configuration unchanged) and 3 (the redirect entry) wait for this gate.
+
