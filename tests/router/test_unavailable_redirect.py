@@ -784,3 +784,70 @@ def test_a_connect_key_follows_the_same_grant_rule(store, monkeypatch, models, r
         refused(response, sent)
     [terminal] = wait_details(usage)
     assert terminal.route.route_id == ("primary-local" if redirected else "secondary-local")
+
+
+# --- delta review ----------------------------------------------------------
+
+def test_a_source_already_quiesced_costs_no_readiness_call():
+    probes = Probes(secondary=DOWN)
+    routing, _ = rig(probes=probes)
+    routing._admission.quiesce("secondary-local", "operator")
+    assert bound(routing) is None and probes.checked == []
+
+
+def test_an_alias_with_no_redirect_entry_is_neither_planned_nor_timed():
+    probes = Probes(secondary=DOWN)
+    routing, _ = rig(probes=probes)
+    allowed = []
+    binding = routing.bind_route_request(asked("llm.primary"), redirect_allowed=allowed.append)
+    assert binding.planning_s == 0.0 and allowed == probes.checked == []
+    assert routing.bind_route_request(asked(), redirect_allowed=lambda alias: True).planning_s > 0.0
+
+
+def test_a_fault_reading_admission_at_bind_leaves_the_request_on_its_own_alias(monkeypatch):
+    routing, _ = rig()
+    snapshot, reads = routing._admission.snapshot, []
+
+    def faulty(tier_id):
+        reads.append(tier_id)
+        if len(reads) > 1:  # the advisory read succeeds; the authoritative one faults
+            raise RuntimeError("synthetic admission fault")
+        return snapshot(tier_id)
+
+    monkeypatch.setattr(routing._admission, "snapshot", faulty)
+    request = asked()
+    binding = routing.bind_route_request(request, redirect_allowed=lambda alias: True)
+    assert reads == ["secondary-local"] * 2
+    assert (binding.redirect, binding.tier.id) == (None, "secondary-local")
+    # Exactly one terminal was registered, for the tier that was bound.
+    assert routing._route_terminals == {(0, "secondary-local"): 1}
+    routing.finish_route_request(request)
+    assert routing._route_terminals == {}
+
+
+def test_a_result_the_cache_no_longer_holds_is_not_a_completed_observation(monkeypatch):
+    config = configured()
+    source = config.tier("secondary-local")
+
+    def refused(request, timeout):
+        raise ConnectionRefusedError("synthetic outage")
+
+    availability = HttpHealthAvailability(config, opener=refused)
+    current = availability.check_completed(source)
+    assert current.reason == DOWN and availability.check_completed(source) is current
+    # A probe that finished between the two reads leaves a fresh entry that is
+    # not the answer check() just gave; an equal-looking stale one must not pass.
+    monkeypatch.setattr(availability, "check", lambda tier: replace(current))
+    assert availability.check_completed(source) is None
+
+
+def test_the_redirect_header_does_not_outlive_its_request_on_a_kept_alive_connection(store):
+    routing, _ = rig()
+    with server(routing, store, managed=False, accounting=False) as conn:
+        status, headers, _ = call(conn)
+        assert status == 200 and headers[HEADER] == "llm.secondary"
+        socket = conn.sock
+        later = [call(conn, alias="llm.unknown"), call(conn, alias="llm.primary")]
+        assert conn.sock is socket, "the later requests must reuse the redirected request's connection"
+    assert [status for status, _, _ in later] == [404, 200]
+    assert all(HEADER not in headers for _, headers, _ in later)

@@ -898,6 +898,13 @@ class RoutingBackend:
         except Exception:  # noqa: BLE001 - an optional decision never costs the request its own alias
             return None
 
+    def _source_admitting(self, tier_id: str) -> bool:
+        """Whether a redirect source is admitting; any fault reads as not."""
+        try:
+            return self._admission is not None and self._admission.snapshot(tier_id).state == "admitting"
+        except Exception:  # noqa: BLE001 - a redirect needs positive evidence
+            return False
+
     def _decide_unavailable_redirect(
         self, request: InternalRequest, alias: str, allowed: Optional[Callable[[str], bool]],
     ) -> Optional[tuple[RouteRuntimeSnapshot, str, Tier, str]]:
@@ -914,6 +921,10 @@ class RoutingBackend:
         # A redirect never widens a credential, and an unauthorized caller
         # never causes a probe.
         if allowed(target_alias) is not True:
+            return None
+        # Advisory: a source that is already quiesced costs no readiness call.
+        # The bind re-reads admission under the route lock, authoritatively.
+        if not self._source_admitting(source.id):
             return None
         # Only a current, completed observation counts.  An availability
         # provider that cannot attest one never triggers a redirect, and an
@@ -947,9 +958,13 @@ class RoutingBackend:
             return existing
         from .usage_store import RouteAssociation
         alias = normalize_model_alias(request.model)
-        plan_started = time.monotonic()
-        planned = self._plan_unavailable_redirect(request, alias, redirect_allowed)
-        planning_s = time.monotonic() - plan_started
+        planned, planning_s = None, 0.0
+        # An alias with no redirect entry is neither planned nor timed, so its
+        # requests are measured exactly as they were before the table existed.
+        if alias in self.active_route_snapshot().config.unavailable_redirects:
+            plan_started = time.monotonic()
+            planned = self._plan_unavailable_redirect(request, alias, redirect_allowed)
+            planning_s = time.monotonic() - plan_started
         with self._route_lock:
             snapshot = self._active_route_runtime
             tier = snapshot.config.route_tier(alias)
@@ -966,8 +981,7 @@ class RoutingBackend:
                 planned is not None
                 and planned[0] is snapshot
                 and not self._held_route(planned[1], planned[2].id)
-                and self._admission is not None
-                and self._admission.snapshot(tier.id).state == "admitting"
+                and self._source_admitting(tier.id)
             ):
                 redirect = UnavailableRedirect(alias, tier, planned[3])
                 alias, tier = planned[1], planned[2]

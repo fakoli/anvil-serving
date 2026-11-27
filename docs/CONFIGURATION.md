@@ -636,9 +636,13 @@ A redirected response is identifiable:
 
 Declaring a redirect has one cost for the source alias. Its readiness is read
 when the request arrives, before admission, so a request that finds the cached
-result expired waits for one probe of at most `availability_probe_timeout`
-there instead of later. That time is included in the request's recorded
-latency. A fault while deciding never fails the request: it is served or
+result expired waits for one readiness probe there instead of later.
+`availability_probe_timeout` bounds each HTTP call rather than the probe, and
+a probe makes up to three: the health check, then the model listing for a
+tier with `model_identity` or `metadata_source = "upstream"`, then the engine
+properties read some upstream-metadata tiers need. A target that uses upstream
+metadata is read the same way while the source is down. That time is included
+in the request's recorded latency. A fault while deciding never fails the request: it is served or
 refused on its own alias.
 
 A redirect changes which model answers. Declare one only where callers of the
