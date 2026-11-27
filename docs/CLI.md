@@ -197,6 +197,7 @@ required operands, choices, and defaults.
 | `router keys list` | List key IDs, grants, and lifecycle state without secrets. | `read` / `bounded` | `--config`<br>`--container` |
 | `router keys revoke` | Revoke a device key for subsequent requests. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--key-id` |
 | `router keys bind` | Bind an ordinary key to an operator-controlled owner with revision CAS. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--key-id`<br>`--kind`<br>`--owner-id`<br>`--expected-revision`<br>`--dry-run` |
+| `router keys grant` | Add model grants to one live ordinary key with full-list CAS. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--key-id`<br>`--model`<br>`--expected-model`<br>`--dry-run` |
 | `router keys backup` | Take a consistent protected key/accounting snapshot. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--out` |
 | `router keys restore` | Restore a protected snapshot to an absent destination without activation. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--snapshot`<br>`--out` |
 | `router keys usage` | Read bounded key access history. | `read` / `bounded` | `--config`<br>`--container`<br>`--key-id`<br>`--limit` |

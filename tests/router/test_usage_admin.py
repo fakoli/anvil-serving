@@ -1,5 +1,5 @@
 """Protected real HTTP usage dispatch; all fixtures and credentials are synthetic."""
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from datetime import datetime
 from dataclasses import replace
 import http.client
@@ -11,7 +11,7 @@ import pytest
 from anvil_serving.control_plane.authorization import WORKLOADS_READ, INFERENCE_USE, NODE_ADMIN_BOOTSTRAP
 from anvil_serving.router.config import ServerConfig
 from anvil_serving.router.decision_log import DecisionLog
-from anvil_serving.router.front_door import make_server, USAGE_ENDPOINT, USAGE_METRICS_ENDPOINT
+from anvil_serving.router.front_door import make_server, USAGE_ENDPOINT, USAGE_METRICS_ENDPOINT, _USAGE_READ_ATTEMPTS
 from anvil_serving.router.internal import UsageInvocation
 from anvil_serving.router.workloads import RouterWorkloadRegistry
 from tests.router.helpers import StaticBackend
@@ -96,6 +96,98 @@ def test_active_same_registry_coherence_finalizing_cleanup_and_generic_privacy(p
         invocation.finish('success'); invocation.finish('success')
         assert request(address,USAGE_ENDPOINT+'?view=active')[0]==200
         assert registry.active_count==0
+
+
+ACTIVE = USAGE_ENDPOINT + '?view=active'
+REFUSED = (503, {'error': {'type': 'accounting_unavailable', 'message': 'accounting unavailable'}})
+
+
+@contextmanager
+def active_read(policy, store, monkeypatch):
+    """One dispatched request behind a real server.
+
+    ``reads`` records the registry revision at each ledger health read; each hook in
+    ``hooks`` runs inside that read with the read's ordinal.
+    """
+    usage, _, run, scope = store
+    monkeypatch.setattr('anvil_serving.router.usage_store._now', lambda: END)
+    registry = RouterWorkloadRegistry(DecisionLog(), clock=CLOCK)
+    invocation = UsageInvocation(usage, run, scope, forwarded_caller(), 'chat', 'llm.primary', registry=registry,
+                                 clock=CLOCK, gateway_request_id='req_' + ident().replace('-', ''))
+    invocation.dispatch()
+    reads, hooks, health = [], [], usage.health
+
+    def counted(domain):
+        reads.append(registry.usage_snapshot()[0])
+        for during in hooks:
+            during(len(reads))
+        return health(domain)
+
+    monkeypatch.setattr(usage, 'health', counted)
+    with server(policy, usage_store=usage, usage_authority=lambda: scope, workload_registry=registry) as address:
+        def read():
+            status, _, raw = request(address, ACTIVE)
+            return status, json.loads(raw)
+        yield registry, invocation, reads, hooks, read
+
+
+def test_active_read_is_unchanged_when_nothing_changes(policy, store, monkeypatch):
+    with active_read(policy, store, monkeypatch) as (registry, _, reads, _, read):
+        revision = registry.usage_snapshot()[0]
+        status, page = read()
+        assert status == 200 and reads == [revision]
+        assert page['registry_revision'] == revision == registry.usage_snapshot()[0]
+        assert [record['phase'] for record in page['records']] == ['dispatched']
+
+
+def test_active_read_is_not_refused_by_delivery_poll_samples(policy, store, monkeypatch):
+    with active_read(policy, store, monkeypatch) as (registry, invocation, reads, hooks, read):
+        revision = registry.usage_snapshot()[0]
+        hooks.append(lambda count: registry.observe_request(
+            invocation.registry_id, {}, 'llm.primary', {'phase': 'streaming', 'last_activity_ms': 5}))
+        status, page = read()
+        assert status == 200 and reads == [revision] and page['registry_revision'] == revision
+        # The page is the snapshot taken before the sample; the next read shows the sample.
+        assert page['records'][0]['phase'] == 'dispatched'
+        assert read()[1]['records'][0]['phase'] == 'streaming'
+
+
+def test_active_read_retries_until_the_registry_is_stable(policy, store, monkeypatch):
+    with active_read(policy, store, monkeypatch) as (registry, invocation, reads, hooks, read):
+        revision = registry.usage_snapshot()[0]
+        hooks.append(lambda count: count < 3 and registry.observe_usage(invocation.registry_id, phase='streaming'))
+        status, page = read()
+        assert status == 200 and reads == [revision, revision + 1, revision + 2]
+        # The reported revision is the one that held across the last health read.
+        assert page['registry_revision'] == revision + 2 == registry.usage_snapshot()[0]
+
+
+def test_active_read_gives_up_when_the_registry_never_settles(policy, store, monkeypatch):
+    with active_read(policy, store, monkeypatch) as (registry, invocation, reads, hooks, read):
+        hooks.append(lambda count: registry.observe_usage(invocation.registry_id, phase='streaming'))
+        assert read() == REFUSED and len(reads) == _USAGE_READ_ATTEMPTS
+
+
+def test_active_read_never_reads_the_ledger_during_a_ledger_write(policy, store, monkeypatch):
+    with active_read(policy, store, monkeypatch) as (registry, _, reads, hooks, read):
+        with registry.usage_mutation():
+            assert read() == REFUSED and reads == []
+        # A write that begins during the health read discards that attempt; the next one
+        # starts after the write has finished and reports the revision that follows it.
+        snapshot, writes = registry.usage_snapshot, ExitStack()
+
+        def write_ends_when_seen():
+            try:
+                return snapshot()
+            except ValueError:
+                writes.close()
+                raise
+
+        monkeypatch.setattr(registry, 'usage_snapshot', write_ends_when_seen)
+        hooks.append(lambda count: count == 1 and writes.enter_context(registry.usage_mutation()))
+        revision = snapshot()[0]
+        status, page = read()
+        assert status == 200 and reads == [revision, revision + 2] and page['registry_revision'] == revision + 2
 
 
 def test_metrics_after_auth_no_queries_and_unavailable(policy):

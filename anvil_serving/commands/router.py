@@ -77,7 +77,7 @@ def commands() -> CommandNode:
                         action, summary,
                         handler=_handler("anvil_serving.router.keys", attribute="dispatch", argv_prefix=(action,),
                                          forward_confirm_flag=action in {"migrate", "create"}),
-                        mutation_class="mutate" if action in {"init", "create", "revoke", "bind", "backup", "restore", "migrate"} else "read",
+                        mutation_class="mutate" if action in {"init", "create", "revoke", "bind", "grant", "backup", "restore", "migrate"} else "read",
                         options=(
                             _option("--config", summary="Router config declaring server.api_keys_path.", value_name="PATH"),
                             _option("--container", summary="Run storage operations as the verified router container user; secret output stays on this host.", value_name="NAME"),
@@ -116,6 +116,12 @@ def commands() -> CommandNode:
                             _option("--owner-id", summary="Trusted opaque owner ID (required).", value_name="ID"),
                             _option("--expected-revision", summary="Current binding revision; zero for unbound (required).", value_name="COUNT"),
                             _option("--dry-run", summary="Validate without changing binding."),
+                        )),
+                        ("grant", "Add model grants to one live ordinary key with full-list CAS.", (
+                            _option("--key-id", summary="Ordinary key ID (required).", value_name="ID"),
+                            _option("--model", summary="Routable alias, purpose-model name, or audio route id to add; repeatable (required).", value_name="MODEL"),
+                            _option("--expected-model", summary="One current model grant, in listed order; repeat for the full current list (required).", value_name="MODEL"),
+                            _option("--dry-run", summary="Validate and show the result without changing grants."),
                         )),
                         ("backup", "Take a consistent protected key/accounting snapshot.", (
                             _option("--out", summary="Absent protected destination (required).", value_name="PATH"),
