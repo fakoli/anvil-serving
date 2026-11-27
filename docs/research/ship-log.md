@@ -92,6 +92,8 @@ acknowledgement for the three planned windows. Deploys are recorded under
 | 4c | Accounting: session identifier | Left for the owner |
 | 3 | Conversation-cache budget | Measured; no change justified (see entry) |
 | extra | Two racing tests that kept breaking CI | **Merged**, PR 837, on the owner's instruction |
+| extra | Active-usage read fails while a request streams | **Deployed** 2026-11-27 05:39 UTC (window 4), PR 840. Not yet observed during a live stream |
+| extra | Widen the secondary-only keys so the redirect can bind them | **Deployed** with window 4, PR 841 (`router keys grant`). Two of three keys widened; the third is Connect-owned and left for the owner |
 
 ## Entries
 
@@ -544,4 +546,85 @@ under it) and retries the fenced read up to four times, 10 ms apart. The
 implementer was a separate agent session; the review read the diff, checked
 that the revision has only two consumers and both use it as a fence, and reran
 the router tests (1008 passed) and lint. Merged after CI passed on all jobs.
+
+### 2026-11-27 — Window 4: PR 840 and the key grant command, PR 841
+
+**Why a grant command.** The redirect binds a caller to the target alias only
+if its key already grants that alias. Three live keys granted the secondary
+alias and nothing else, so the redirect could never serve them. The owner
+approved adding the primary alias to all three. No command could do it: grants
+were set at creation, and the alternative was to revoke each key and deliver a
+new secret to its device, which this run cannot do because it does not handle
+key values or the client hosts.
+
+**Advisor ruling.** An additive grant edit is acceptable and needs no ADR:
+"closed grants" in the key store means an explicit list with wildcards
+rejected, not an immutable one, and the operator could already mint a wider
+key. Conditions: no schema change; the added alias must be routable in the live
+configuration; compare-and-swap on the key's full model list; one key per call
+with a dry run first; keep the output, because the store holds only the current
+policy; command line and container pipe only; a security review before merge.
+One image window for PR 840 and the command together, on condition that the
+wheel differs from the live one in those two changes' files only.
+
+**PR 841.** `router keys grant` adds model grants to one live ordinary key. It
+never removes a grant, leaves paths, rate and expiry alone, and refuses
+revoked, expired and Connect-owned keys. A separate review session tried to
+break it and found no way to widen a key that should be refused. It did find
+that two of the guards were not held by their tests (with the Connect-owner
+guard deleted the suite still passed and a broker-created key was widened in
+its probe), that an expiry falling between two reads would commit the grant and
+then lose its output, and that one documentation claim was too broad. All were
+fixed, and each of the five guards now has a test that fails when the guard is
+removed. The reviewer ran on the same model as the author, in a separate
+session: a second pass, not an independent party. Merged after CI passed on all
+jobs.
+
+**Image.** Release line plus PR 840 and PR 841, built like the earlier ones.
+1035 router and command-line tests pass on that line. The wheel differs from
+the live one in five files: the three key and command files of PR 841 and the
+two router files of PR 840. The merged commit applied to the release line gives
+the same tree the image was built from. The live configuration loads in the new
+image with no network, and the routable names it reports include the alias to
+be granted.
+
+**Cutover.** Image-only swap, 05:36:46 to about 05:39:05 UTC. After it: health
+endpoint 200, no error line, no restart, all eight routes reachable, route
+state unchanged at revision 0. A rollback to the previous image is staged and
+its plan passes.
+
+**Grants applied.** Each key was previewed with a dry run, then applied; the
+applied result equals the preview, and the outputs with the policy digests
+before and after are kept with the private evidence.
+
+| Key | Before | After |
+| --- | --- | --- |
+| Secondary-only harness key 1 | secondary | secondary, primary |
+| Secondary-only harness key 2 | secondary | secondary, primary |
+| Native app key | secondary | unchanged |
+
+The third key is Connect-owned. The command refuses such a key by design,
+because its grants come from its approved account, so widening it is an account
+change that is left for the owner. Read back with `router keys list`: paths,
+rate and expiry of all three are as issued.
+
+**Not verified.**
+
+- No client has sent a request with a widened key, so the client path is
+  untested.
+- No request has been redirected yet (see windows 2 and 3).
+- The active-usage read has not yet been called during a live stream on the new
+  image. On the previous image it refused on ten consecutive reads, over about
+  a minute and a half of streaming, just before the window.
+
+**Train state at 05:45 UTC.** Four windows in about three hours, each a closure
+of roughly 2 minutes 20 seconds, no rollback. The live gateway runs the release
+line plus PRs 835, 836, 840 and 841 with the redirect configured. Since window
+1 every `llm.primary` request that reached the gateway has succeeded: 39 in
+window 1, 2 in window 2 and 22 in window 3 (median 2.52 s, 95th percentile
+45.3 s), 63 in all, with 0 accounting failures and every usage row finalized.
+That is far short of the 200 requests and the morning
+burst the original gate asked for; the hourly check keeps watching the same
+thresholds on the combined change, and a breach rolls back the latest window
+first.
 
