@@ -336,6 +336,26 @@ def test_command_bounds_combined_stdout_and_stderr_and_classifies_timeout():
     assert raised.value.code == "timeout"
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="process groups are POSIX-specific")
+def test_interval_capture_tolerates_eperm_from_an_exited_group(monkeypatch):
+    # Simulates macOS: killpg on a group with only exited members is EPERM, not ESRCH.
+    from anvil_serving.service_runtime import docker
+    from anvil_serving.service_runtime.contracts import ServiceError
+
+    real_killpg, calls = docker.os.killpg, []
+
+    def killpg(pgid, sig):
+        calls.append(sig)
+        real_killpg(pgid, sig)  # the child really goes away; only the answer is macOS's
+        raise PermissionError(1, "Operation not permitted")
+
+    monkeypatch.setattr(docker.os, "killpg", killpg)
+    # A sleeping child is still alive when the bound expires, so cleanup must reach the kill.
+    with pytest.raises(ServiceError) as caught:
+        docker._bounded_log_capture([sys.executable, "-c", "import time; time.sleep(60)"], timeout=.5)
+    assert caught.value.code == "timeout" and calls
+
+
 @pytest.mark.parametrize(("program", "error"), [
     ("import time; time.sleep(10)", "timeout"),
     ("import os,time; os.close(1); os.close(2); time.sleep(10)", "timeout"),

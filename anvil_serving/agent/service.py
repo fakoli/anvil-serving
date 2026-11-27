@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import collections
 import http.client
+import io
 import ipaddress
 import json
 import os
@@ -773,11 +774,23 @@ def make_server(config: AgentConfig, *,
             if not slots.acquire(blocking=False):  # bound buffered bodies, not just decodes
                 self.close_connection = True  # the unread body stays on this socket
                 return self._send(503, {"error": "busy"}, started, "intake busy")
+            # Hold the small JSON reply until the slot is free. A client that sends its next
+            # request the moment it reads this one must never find its own slot still taken.
+            wire, self.wfile = self.wfile, io.BytesIO()
+            body = None
             try:
                 body = self._read_body(length, started)
-                return None if body is None else self._handle_post(path, body, started)
+                if body is not None:
+                    self._handle_post(path, body, started)
             finally:
+                # Drop the upload before the slot is free: the slot bounds buffered bodies, and
+                # the write below can wait on a slow reader after another upload has taken it.
+                body = None
+                reply, self.wfile = self.wfile.getvalue(), wire
                 slots.release()
+                if reply:
+                    wire.write(reply)
+            return None
 
         def _handle_post(self, path, body, started):
             try:

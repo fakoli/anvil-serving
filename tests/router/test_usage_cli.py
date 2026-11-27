@@ -138,8 +138,10 @@ def test_stalled_error_body_is_closed_typed_and_secret_free(monkeypatch, capsys,
     worker = threading.Thread(target=httpd.serve_forever, kwargs={"poll_interval": 0.01}); worker.start()
     monkeypatch.setenv("SYNTHETIC_USAGE", ADMIN)
     try:
+        # The timeout must outlast a slow runner delivering the status line, or the call never
+        # reaches the error body this test is about; the server stalls for longer than it.
         result = main(["router", "usage", "active", "--router-url", f"http://127.0.0.1:{httpd.server_port}",
-                       "--auth-env", "SYNTHETIC_USAGE", "--timeout", "0.05"])
+                       "--auth-env", "SYNTHETIC_USAGE", "--timeout", "0.5"])
         assert result != 0 and status in closed
         output = capsys.readouterr()
         assert json.loads(output.err)["error"]["type"] == "router_unreachable"

@@ -90,8 +90,8 @@ def _bounded_log_capture(argv: list[str], *, timeout: float = _TIMEOUT_SECONDS) 
                 os.killpg(process.pid, signal.SIGKILL)
             elif process.poll() is None:
                 process.kill()
-        except ProcessLookupError:
-            pass
+        except (ProcessLookupError, PermissionError):
+            pass  # already gone; macOS answers EPERM for a group that holds only an exited child
 
     reader = threading.Thread(target=drain, daemon=True)
     deadline = time.monotonic() + timeout

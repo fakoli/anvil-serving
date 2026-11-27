@@ -35,6 +35,7 @@ from .. import operator_config
 
 
 _KEY_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
+_WRITER_WAIT_SECONDS = 1.0  # how long one writer queues behind others before refusing
 _MAX_KEYS = 1024
 _MAX_AUDIT = 10_000
 _MAX_WAL_BYTES = 64 * 1024**2
@@ -952,7 +953,7 @@ class KeyStore:
         # the producer's writers before connection setup too: its PRAGMAs can
         # otherwise starve behind another writer before BEGIN IMMEDIATE.
         with self._ownership():
-            deadline = time.monotonic() + 1.0
+            deadline = time.monotonic() + _WRITER_WAIT_SECONDS
             ticket = object()
             with self._writer_condition:
                 self._writer_queue.append(ticket)

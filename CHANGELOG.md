@@ -93,6 +93,14 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- Anvil Agent frees a request's intake slot before its reply leaves. A client
+  that sent its next request the moment it read a reply could find its own
+  slot still held and get `503 busy`; with two answer slots, three quick
+  answers in a row were enough.
+- Bounded Docker log capture and the Connect application-role transport no
+  longer raise `PermissionError` on macOS when the child's process group has
+  already exited. macOS answers a kill on such a group with EPERM where Linux
+  answers "no such process".
 - `router usage active` no longer answers `accounting unavailable` for as long
   as a request is streaming. The read is refused when the workload registry
   changes while the ledger is read, and every delivery poll of an in-flight

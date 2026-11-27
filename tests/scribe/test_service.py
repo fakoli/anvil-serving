@@ -355,6 +355,17 @@ def service(tmp_path):
     server.server_close()
 
 
+def settle(timeout=5):
+    """Wait for the server's handler threads to exit.
+
+    A handler writes its access line after the reply is on the wire, so a test that
+    reads captured output the instant it has the reply races that line.
+    """
+    for thread in threading.enumerate():
+        if "process_request_thread" in thread.name:
+            thread.join(timeout)
+
+
 def request(base, method, path, body=None, headers=None):
     headers = dict(headers or {})
     if isinstance(body, (dict, list)):
@@ -688,6 +699,7 @@ def test_malformed_content_length_is_refused_and_logged_safely(service, capfd):
     assert conn.getresponse().status == 413
     conn.close()
     assert request(base, "GET", "/healthz")[0] == 200  # the server keeps serving
+    settle()
     err = capfd.readouterr().err
     assert '"bytes_in": -1' in err and "Traceback" not in err
 
