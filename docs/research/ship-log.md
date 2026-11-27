@@ -88,7 +88,7 @@ acknowledgement for the three planned windows. Deploys are recorded under
 | 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | **Deployed** 2026-11-27 02:34 UTC (window 1). Watch in progress |
 | 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | **Merged**, PR 836. Image built; windows 2 and 3 wait for the window 1 gate |
 | 2 | Fix what the recorded refusal cause shows | Cause found from existing data; no gateway defect (see entry) |
-| 4b | Accounting: emit the new refusal codes | Queued behind 2+4a deploy |
+| 4b | Accounting: emit the new refusal codes | Written by the PR 836 code (context, media and tools refusals return their code); goes live with window 2 |
 | 4c | Accounting: session identifier | Left for the owner |
 | 3 | Conversation-cache budget | Measured; no change justified (see entry) |
 | extra | Two racing tests that kept breaking CI | **Merged**, PR 837, on the owner's instruction |
@@ -426,4 +426,15 @@ is running against the thresholds in the advisor rulings. Refusals are judged
 per window, not per day: the baseline day already exceeds the 8% refusal
 threshold because of one deliberate unload window. Windows 2 (PR 836 image,
 configuration unchanged) and 3 (the redirect entry) wait for this gate.
+
+**Made durable.** The gate is computed from the gateway's own usage store, so
+it can be re-read at any time and does not depend on a watcher staying alive.
+The stage, cutover and gate tools, the baseline extract and a resume file with
+the exact next steps are kept on the serving host outside any temporary
+directory. An hourly scheduled check reads the gate and reports waiting, met or
+breached; it is read-only and never cuts over or rolls back. The two backport
+branches are on the remote as `deploy/3.1.0-usage-timings` and
+`deploy/3.1.0-unavailable-redirect`. At 02:57 UTC the gate stood at 21
+requests, 100% success, median 2.72 s, 95th percentile 46.7 s, all with timing
+fields.
 
