@@ -37,6 +37,17 @@ def make_config(**overrides):
     return agent.AgentConfig(**values)
 
 
+def settle(timeout=5):
+    """Wait for the server's handler threads to exit.
+
+    A handler writes its access line and frees its intake slot after the reply is
+    on the wire, so a test that acts the instant it has the reply races both.
+    """
+    for thread in threading.enumerate():
+        if "process_request_thread" in thread.name:
+            thread.join(timeout)
+
+
 def serve(handler_cls):
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler_cls)
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -656,6 +667,7 @@ def test_logs_carry_no_content(live, capfd):
     status, _, data = live.request("POST", "/mcp", odd, {"Content-Type": "application/json",
                                                          "Tailscale-User-Login": LOGIN})
     assert status == 200 and [r.get("error", {}).get("code") for r in json.loads(data)] == [-32601, None, -32600]
+    settle()
     err = capfd.readouterr().err
     assert '"path": "/v1/agent/turn"' in err
     assert "private words" not in err and LOGIN not in err and "echo" not in err
@@ -769,6 +781,7 @@ def test_posts_beyond_the_inflight_cap_get_503_before_their_body_is_read(monkeyp
         assert first["status"] == 200 and json.loads(first["data"])["reply"] == "late reply"
         # the slot is free again once the first request finished
         release.set()
+        settle()
         assert client.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})[0] == 200
     finally:
         release.set()
