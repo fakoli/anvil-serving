@@ -1662,7 +1662,10 @@ def _cmd_run_direct(args, resolved, direct: Dict[str, str]) -> int:
         )
         return 1
 
-    allow_non_loopback = not _host_is_loopback(bind_host)
+    # Only the managed container's wildcard bind (published to 127.0.0.1 on the
+    # host) may run without a token. A specific LAN/tailnet address, or a
+    # wildcard on a bare host, must set realtime_token_env (make_ws_server's F2 guard).
+    allow_non_loopback = _host_is_wildcard(bind_host) and _running_in_container()
     try:
         server, pool = _build_realtime_server(
             data, voice, allow_non_loopback=allow_non_loopback
@@ -2037,6 +2040,10 @@ def _bounded_operation_timeout(value: str) -> float:
             "operation timeout must be between 1 and 7200 seconds"
         )
     return timeout
+
+
+def _running_in_container() -> bool:
+    return os.path.exists("/.dockerenv") or os.path.exists("/run/.containerenv")
 
 
 def _host_is_loopback(host: str) -> bool:

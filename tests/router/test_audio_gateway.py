@@ -354,3 +354,37 @@ base_url = "http://127.0.0.1:30010/v1"
             port=0,
             backends={"chat": StaticBackend("chat")},
         )
+
+
+def test_front_door_audio_sends_only_the_route_credential_upstream():
+    # End to end: the caller authenticates with the router token, and the
+    # upstream sees only the route's own auth_env token.
+    transport = FakeAudioTransport()
+    secured = AudioGateway(
+        (replace(STT, auth_env="ANVIL_STT_TOKEN"), TTS),
+        max_input_bytes=1024, max_output_bytes=4096, max_text_chars=256, max_concurrency=1,
+        env={"ANVIL_STT_TOKEN": "stt-upstream-token"}, transport=transport,
+    )
+    with audio_server(secured) as (host, port):
+        status, _, _ = post(host, port, "/v1/audio/transcriptions", {
+            "purpose": "stt", "audio_b64": base64.b64encode(b"x").decode(), "format": "wav", "is_final": True,
+        }, headers={"Origin": "https://evil.example"})
+    assert status == 200
+    sent = transport.calls[0]["headers"]
+    assert sent["Authorization"] == "Bearer stt-upstream-token"
+    assert "router-token" not in repr(sent) and "Origin" not in sent
+
+
+def test_front_door_audio_route_with_unset_credential_is_404_not_a_fallback(capsys):
+    transport = FakeAudioTransport()
+    unbound = AudioGateway(
+        (replace(STT, auth_env="ANVIL_MISSING_TOKEN"), TTS),
+        max_input_bytes=1024, max_output_bytes=4096, max_text_chars=256, max_concurrency=1,
+        env={}, transport=transport,
+    )
+    with audio_server(unbound) as (host, port):
+        status, _, body = post(host, port, "/v1/audio/transcriptions", {
+            "purpose": "stt", "audio_b64": base64.b64encode(b"x").decode(), "format": "wav", "is_final": True,
+        })
+    assert status == 404 and transport.calls == []
+    assert "ANVIL_MISSING_TOKEN" in capsys.readouterr().err

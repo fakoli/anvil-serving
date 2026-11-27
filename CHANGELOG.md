@@ -111,6 +111,29 @@ All notable changes to this project are documented here. The format is based on
   so a ledger write or a request starting or ending during the read rarely
   surfaces. It still never reads the ledger during a ledger write, and
   `registry_revision` is the revision that held across the read.
+- `[[router.realtime_routes]]` lets the router relay `GET /v1/realtime`
+  WebSocket upgrades to an operator-owned Realtime upstream, such as the Anvil
+  Voice proxy (ADR-0050, amending ADR-0019 for this path only). The router
+  checks the caller's key, opens the upstream upgrade with only the route's
+  `auth_env` token, and copies bytes both ways after a validated `101`. The
+  caller's `Authorization`, `Origin`, cookies and credential-bearing
+  subprotocols are never forwarded. Sessions are capped by
+  `realtime_max_concurrency`, gated on the route's `health_path`, and held
+  under an `audio` admission permit, so quiesce and drain account for them.
+  Device keys can be granted `--path /v1/realtime` together with the route id
+  as a model.
+- `router routes rebase` also accepts a boot-config change that only adds,
+  removes or edits `router.realtime_routes` or `realtime_max_concurrency`.
+  Realtime routes never enter route projections, so route revisions and
+  history carry over unchanged.
+
+### Changed
+
+- `voice proxy run --host <address>` no longer skips the token requirement for
+  every non-loopback bind. Only a wildcard bind inside a container, which the
+  Compose template publishes to `127.0.0.1`, may run without
+  `realtime_token_env`. A tailnet or LAN address, or a wildcard on a bare host,
+  now refuses to start without a token.
 
 ## [3.1.0] - 2026-11-23
 

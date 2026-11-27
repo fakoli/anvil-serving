@@ -279,7 +279,9 @@ Repeat `--model` and `--path` for additional grants. Both must authorize a
 request. Chat grants use the router's trimmed, case-insensitive aliases;
 embeddings and reranking use exact served-model names. Supported inference
 paths are `/v1/chat/completions`, `/v1/messages`, `/v1/responses`,
-`/v1/embeddings`, and `/v1/rerank`. `/v1/models` is granted automatically and
+`/v1/embeddings`, and `/v1/rerank`. `--path /v1/realtime` grants the Realtime
+WebSocket upgrade; pair it with `--model <realtime route id>`.
+`/v1/models` is granted automatically and
 returns only granted chat aliases. The same discovery grant permits
 `GET /v1/models/capabilities` and `GET /v1/router/status` for authenticated client
 catalog reconciliation. Device capability rows contain only granted aliases and
@@ -1139,8 +1141,8 @@ published revision remains a separate, newly previewed route change.
 ### Stopped route-authority rebase
 
 When a selected successor has already been stopped through the protected failed-startup
-path, a memory-route-only boot-config migration can rebase its protected route authority
-without starting a listener:
+path, a memory-route-only or realtime-route-only boot-config migration can rebase its
+protected route authority without starting a listener:
 
 ```bash
 anvil-serving router routes rebase --old-config /protected/predecessor.toml --new-config /protected/successor.toml --compose /protected/successor-compose.yml --env-file /protected/router.env --startup-abort-config /protected/startup-abort.json --current-stop-receipt /protected/current-stop.json --helper-image-id sha256:HELPER --expected-state-sha256 STATE_SHA256 --dry-run
@@ -1154,8 +1156,9 @@ helper itself has no network or added privileges. Both receipts,
 the stopped container, selected Compose hash, configured image, writable storage owner,
 and the original predecessor configuration digest are rechecked before the helper runs.
 The fixed helper image is taken only from the completed startup-abort declaration. It
-accepts only a strict add or remove of `router.memory_routes`; every other parsed TOML
-setting must remain semantically equal. It never starts or readmits the router.
+accepts only a strict add or remove of `router.memory_routes`, or a change limited to
+`router.realtime_routes` and `realtime_max_concurrency`; every other parsed TOML setting
+must remain semantically equal. It never starts or readmits the router.
 
 ## Failed startup recovery
 

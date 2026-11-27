@@ -68,3 +68,4 @@ people and the chat logs.
 | [0047](0047-gateway-socket-recovery.md) | Recover gateway crash sockets under exclusive ownership | Accepted for implementation |
 | [0048](0048-anvil-scribe-record-first-dictation.md) | Anvil Scribe: record-first dictation as a product family | Accepted for implementation |
 | [0049](0049-anvil-agent-glasses-bridge.md) | Anvil Agent: a glasses bridge to the operator's own agents | Accepted for implementation |
+| [0050](0050-router-realtime-websocket-relay.md) | The router relays `/v1/realtime` WebSockets (amends ADR-0019) | Proposed |

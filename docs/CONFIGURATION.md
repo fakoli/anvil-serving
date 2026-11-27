@@ -662,6 +662,41 @@ contract, request examples, and why this surface routes by model name.
 normalized `/v1/audio/transcriptions` or `/v1/audio/speech` gateway. Audio
 routes remain separate from chat and purpose-model routing.
 
+An audio route's optional `auth_env` names the environment variable that holds
+that serve's bearer token. The router sends it as `Authorization: Bearer` to
+that upstream only and never forwards the caller's credential. If the variable
+is unset or empty, the route is not bound: requests for it answer `404` and
+never fall back to another route.
+
+### Realtime routes
+
+`[[router.realtime_routes]]` lets the router relay `GET /v1/realtime`
+WebSocket upgrades to an operator-owned Realtime upstream, such as the Anvil
+Voice proxy ([ADR-0050](adr/0050-router-realtime-websocket-relay.md)). Without
+this table, `/v1/realtime` stays `404`.
+
+```toml
+[router]
+realtime_max_concurrency = 4      # open sessions across all routes, 1-64
+
+[[router.realtime_routes]]
+id = "voice-proxy"                  # callers select ?route=voice-proxy or take the default
+base_url = "http://100.64.0.20:8765/v1"   # the router connects to <base>/realtime
+auth_env = "ANVIL_VOICE_PROXY_TOKEN"         # upstream bearer token, by variable name
+health_path = "/healthz"          # token-free readiness check; the default
+default = true                    # required when more than one route exists
+```
+
+`base_url` follows the audio-route rules: a credential-free http(s) origin on
+`127.0.0.1`, `host.docker.internal`, or an RFC1918 or tailnet address. The
+router checks the caller's key and opens the upstream upgrade with only the
+route's token. It drops the caller's `Authorization`, `Origin`, cookies and any
+`openai-insecure-api-key.*` subprotocol, then relays bytes until either side
+closes or the session is idle for five minutes. Each session holds an `audio`
+admission permit, so quiesce refuses new sessions and drain waits for open
+ones. Realtime routes require a resolved `[server].auth_env`. A device key needs
+the `/v1/realtime` path grant and the route id as a model grant.
+
 ## Named media workflows
 
 Media generation is configured separately from chat, purpose-model, and audio
