@@ -376,6 +376,10 @@ _MANAGEMENT_MUTATION_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaph
 # Injected operator callbacks are read-only management work, not data-plane
 # relay work; retain a separate bounded capacity before invoking one.
 _OPERATOR_READ_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(4)
+# A fenced active usage read is tried four times, 10 ms apart: a request ends with two
+# ledger writes of a few milliseconds each, and a retry without a pause meets the same write.
+_USAGE_READ_ATTEMPTS = 4
+_USAGE_READ_PAUSE_S = 0.01
 
 #: Maximum bytes to drain from the socket after sending a 413 (or a response
 #: to an oversized GET body) before closing, so the OS can push the response
@@ -1305,12 +1309,24 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 if workload_registry is None:
                     raise UsageError("accounting_unavailable")
                 try:
-                    revision, entries, omitted = workload_registry.usage_snapshot()
-                    now = collection_clock()
-                    health = usage_store.health(domain)
-                    result = workload_registry.active_usage_page(entries, omitted, now,
-                                                                 limit=limit, filters=native.filters)
-                    if workload_registry.usage_snapshot()[0] != revision:
+                    for attempt in range(_USAGE_READ_ATTEMPTS):
+                        if attempt:
+                            time.sleep(_USAGE_READ_PAUSE_S)
+                        try:
+                            revision, entries, omitted = workload_registry.usage_snapshot()
+                        except ValueError:
+                            continue  # A ledger write is in progress: the ledger is not read.
+                        now = collection_clock()
+                        health = usage_store.health(domain)
+                        result = workload_registry.active_usage_page(entries, omitted, now,
+                                                                     limit=limit, filters=native.filters)
+                        try:
+                            stable = workload_registry.usage_snapshot()[0] == revision
+                        except ValueError:
+                            stable = False  # A ledger write began during the read.
+                        if stable:
+                            break
+                    else:
                         raise ValueError()
                 except UsageError:
                     raise
