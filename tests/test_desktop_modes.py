@@ -37,6 +37,14 @@ def setup(monkeypatch, tmp_path):
     monkeypatch.setattr(desktop_modes, "_guard_safe", lambda _: None)
     monkeypatch.setattr(desktop.serves, "_await_healthy", lambda *a, **k: True)
     monkeypatch.setattr(desktop.serves, "_serve_identity_ready", lambda *a, **k: True)
+    docker_call = desktop._call
+    def call(argv, **kwargs):
+        if argv[:2] == ["docker", "stop"]:
+            row = next(row for row in docker.rows if row["id"] == argv[2])
+            row["status"] = "exited"
+            return row["id"]
+        return docker_call(argv, **kwargs)
+    monkeypatch.setattr(desktop, "_call", call)
     operations = []
 
     def lifecycle(action, owners, names, **kwargs):
@@ -52,6 +60,60 @@ def setup(monkeypatch, tmp_path):
     monkeypatch.setattr(desktop.serves, "cmd_up", lambda *a, **k: lifecycle("up", *a, **k))
     monkeypatch.setattr(desktop.serves, "cmd_down", lambda *a, **k: lifecycle("down", *a, **k))
     return docker, operations
+
+
+def dynamic_secondary(monkeypatch, tmp_path, *, tier="secondary-tier", model="model-a"):
+    (tmp_path / "client-router.env").write_text("ANVIL_ROUTER_TOKEN=synthetic\n", encoding="utf-8")
+    manifests = tmp_path / "manifests"
+    manifests.mkdir()
+    registry = tmp_path / "recipes.toml"
+    registry.write_text('''schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "model-a"
+[recipe.serve]
+image = "example.test/alpha"
+port = 8100
+served_model_name = "model-a"
+
+[[recipe]]
+model = "model-b"
+[recipe.serve]
+image = "example.test/beta"
+port = 8100
+served_model_name = "model-b"
+''', encoding="utf-8")
+    for name, served_name, router_tier in (("alpha", "model-a", "secondary-tier"),
+                                           ("beta", "model-b", "other-tier")):
+        (manifests / ("serves." + name + ".toml")).write_text(
+            '[[serve]]\nname="%s"\ncontainer="%s"\nruntime="docker"\nport=8100\n'
+            'model="%s"\nserved_name="%s"\nrouter_tier="%s"\nengine="none"\n'
+            'gpu_inference=false\nhealth="/health"\nup="anvil-serving models recipes load %s --registry %s --container %s --confirm"\n'
+            % (name, name, served_name, served_name, router_tier, served_name, registry, name), encoding="utf-8")
+    (tmp_path / "desktop-modes.toml").write_text(
+        'schema="anvil-serving.desktop-modes/v1"\nmedia_manifest="media.toml"\n'
+        'model_manifests=[]\nworker_containers=["worker"]\nguard_cli="guard.exe"\nguard_config="guard.toml"\n'
+        'secondary_router_url="https://router.example.test"\nsecondary_router_alias="llm.secondary"\n'
+        'secondary_router_token_file="client-router.env"\nsecondary_router_token_env="ANVIL_ROUTER_TOKEN"\n'
+        'secondary_manifest_dir="manifests"\n', encoding="utf-8")
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def read(self, _):
+            import json
+            return json.dumps({"data": [{"id": tier, "aliases": ["llm.secondary"], "model": model,
+                                          "readiness": {"loaded": False}}]}).encode()
+
+    seen = []
+    def opener(*_):
+        return SimpleNamespace(open=lambda request, timeout: seen.append((request, timeout)) or Response())
+    monkeypatch.setattr(desktop_modes.urllib.request, "build_opener", opener)
+    return seen
 
 
 def test_explicit_modes_and_same_mode_are_idempotent(monkeypatch, tmp_path):
@@ -120,6 +182,123 @@ def test_preview_missing_target_and_guard_failure_do_not_stop(monkeypatch, tmp_p
     with pytest.raises(RuntimeError, match="unsafe guard"):
         desktop_modes.select_mode("media", dry_run=True, run=docker)
     assert ops == []
+
+
+def test_dynamic_secondary_uses_current_exact_router_assignment(monkeypatch, tmp_path):
+    docker, ops = setup(monkeypatch, tmp_path)
+    seen = dynamic_secondary(monkeypatch, tmp_path)
+    docker.rows[0]["name"] = "/alpha"
+    docker.rows[0]["status"] = "running"
+    docker.rows[3]["name"] = "/beta"
+    assert desktop_modes.select_mode("secondary", confirm=True, run=docker)["mode"] == "secondary"
+    assert not any(action == "up" and names == ["alpha"] for action, names in ops)
+    assert seen[0][0].full_url.endswith("/v1/models/capabilities?model=llm.secondary")
+    assert seen[0][0].get_header("Authorization") == "Bearer synthetic"
+
+
+def test_dynamic_secondary_starts_parked_exact_router_assignment(monkeypatch, tmp_path):
+    docker, ops = setup(monkeypatch, tmp_path)
+    dynamic_secondary(monkeypatch, tmp_path)
+    docker.rows[0]["name"] = "/alpha"
+    docker.rows[3]["name"] = "/beta"
+    assert desktop_modes.select_mode("secondary", confirm=True, run=docker)["mode"] == "secondary"
+    assert ("up", ["alpha"]) in ops
+
+
+def test_dynamic_secondary_selects_each_exact_model_on_a_shared_tier(monkeypatch, tmp_path):
+    docker, ops = setup(monkeypatch, tmp_path)
+    dynamic_secondary(monkeypatch, tmp_path, model="model-b")
+    beta = tmp_path / "manifests" / "serves.beta.toml"
+    beta.write_text(beta.read_text(encoding="utf-8").replace('router_tier="other-tier"', 'router_tier="secondary-tier"'), encoding="utf-8")
+    docker.rows[0]["name"] = "/alpha"
+    docker.rows[3]["name"] = "/beta"
+    assert desktop_modes.select_mode("secondary", confirm=True, run=docker)["target"]["served_name"] == "model-b"
+    assert ("up", ["beta"]) in ops
+    assert not any(action == "up" and names == ["alpha"] for action, names in ops)
+
+
+def test_dynamic_secondary_starts_absent_managed_backer(monkeypatch, tmp_path):
+    docker, ops = setup(monkeypatch, tmp_path)
+    dynamic_secondary(monkeypatch, tmp_path)
+    recipe_loads = []
+    docker.rows = [row for row in docker.rows if row["name"] != "/secondary"]
+    docker.rows[-1]["name"] = "/beta"
+    def load_recipe(binding, target, timeout):
+        recipe_loads.append((binding, target, timeout))
+        docker.rows.append(dict(id="f" * 64, name="/alpha", status="running", restart="unless-stopped", health=None))
+    monkeypatch.setattr(desktop_modes, "_load_recipe", load_recipe)
+    assert desktop_modes.select_mode("secondary", confirm=True, run=docker)["mode"] == "secondary"
+    assert recipe_loads[0][0]["model"] == "model-a"
+
+
+def test_failed_cold_start_preserves_uncertain_container_and_parks_media(monkeypatch, tmp_path):
+    docker, operations = setup(monkeypatch, tmp_path)
+    dynamic_secondary(monkeypatch, tmp_path)
+    docker.rows.pop(0)
+    docker.rows[-1]["name"] = "/beta"
+
+    def interrupted_load(*args):
+        docker.rows.append(dict(id="f" * 64, name="/alpha", status="running", restart="no", health=None))
+        raise RuntimeError("loader interrupted")
+
+    monkeypatch.setattr(desktop_modes, "_load_recipe", interrupted_load)
+    with pytest.raises(RuntimeError, match="ownership is uncertain"):
+        desktop_modes.select_mode("secondary", confirm=True, run=docker)
+    assert not any(action == "up" for action, _ in operations)
+    assert docker.rows[-1]["status"] == "running"
+
+
+def test_failed_parked_start_recovers_original_container(monkeypatch, tmp_path):
+    docker, operations = setup(monkeypatch, tmp_path)
+    dynamic_secondary(monkeypatch, tmp_path)
+    docker.rows[0]["name"] = "/alpha"
+    docker.rows[-1]["name"] = "/beta"
+    cmd_up = desktop.serves.cmd_up
+    def fail_after_start(owners, names, **kwargs):
+        result = cmd_up(owners, names, **kwargs)
+        return 1 if names == ["alpha"] else result
+    monkeypatch.setattr(desktop.serves, "cmd_up", fail_after_start)
+    with pytest.raises(RuntimeError, match="Managed start failed"):
+        desktop_modes.select_mode("secondary", confirm=True, run=docker)
+    assert docker.rows[0]["status"] == "exited"
+    assert ("up", ["gateway"]) in operations
+
+
+def test_dynamic_recipe_load_uses_validated_selector_not_served_name(monkeypatch, tmp_path):
+    setup(monkeypatch, tmp_path)
+    dynamic_secondary(monkeypatch, tmp_path, model="public-a")
+    registry = tmp_path / "recipes.toml"
+    registry.write_text(registry.read_text(encoding="utf-8").replace('served_model_name = "model-a"', 'served_model_name = "public-a"'), encoding="utf-8")
+    alpha = tmp_path / "manifests" / "serves.alpha.toml"
+    alpha.write_text(alpha.read_text(encoding="utf-8").replace('served_name="model-a"', 'served_name="public-a"'), encoding="utf-8")
+    target = desktop_modes._secondary(desktop_modes._profile())
+    binding = desktop_modes._recipe_start_binding(target)
+    seen = {}
+    monkeypatch.setattr(desktop_modes.subprocess, "run", lambda argv, **kwargs: seen.update(argv=argv, env=kwargs["env"]) or SimpleNamespace(returncode=0))
+    desktop_modes._load_recipe(binding, target, 1)
+    assert binding["model"] == "model-a"
+    assert seen["argv"][6] == "model-a" and seen["argv"][-1] == "--confirm"
+    assert seen["env"]["DOCKER_CONTEXT"] == desktop.CONTEXT and seen["env"]["ANVIL_SERVING_NO_HOME_ENV"] == "1"
+
+
+@pytest.mark.parametrize("tier,model", [("missing-tier", "model-a"), ("secondary-tier", "wrong-model")])
+def test_dynamic_secondary_missing_backer_refuses_before_docker_mutations(monkeypatch, tmp_path, tier, model):
+    docker, ops = setup(monkeypatch, tmp_path)
+    dynamic_secondary(monkeypatch, tmp_path, tier=tier, model=model)
+    with pytest.raises(RuntimeError, match="unambiguous"):
+        desktop_modes.select_mode("secondary", confirm=True, run=docker)
+    assert docker.calls == ops == []
+
+
+def test_dynamic_secondary_ambiguous_backer_refuses_before_docker_mutations(monkeypatch, tmp_path):
+    docker, ops = setup(monkeypatch, tmp_path)
+    dynamic_secondary(monkeypatch, tmp_path)
+    (tmp_path / "manifests" / "serves.duplicate.toml").write_text(
+        (tmp_path / "manifests" / "serves.alpha.toml").read_text(encoding="utf-8").replace('name="alpha"', 'name="alpha-two"').replace('container="alpha"', 'container="alpha-two"'),
+        encoding="utf-8")
+    with pytest.raises(RuntimeError, match="unambiguous"):
+        desktop_modes.select_mode("secondary", confirm=True, run=docker)
+    assert docker.calls == ops == []
 
 
 def test_shared_lock_cooldown_failure_retry_and_cli(monkeypatch, tmp_path):

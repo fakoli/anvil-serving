@@ -12,8 +12,17 @@ import subprocess
 import sys
 import time
 import tomllib
+import ssl
+import urllib.error
+import urllib.parse
+import urllib.request
 
-from . import desktop, paths, serves
+from . import desktop, envfile, paths, serve_recipes, serves
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, fp, code, msg, headers, newurl):
+        return None
 
 
 def _profile():
@@ -21,10 +30,17 @@ def _profile():
     if path.stat().st_size > 65536:
         raise ValueError("Desktop mode configuration is too large.")
     value = tomllib.loads(path.read_text(encoding="utf-8"))
-    required = {"schema", "secondary_manifest", "media_manifest", "model_manifests",
-                "worker_containers", "guard_cli", "guard_config"}
-    if not required <= set(value) <= required | {"idle_teardown"} or value["schema"] != "anvil-serving.desktop-modes/v1":
+    required = {"schema", "media_manifest", "model_manifests", "worker_containers", "guard_cli", "guard_config"}
+    dynamic = {"secondary_router_url", "secondary_router_alias", "secondary_router_token_file",
+               "secondary_router_token_env", "secondary_manifest_dir"}
+    optional = {"secondary_manifest", "idle_teardown", "secondary_router_ca_file"} | dynamic
+    if not required <= set(value) <= required | optional or value["schema"] != "anvil-serving.desktop-modes/v1":
         raise ValueError("Invalid Desktop mode configuration.")
+    dynamic_present = dynamic & set(value)
+    if dynamic_present and dynamic_present != dynamic:
+        raise ValueError("Dynamic secondary assignment requires router URL, alias, token file, token name, and manifest directory.")
+    if not dynamic_present and "secondary_manifest" not in value:
+        raise ValueError("Desktop mode configuration requires a secondary manifest or dynamic secondary assignment.")
     for key in ("model_manifests", "worker_containers"):
         if (not isinstance(value[key], list) or len(value[key]) > 16
                 or not all(isinstance(item, str) and item for item in value[key])):
@@ -42,14 +58,51 @@ def _profile():
             raise ValueError("Desktop mode file is missing: " + str(target))
         return str(target)
 
-    for key in ("secondary_manifest", "media_manifest", "guard_cli", "guard_config"):
+    for key in ("media_manifest", "guard_cli", "guard_config"):
         value[key] = resolve(value[key])
-    value["secondary"] = serves.load_manifest(value["secondary_manifest"])
+    if "secondary_manifest" in value:
+        value["secondary_manifest"] = resolve(value["secondary_manifest"])
+        value["secondary"] = serves.load_manifest(value["secondary_manifest"])
+    else:
+        value["secondary"] = []
     value["media"] = serves.load_manifest(value["media_manifest"])
     value["models"] = [s for item in value["model_manifests"] for s in serves.load_manifest(resolve(item))]
-    if len(value["secondary"]) != 1 or not value["media"] or not any(s.get("up") for s in value["media"]):
+    if (not dynamic_present and len(value["secondary"]) != 1) or not value["media"] or not any(s.get("up") for s in value["media"]):
         raise ValueError("Declare one secondary serve and an activatable media control plane.")
-    model_names = {s["container"] for s in value["models"] + value["secondary"]}
+    value["dynamic_secondary"] = bool(dynamic_present)
+    if dynamic_present:
+        router_url = value["secondary_router_url"]
+        parsed_url = urllib.parse.urlsplit(router_url)
+        if (not isinstance(router_url, str) or parsed_url.scheme not in {"http", "https"}
+                or not parsed_url.netloc or parsed_url.username or parsed_url.password
+                or parsed_url.path not in {"", "/"} or parsed_url.query or parsed_url.fragment
+                or parsed_url.hostname == "localhost"
+                or (parsed_url.scheme == "http" and parsed_url.hostname != "127.0.0.1")):
+            raise ValueError("Invalid dynamic secondary router URL.")
+        if (not isinstance(value["secondary_router_alias"], str)
+                or not re.fullmatch(r"[a-z][a-z0-9_.-]{0,127}", value["secondary_router_alias"])):
+            raise ValueError("Invalid dynamic secondary router alias.")
+        if (not isinstance(value["secondary_router_token_env"], str)
+                or not re.fullmatch(r"[A-Z][A-Z0-9_]{0,127}", value["secondary_router_token_env"])):
+            raise ValueError("Invalid dynamic secondary router token name.")
+        value["secondary_router_token_file"] = resolve(value["secondary_router_token_file"])
+        if "secondary_router_ca_file" in value:
+            value["secondary_router_ca_file"] = resolve(value["secondary_router_ca_file"])
+        manifest_dir = value["secondary_manifest_dir"]
+        if (not isinstance(manifest_dir, str) or not manifest_dir or "\x00" in manifest_dir):
+            raise ValueError("Dynamic secondary manifest directory is missing.")
+        directory = (path.parent / manifest_dir).resolve()
+        if not directory.is_dir():
+            raise ValueError("Dynamic secondary manifest directory is missing.")
+        dynamic_models = []
+        for manifest in sorted(directory.glob("serves.*.toml")):
+            dynamic_models.extend(serve for serve in serves.load_manifest(str(manifest)) if serve.get("router_tier"))
+        if not dynamic_models:
+            raise ValueError("Dynamic secondary manifest directory declares no routed Docker backers.")
+        value["dynamic_models"] = dynamic_models
+    else:
+        value["dynamic_models"] = []
+    model_names = {s["container"] for s in value["models"] + value["secondary"] + value["dynamic_models"]}
     control_names = {s["container"] for s in value["media"]}
     if model_names & control_names or set(value["worker_containers"]) & (model_names | control_names):
         raise ValueError("Worker, model and media control assignments must not overlap.")
@@ -60,12 +113,109 @@ def _profile():
                 or binding["worker"] not in value["worker_containers"]
                 or not any(s["container"] == binding["controller"] and not s.get("up") for s in value["media"])):
             raise ValueError("Invalid idle worker lifecycle binding.")
-    for owner in value["secondary"] + value["media"] + value["models"]:
+    for owner in value["secondary"] + value["media"] + value["models"] + value["dynamic_models"]:
         if owner.get("runtime", "docker") != "docker":
             raise ValueError("Desktop modes require local Docker serves.")
         if serves._is_compose_up(owner.get("up")):
             desktop._local_command(owner["up"])
     return value
+
+
+def _dynamic_secondary(profile):
+    token = envfile.read_dotenv(profile["secondary_router_token_file"]).get(profile["secondary_router_token_env"], "").strip()
+    if not token:
+        raise RuntimeError("Dynamic secondary router credential is unavailable.")
+    alias = profile["secondary_router_alias"]
+    url = profile["secondary_router_url"].rstrip("/") + "/v1/models/capabilities?model=" + urllib.parse.quote(alias, safe="")
+    request = urllib.request.Request(url, headers={"Accept": "application/json", "Authorization": "Bearer " + token})
+    try:
+        handlers = [_NoRedirect()]
+        if profile.get("secondary_router_ca_file"):
+            handlers.append(urllib.request.HTTPSHandler(context=ssl.create_default_context(
+                cafile=profile["secondary_router_ca_file"])))
+        with urllib.request.build_opener(*handlers).open(request, timeout=5) as response:
+            raw = response.read(65537)
+    except (OSError, urllib.error.HTTPError, urllib.error.URLError) as exc:
+        raise RuntimeError("Dynamic secondary router assignment is unavailable.") from exc
+    if len(raw) > 65536:
+        raise RuntimeError("Dynamic secondary router assignment is invalid.")
+    try:
+        rows = json.loads(raw)["data"]
+        if (not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict)
+                or not isinstance(rows[0].get("aliases"), list) or alias not in rows[0]["aliases"]
+                or "members" in rows[0] or not isinstance(rows[0].get("id"), str)
+                or not isinstance(rows[0].get("model"), str) or not rows[0]["model"]):
+            raise ValueError
+    except (ValueError, TypeError, KeyError, json.JSONDecodeError):
+        raise RuntimeError("Dynamic secondary router assignment is invalid.") from None
+    matches = [serve for serve in profile["dynamic_models"]
+               if serve.get("runtime") == "docker" and serve.get("router_tier") == rows[0]["id"]
+               and serve.get("served_name") == rows[0]["model"]]
+    if len(matches) != 1:
+        raise RuntimeError("Dynamic secondary router assignment has no unambiguous local managed backer.")
+    return matches[0]
+
+
+def _secondary(profile):
+    return _dynamic_secondary(profile) if profile["dynamic_secondary"] else profile["secondary"][0]
+
+
+def _recipe_start_binding(target):
+    argv = target.get("up") or []
+    prefix = ["anvil-serving", "models", "recipes", "load"]
+    if len(argv) < 6 or argv[:4] != prefix or not isinstance(argv[4], str):
+        raise ValueError("Dynamic secondary requires its exact managed recipe-load command.")
+    selector = argv[4]
+    prefix += [selector, "--registry"]
+    if argv[:len(prefix)] != prefix or len(argv) not in {10, 12}:
+        raise ValueError("Dynamic secondary requires its exact managed recipe-load command.")
+    registry, tail = argv[len(prefix)], argv[len(prefix) + 1:]
+    if tail[:2] != ["--container", target["container"]] or tail[-1:] != ["--confirm"]:
+        raise ValueError("Dynamic secondary recipe-load command has an invalid container binding.")
+    gpu_device = None
+    if len(tail) == 3:
+        if tail[2:] != ["--confirm"]:
+            raise ValueError("Dynamic secondary recipe-load command is invalid.")
+    else:
+        if tail[2] != "--gpu-device" or not isinstance(tail[3], str) or tail[4:] != ["--confirm"]:
+            raise ValueError("Dynamic secondary recipe-load command is invalid.")
+        gpu_device = tail[3]
+    if not os.path.isabs(registry) or not os.path.isfile(registry):
+        raise ValueError("Dynamic secondary recipe registry is missing.")
+    try:
+        recipe = serve_recipes.find_recipe(serve_recipes.load_registry(registry), selector)
+    except (OSError, ValueError, tomllib.TOMLDecodeError) as exc:
+        raise ValueError("Dynamic secondary recipe registry is invalid.") from exc
+    serve = recipe.get("serve") if recipe else {}
+    if (recipe is None or recipe.get("model") != selector
+            or serve.get("served_model_name") != target["served_name"]
+            or serve.get("port") != target["port"]
+            or (recipe.get("expected_container") is not None and recipe["expected_container"] != target["container"])):
+        raise ValueError("Dynamic secondary recipe does not match its declared model and port.")
+    return {"model": selector, "registry": registry, "gpu_device": gpu_device}
+
+
+def _load_recipe(binding, target, timeout):
+    argv = [sys.executable, "-m", "anvil_serving.cli", "models", "recipes", "load", binding["model"],
+            "--registry", binding["registry"], "--container", target["container"]]
+    if binding["gpu_device"]:
+        argv += ["--gpu-device", binding["gpu_device"]]
+    argv += ["--confirm"]
+    environment = dict(os.environ)
+    for name in tuple(environment):
+        if name.upper().startswith("DOCKER_"):
+            del environment[name]
+    environment["DOCKER_CONTEXT"] = desktop.CONTEXT
+    environment["ANVIL_SERVING_NO_HOME_ENV"] = "1"
+    result = subprocess.run(argv, capture_output=True, text=True, timeout=timeout + 30, env=environment,
+                            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+    if result.returncode:
+        raise RuntimeError("Managed secondary recipe load failed.")
+
+
+def _container_for(target, run):
+    return next((row for row in desktop._containers(run)
+                 if row["name"] == "/" + target["container"]), None)
 
 
 def _guard_safe(profile):
@@ -166,12 +316,12 @@ def _media_running(profile, rows):
                and current[s["container"]]["health"] in {None, "healthy"} for s in profile["media"])
 
 
-def _preflight(profile, mode, run):
+def _preflight(profile, mode, target, recipe_start, run):
     rows = desktop._containers(run)
-    target = profile["secondary"][0]
-    if mode == "secondary" and not any(r["name"] == "/" + target["container"] for r in rows):
-        raise RuntimeError("Promoted secondary container is missing; load its declared managed recipe first.")
-    models = {s["container"]: s for s in profile["models"] + profile["secondary"]}
+    if (mode == "secondary" and not any(r["name"] == "/" + target["container"] for r in rows)
+            and (not profile["dynamic_secondary"] or (recipe_start is None and not serves._is_compose_up(target.get("up"))))):
+        raise RuntimeError("Secondary container is missing; declare its managed startup first.")
+    models = {s["container"]: s for s in profile["models"] + profile["secondary"] + profile["dynamic_models"]}
     controls = {s["container"]: s for s in profile["media"]}
     known = set(models) | set(controls) | set(profile["worker_containers"])
     if any(r["name"].lstrip("/") not in known and r["status"] not in {"exited", "dead"} for r in rows):
@@ -202,15 +352,21 @@ def select_mode(mode, *, confirm=False, dry_run=False, timeout=600, run=desktop.
             ignored = desktop._enter_operation(locks, cooldown_path)
             if ignored:
                 return ignored
+        target = _secondary(profile) if mode == "secondary" else None
+        recipe_start = None
+        if target and profile["dynamic_secondary"] and target.get("up") and not serves._is_compose_up(target["up"]):
+            recipe_start = _recipe_start_binding(target)
         endpoint = desktop._call(["docker", "context", "inspect", desktop.CONTEXT, "--format",
                                   "{{.Endpoints.docker.Host}}"], run=run)
         if endpoint != desktop.PIPE:
             raise ValueError("Refusing a non-local Docker Desktop Linux context.")
         state = desktop._state(run)
         result = {"mode": mode, "state": state, "dry_run": dry_run, "changed": False}
+        if target is not None:
+            result["target"] = {key: target[key] for key in ("name", "container", "served_name", "router_tier") if key in target}
         if dry_run:
             if state == "running":
-                _, _, _, idle_workers = _preflight(profile, mode, run)
+                _, _, _, idle_workers = _preflight(profile, mode, target, recipe_start, run)
                 if idle_workers:
                     result["idle_workers_to_teardown"] = idle_workers
             else:
@@ -226,11 +382,11 @@ def select_mode(mode, *, confirm=False, dry_run=False, timeout=600, run=desktop.
             state = "running"
             result["changed"] = True
         if state == "running":
-            rows, models, controls, idle_workers = _preflight(profile, mode, run)
-            target = profile["secondary"][0]
+            rows, models, controls, idle_workers = _preflight(profile, mode, target, recipe_start, run)
             controls_were_running = any(r["name"].lstrip("/") in controls and r["status"] == "running" for r in rows)
             controls_stopped = False
-            secondary_started = False
+            secondary_start_attempted = False
+            started_container_id = None
             try:
                 if mode != "media" or idle_workers:
                     # Stop submissions first; keep lifecycle authority alive for owned teardown.
@@ -270,12 +426,24 @@ def select_mode(mode, *, confirm=False, dry_run=False, timeout=600, run=desktop.
                         raise RuntimeError("Docker Desktop did not stop; retry gaming mode.")
                     result["changed"] = True
                 elif mode == "secondary":
-                    live = next(r for r in desktop._containers(run) if r["name"] == "/" + target["container"])
-                    if live["status"] != "running":
-                        secondary_started = True
-                        _lifecycle("start", profile["secondary"], [target["name"]], run, timeout)
+                    live = _container_for(target, run)
+                    if live is None or live["status"] != "running":
+                        secondary_start_attempted = True
+                        started_container_id = live["id"] if live else None
+                        if live is None and not recipe_start and not (profile["dynamic_secondary"] and serves._is_compose_up(target.get("up"))):
+                            raise RuntimeError("Secondary container is missing; declare its managed startup first.")
+                        if live is None and recipe_start:
+                            _load_recipe(recipe_start, target, timeout)
+                        else:
+                            _lifecycle("start", [target], [target["name"]], run, timeout)
+                        live = _container_for(target, run)
+                        if live is None:
+                            raise RuntimeError("Secondary managed startup did not create its declared container.")
+                        if started_container_id and live["id"] != started_container_id:
+                            raise RuntimeError("Secondary container was replaced during startup.")
+                        started_container_id = live["id"]
                         result["changed"] = True
-                    elif not serves._await_healthy(target, timeout, 2):
+                    if not serves._await_healthy(target, timeout, 2):
                         raise RuntimeError("Secondary readiness timed out.")
                     if not serves._serve_identity_ready(target):
                         raise RuntimeError("Secondary served-model identity differs from its declared assignment.")
@@ -287,11 +455,25 @@ def select_mode(mode, *, confirm=False, dry_run=False, timeout=600, run=desktop.
                         if owner.get("up") and not serves._await_healthy(owner, timeout, 2):
                             raise RuntimeError("Media gateway readiness timed out.")
                     _guard_safe(profile)
-            except BaseException:
-                if secondary_started:
-                    _lifecycle("stop", profile["secondary"], [target["name"]], run, timeout)
-                if controls_stopped and controls_were_running and desktop._state(run) == "running":
-                    _start_media(profile, run, timeout)
+            except BaseException as failure:
+                recovery_errors = []
+                if secondary_start_attempted:
+                    try:
+                        live = _container_for(target, run)
+                        if live and live["status"] not in {"exited", "dead"}:
+                            if live["id"] != started_container_id:
+                                raise RuntimeError("Secondary startup ownership is uncertain. Media remains parked.")
+                            # Stop only the observed incarnation. Preserve its container for a retry.
+                            desktop._call(["docker", "stop", started_container_id], run=run, timeout=timeout)
+                    except Exception as exc:
+                        recovery_errors.append(str(exc))
+                if controls_stopped and controls_were_running and not recovery_errors and desktop._state(run) == "running":
+                    try:
+                        _start_media(profile, run, timeout)
+                    except Exception as exc:
+                        recovery_errors.append(str(exc))
+                if recovery_errors:
+                    raise RuntimeError(f"{failure}. Recovery incomplete: " + "; ".join(recovery_errors)) from failure
                 raise
         legacy = mode_path.with_name("desktop-switch.json")
         if legacy.exists():
