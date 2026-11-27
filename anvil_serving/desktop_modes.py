@@ -218,6 +218,17 @@ def _container_for(target, run):
                  if row["name"] == "/" + target["container"]), None)
 
 
+def _compose_owner(target, container_id, run):
+    if not container_id or not serves._is_compose_up(target.get("up")):
+        return None
+    format_string = '{{index .Config.Labels "com.docker.compose.project"}}/{{index .Config.Labels "com.docker.compose.service"}}'
+    labels = desktop._call(["docker", "inspect", "--format", format_string, container_id], run=run)
+    project, _, service = labels.partition("/")
+    if project == serves._expected_compose_project(target) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", service):
+        return project, service
+    return None
+
+
 def _guard_safe(profile):
     deadline = time.monotonic() + 10
     while True:
@@ -430,6 +441,7 @@ def select_mode(mode, *, confirm=False, dry_run=False, timeout=600, run=desktop.
                     if live is None or live["status"] != "running":
                         secondary_start_attempted = True
                         started_container_id = live["id"] if live else None
+                        prior_compose_owner = _compose_owner(target, started_container_id, run)
                         if live is None and not recipe_start and not (profile["dynamic_secondary"] and serves._is_compose_up(target.get("up"))):
                             raise RuntimeError("Secondary container is missing; declare its managed startup first.")
                         if live is None and recipe_start:
@@ -440,7 +452,8 @@ def select_mode(mode, *, confirm=False, dry_run=False, timeout=600, run=desktop.
                         if live is None:
                             raise RuntimeError("Secondary managed startup did not create its declared container.")
                         if started_container_id and live["id"] != started_container_id:
-                            raise RuntimeError("Secondary container was replaced during startup.")
+                            if not prior_compose_owner or _compose_owner(target, live["id"], run) != prior_compose_owner:
+                                raise RuntimeError("Secondary container was replaced by an unverified owner during startup.")
                         started_container_id = live["id"]
                         result["changed"] = True
                     if not serves._await_healthy(target, timeout, 2):

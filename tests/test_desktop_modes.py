@@ -89,7 +89,7 @@ served_model_name = "model-b"
             '[[serve]]\nname="%s"\ncontainer="%s"\nruntime="docker"\nport=8100\n'
             'model="%s"\nserved_name="%s"\nrouter_tier="%s"\nengine="none"\n'
             'gpu_inference=false\nhealth="/health"\nup="anvil-serving models recipes load %s --registry %s --container %s --confirm"\n'
-            % (name, name, served_name, served_name, router_tier, served_name, registry, name), encoding="utf-8")
+            % (name, name, served_name, served_name, router_tier, served_name, registry.as_posix(), name), encoding="utf-8")
     (tmp_path / "desktop-modes.toml").write_text(
         'schema="anvil-serving.desktop-modes/v1"\nmedia_manifest="media.toml"\n'
         'model_manifests=[]\nworker_containers=["worker"]\nguard_cli="guard.exe"\nguard_config="guard.toml"\n'
@@ -215,6 +215,35 @@ def test_dynamic_secondary_selects_each_exact_model_on_a_shared_tier(monkeypatch
     assert desktop_modes.select_mode("secondary", confirm=True, run=docker)["target"]["served_name"] == "model-b"
     assert ("up", ["beta"]) in ops
     assert not any(action == "up" and names == ["alpha"] for action, names in ops)
+
+
+@pytest.mark.parametrize("same_service", [True, False])
+def test_parked_compose_recreation_requires_same_managed_service(monkeypatch, tmp_path, same_service):
+    docker, _ = setup(monkeypatch, tmp_path)
+    manifest = tmp_path / "secondary.toml"
+    manifest.write_text(manifest.read_text() + 'up="docker compose up -d worker"\n', encoding="utf-8")
+    previous_id = docker.rows[0]["id"]
+    new_id = "e" * 64
+    original_up = desktop.serves.cmd_up
+    def recreate(owners, names, **kwargs):
+        rc = original_up(owners, names, **kwargs)
+        if names == ["secondary"]:
+            docker.rows[0]["id"] = new_id
+        return rc
+    monkeypatch.setattr(desktop.serves, "cmd_up", recreate)
+    original_call = desktop._call
+    project = desktop.serves._expected_compose_project(desktop_modes._profile()["secondary"][0])
+    def labels(argv, **kwargs):
+        if argv[:2] == ["docker", "inspect"] and "com.docker.compose.service" in argv[3]:
+            return project + ("/worker" if same_service or argv[-1] == previous_id else "/other")
+        return original_call(argv, **kwargs)
+    monkeypatch.setattr(desktop, "_call", labels)
+    if same_service:
+        assert desktop_modes.select_mode("secondary", confirm=True, run=docker)["changed"]
+    else:
+        with pytest.raises(RuntimeError, match="unverified owner"):
+            desktop_modes.select_mode("secondary", confirm=True, run=docker)
+    assert docker.rows[0]["status"] == "running"
 
 
 def test_dynamic_secondary_starts_absent_managed_backer(monkeypatch, tmp_path):
