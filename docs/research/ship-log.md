@@ -81,7 +81,7 @@ them. Nothing in this log has been deployed unless an entry says so.
 | --- | --- | --- |
 | 5 | ADR-0034 and ADR-0039 amendments match the replica code | **Shipped.** PR 834 merged; nothing to deploy |
 | 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | **Merged**, PR 835. Not deployed: cutover left for the owner |
-| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | PR 836 approved, merging on green CI. Not deployed and not configured: left for the owner |
+| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | **Merged**, PR 836. Not deployed and not configured: left for the owner |
 | 2 | Fix what the recorded refusal cause shows | Blocked on data from 2+4a |
 | 4b | Accounting: emit the new refusal codes | Queued behind 2+4a deploy |
 | 4c | Accounting: session identifier | Left for the owner |
@@ -203,7 +203,9 @@ them. Nothing in this log has been deployed unless an entry says so.
   longer probed at all, aliases without a redirect are not timed, the bind-time
   admission read fails closed, and two more tests. 1,003 router tests pass and
   27 mutations of the safeguards each fail a test.
-- **Pull request.** PR 836, ready and set to merge once its checks pass.
+- **Pull request.** PR 836 merged on 2026-11-27 00:52 UTC as `e5079099`, after
+  all 18 required checks passed. The table is not configured anywhere, so no
+  deployment behaves differently until the owner cuts over and adds the entry.
 
 ### 2026-11-26 — Item 3, measurement only (no change)
 
@@ -251,7 +253,12 @@ counter from the engine, and the decision log's session identifier.
 - **Left for the owner.** The first race is visible to a real client: a caller
   that sends its next turn the moment it gets a reply can receive `503 busy`.
   That is a product question and was not changed.
-- **Review.** Fresh-context Fable review in progress.
+- **Review.** The first version polled for the late condition. The reviewer
+  ran it more than a thousand times and showed it still failed about once in
+  600 runs: the first request's log line can trail as well, and reading the
+  captured output races a handler that is still printing. The fix now joins
+  the server's handler threads and reads once, which the reviewer had run 2,720
+  times per test without a failure. A confirming pass is in progress.
 
 ### 2026-11-27 — PR 836, a failed docs build
 
@@ -272,7 +279,7 @@ operator's own runbook holds the host-specific steps.
 1. **PR 835, accounting instrumentation.** Build the gateway image from commit
    `9d067fc6` and cut over. No configuration change. Rows it writes are readable
    by the previous image, so rollback is the previous image.
-2. **PR 836, redirect**, once merged. Build from its merge commit and cut over
+2. **PR 836, redirect.** Build from commit `e5079099` and cut over
    with the configuration unchanged first. Add the
    `[router.unavailable_redirects]` entry as a separate step, so the code and
    the behavior change can be rolled back independently. Rollback of the
