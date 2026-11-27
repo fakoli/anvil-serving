@@ -218,8 +218,11 @@ class RouteAssociation(_Payload):
 
 
 _OUTCOMES = {"success", "error", "cancelled", "timeout", "rejected", "disconnected", "interrupted", "unknown"}
+# over_context, media_limit and unsupported_tools are accepted now and emitted
+# by a later change, so a rollback from that change still reads its rows.
 _ERROR_CODES = {"accounting_unavailable", "backend_error", "unavailable", "unknown_model",
-                "request_cancelled", "request_timeout", "client_disconnected", "interrupted"}
+                "request_cancelled", "request_timeout", "client_disconnected", "interrupted",
+                "over_context", "media_limit", "unsupported_tools"}
 _COVERAGE = {"dispatch_uncertain", "usage_incomplete", "usage_relation_unknown", "recovered_partial"}
 
 

@@ -55,7 +55,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Callable, Iterable, Optional, Sequence
 
 from .admission import RouterAdmission, RouterAdmissionClosed
-from .backends.relay import _ClosingIterator
+from .backends.relay import _ClosingIterator, is_relay_timeout
 from .audio import (
     AudioGateway,
     AudioGatewayError,
@@ -940,6 +940,17 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         "cancelled" if isinstance(exc, RequestControlError) else
                         "rejected" if isinstance(exc, (NoAvailableTierError, BackendClientError)) and
                         (invocation is None or invocation.dispatched is False) else "error")
+            def cause_for(exc):
+                # A fixed usage error code only where the raised type names the
+                # cause. Context, media, tools and caller rejections stay unset.
+                if isinstance(exc, NoAvailableTierError):
+                    kind = getattr(exc, "kind", None)
+                    return kind if kind in ("unavailable", "unknown_model") else None
+                if isinstance(exc, (RequestControlError, BackendClientError)) or not isinstance(exc, Exception):
+                    return None
+                if is_relay_timeout(exc):
+                    return "request_timeout"
+                return "backend_error" if invocation is not None and invocation.dispatched is True else None
             try:
                 tracked = getattr(backend, "generate_tracked", None)
                 if callable(tracked):
@@ -952,9 +963,10 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     deltas = backend.generate(request)
             except BaseException as exc:
                 if invocation is not None:
-                    invocation.capture(backend, outcome_for(exc))
+                    invocation.capture(backend, outcome_for(exc), cause_for(exc))
                 raise
             outcome = "cancelled"
+            cause = None
             closed = False
             def finish():
                 nonlocal closed
@@ -967,14 +979,14 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         close()
                 finally:
                     if invocation is not None:
-                        invocation.capture(backend, outcome)
+                        invocation.capture(backend, outcome, cause)
             def generate():
-                nonlocal outcome
+                nonlocal outcome, cause
                 try:
                     yield from deltas
                     outcome = "success"
                 except BaseException as exc:
-                    outcome = outcome_for(exc)
+                    outcome, cause = outcome_for(exc), cause_for(exc)
                     raise
                 finally:
                     finish()

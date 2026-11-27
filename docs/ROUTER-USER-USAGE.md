@@ -90,7 +90,29 @@ Do not reconstruct a historical grant by joining current accounts.
 | `CallerSnapshot` | `schema`, `credential_id`, `actor`, optional `end_user`, `grant`, `attribution_state` owned_human/owned_service/verified_forwarded/unbound/legacy. Credential ID is existing key/client ID, or `_legacy`; never token digest. |
 | `RequestStart` | `request_id`, `run_id`, `accepted_at`, `caller`, `kind`, logical model/route, optional parent/attempt linkage. Server-generated UUID lineage; caller correlation has no identity/uniqueness authority. |
 | `RouteAssociation` | Declared `route_id`, `backend_id`, `serve_id`, `resource_owner_id`, optional member; null when unavailable, never private URL/GPU UUID. Logical model comes from validated configured route, not arbitrary text label. |
-| `Terminal` | `request_id`, `ended_at`, `dispatched`, `generation_outcome`, `delivery_outcome`, `outcome`, route association, `latency_ms`, optional wait/start/first-content timings, normalized tokens, fixed error code, applicability/coverage. No exception strings/finish text. |
+| `Terminal` | `request_id`, `ended_at`, `dispatched`, `generation_outcome`, `delivery_outcome`, `outcome`, route association, `latency_ms`, optional `admission_wait_ms`/`upstream_duration_ms`/`time_to_first_content_ms`, normalized tokens, fixed `error_code`, applicability/coverage. No exception strings/finish text. |
+
+Routed chat requests populate the three optional timings from the decision
+record's clocks. `admission_wait_ms` is the time spent queued for the tier's
+concurrency slot. `upstream_duration_ms` starts before that queue and
+`time_to_first_content_ms` starts at backend entry, so both include the
+admission wait: a long value beside a long wait is queueing, not a slow engine.
+A request with `dispatched` false keeps only `admission_wait_ms`; it has no
+upstream or first-content time. Other request kinds leave all three null.
+
+`error_code` is null on success. A chat terminal carries one only where the
+cause is unambiguous:
+
+| `error_code` | Recorded when |
+|---|---|
+| `unavailable` | Refused before dispatch: the configured tier was not ready, its admission was quiesced, or no replica member was ready with free capacity. Waiting for a direct tier's concurrency slot never produces this code. |
+| `unknown_model` | A backend refused an unknown alias inside the generating path. The gateway's own alias check answers 404 before a row starts, so routed chat does not produce it. |
+| `backend_error` | The request failed after a confirmed dispatch: the upstream faulted, or the gateway faulted while completing the response. |
+| `request_timeout` | The outcome or the generation outcome is `timeout`, or the upstream call timed out. With `dispatched` false, the request timed out before dispatch, normally in the admission queue. |
+| `request_cancelled` | The outcome is `cancelled`. |
+| `client_disconnected` | The outcome is `disconnected`. |
+| `interrupted` | Recovery closed the row after its owning process was lost. |
+| `over_context`, `media_limit`, `unsupported_tools` | Accepted, not yet emitted. The reader returns rows that carry them, so the later writer that emits them can be rolled back. Until then those refusals, and requests the upstream rejects as the caller's error, keep a null code. |
 
 Opaque actor/instance/grant references use trusted operator IDs: ASCII letters,
 digits, `_:-.`, 1-128 bytes, no URLs/control characters. Credential/client IDs keep

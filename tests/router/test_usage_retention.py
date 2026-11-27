@@ -160,3 +160,17 @@ def test_page_cursor_binds_revision_query_domain_authority_and_complete_groups(s
     put(store)
     with pytest.raises(UsageError, match="usage_cursor_stale"):
         query(store, cursor=cursor, limit=1, **options)
+
+
+@pytest.mark.parametrize("code", ["over_context", "media_limit", "unsupported_tools"])
+def test_detail_query_reads_error_codes_that_only_a_later_writer_emits(store, code):
+    db, run, scope, clock = store
+    at = clock[0] = "2026-10-07T11:00:00.000000Z"
+    start = RequestStart(ident(), run, at, legacy_caller(), "chat", "llm.primary", attempt_id=ident())
+    db.start(start, authority_scope=scope)
+    db.finalize(terminal(start, ended_at=at, dispatched=False, generation_outcome="rejected",
+                         delivery_outcome="error", outcome="error", error_code=code))
+    clock[0] = NOW
+    [record] = query(store, "detail", from_utc="2026-10-07T00:00:00Z", to_utc=NOW)["records"]
+    assert record["error_code"] == code and record["accounting_status"] == "finalized"
+    assert query(store)["requests"] == 1
