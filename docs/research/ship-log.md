@@ -86,6 +86,7 @@ them. Nothing in this log has been deployed unless an entry says so.
 | 4b | Accounting: emit the new refusal codes | Queued behind 2+4a deploy |
 | 4c | Accounting: session identifier | Left for the owner |
 | 3 | Conversation-cache budget | Measured; no change justified (see entry) |
+| extra | Two racing tests that kept breaking CI | PR 837 approved, left for the owner to merge |
 
 ## Entries
 
@@ -258,7 +259,12 @@ counter from the engine, and the decision log's session identifier.
   600 runs: the first request's log line can trail as well, and reading the
   captured output races a handler that is still printing. The fix now joins
   the server's handler threads and reads once, which the reviewer had run 2,720
-  times per test without a failure. A confirming pass is in progress.
+  times per test without a failure. The confirming pass approved it: no failure in
+  1,600 runs per test under light load or 480 under heavy load, on three Python
+  versions, and an injected leaked slot or leaked log content still fails.
+- **Status.** Open and approved, **not merged**. It is outside the backlog the
+  owner authorized, and the session's permission check declined the merge, so
+  it is left for the owner.
 
 ### 2026-11-27 — PR 836, a failed docs build
 
@@ -301,3 +307,14 @@ readiness reason. That is the data item 2 needs. If the refusals turn out to be
 context, media or tools refusals, they will show as uncoded until the follow-up
 change that writes those three codes; that change must not merge before the
 first cutover has been deployed, or a rollback could meet rows it cannot read.
+
+## State at the end of the run (2026-11-27 01:10 UTC)
+
+- Merged: PR 834 (`cafe3835`), PR 835 (`9d067fc6`), PR 836 (`e5079099`).
+- Open and approved: PR 837, tests only.
+- Deployed: nothing. The live gateway still runs the image it ran before this
+  run, and no redirect is configured. There are therefore no after numbers yet,
+  and no rollback was needed.
+- Not done, by ruling or by constraint: a session identifier in accounting, the
+  three new refusal codes being written, the fix for the pre-dispatch refusals
+  (it needs the data the first cutover unlocks), and any engine cache change.
