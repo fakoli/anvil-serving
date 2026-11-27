@@ -13,7 +13,7 @@ from typing import Dict, List, Optional
 import pytest
 
 from tests.router.helpers import StaticBackend
-from tests.router.key_fixtures import tmp_path as key_root
+from tests.router.key_fixtures import tmp_path as tmp_path
 from anvil_serving.router.config import ConfigError, RealtimeRoute, ServerConfig, load
 from anvil_serving.router.front_door import make_server
 from anvil_serving.router.keys import KeyStore, Principal
@@ -230,11 +230,11 @@ def test_device_keys_grant_realtime_only_with_its_path():
     assert paths == ("/v1/models", "/v1/realtime")
 
 
-def test_device_key_realtime_route_grant_matches_exact_spelling(key_root):
+def test_device_key_realtime_route_grant_matches_exact_spelling(tmp_path):
     # Route ids are case-sensitive in config and selection, so a grant for one
     # spelling must not open a distinct route that differs only by case.
     upstream = FakeUpstream()
-    store = KeyStore.initialize(key_root / "credentials" / "keys.sqlite3")
+    store = KeyStore.initialize(tmp_path / "credentials" / "keys.sqlite3")
     _, secret = store.create("phone", models=["voice"], paths=["/v1/realtime"])
     realtime = gateway(route(upstream.port, id="voice"), route(upstream.port, id="Voice"))
     httpd = make_server("127.0.0.1", 0, StaticBackend("chat"), auth_token="router-token", realtime=realtime,
