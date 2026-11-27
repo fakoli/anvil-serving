@@ -86,7 +86,7 @@ them. Nothing in this log has been deployed unless an entry says so.
 | 4b | Accounting: emit the new refusal codes | Queued behind 2+4a deploy |
 | 4c | Accounting: session identifier | Left for the owner |
 | 3 | Conversation-cache budget | Measured; no change justified (see entry) |
-| extra | Two racing tests that kept breaking CI | PR 837 approved and green; merge declined twice by the session's permission check, left for the owner |
+| extra | Two racing tests that kept breaking CI | **Merged**, PR 837, on the owner's instruction |
 
 ## Entries
 
@@ -262,9 +262,8 @@ counter from the engine, and the decision log's session identifier.
   times per test without a failure. The confirming pass approved it: no failure in
   1,600 runs per test under light load or 480 under heavy load, on three Python
   versions, and an injected leaked slot or leaked log content still fails.
-- **Status.** Open and approved, **not merged**. It is outside the backlog the
-  owner authorized, and the session's permission check declined the merge, so
-  it is left for the owner.
+- **Status.** Merged 2026-11-27 02:03 UTC as `d2653d02`, after the owner said to
+  merge it. All 18 required checks had passed. Tests only; nothing to deploy.
 
 ### 2026-11-27 — PR 836, a failed docs build
 
@@ -342,8 +341,7 @@ qualify on the qualification host, or pause scheduled callers during a window.
 ## State at the end of the run (2026-11-27 01:10 UTC)
 
 - Merged: PR 834 (`cafe3835`), PR 835 (`9d067fc6`), PR 836 (`e5079099`).
-- Open, approved and green: PR 837, tests only. Not merged: the session's
-  permission check declined the merge twice.
+- PR 837 (`d2653d02`), tests only, merged afterward on the owner's instruction.
 - Deployed: nothing. The live gateway still runs the image it ran before this
   run, and no redirect is configured. There are therefore no after numbers yet,
   and no rollback was needed.
