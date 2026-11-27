@@ -81,7 +81,7 @@ them. Nothing in this log has been deployed unless an entry says so.
 | --- | --- | --- |
 | 5 | ADR-0034 and ADR-0039 amendments match the replica code | **Shipped.** PR 834 merged; nothing to deploy |
 | 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | **Merged**, PR 835. Not deployed: cutover left for the owner |
-| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | Implemented and reviewed once; review fixes in progress |
+| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | PR 836 open; review fixes applied, second review in progress |
 | 2 | Fix what the recorded refusal cause shows | Blocked on data from 2+4a |
 | 4b | Accounting: emit the new refusal codes | Queued behind 2+4a deploy |
 | 4c | Accounting: session identifier | Left for the owner |
@@ -189,6 +189,13 @@ them. Nothing in this log has been deployed unless an entry says so.
   - a source tier with no health path loads without error although its
     redirect can never fire.
   It also listed safeguards whose removal no test caught.
+- **Fixes.** Admission is now read under the route lock at bind time, after
+  the probe. Only a current, completed readiness result can trigger a
+  redirect. A replica target's skipped attempt is recorded. A source tier
+  without a health path is rejected at load. Planning fails closed on any
+  error. 998 router tests pass, 93 of them for this feature, and 22 mutations
+  of the safeguards each fail a test.
+- **Pull request.** PR 836, opened as a draft. Second review pass in progress.
 
 ### 2026-11-26 — Item 3, measurement only (no change)
 
@@ -221,3 +228,36 @@ least two-thirds of cold large prefills; the upper bound here is 49%, and the
 total cost is small. Any change to the engine's cache or a restart of the
 primary serve stays with the owner. What would sharpen this: an eviction
 counter from the engine, and the decision log's session identifier.
+
+## Handing the deploys to the owner
+
+Two merged or pending changes need the gateway cutover, in this order, one at a
+time. The supported procedure is the acknowledged maintenance cutover in
+[router-maintenance-console.md](../cli/router-maintenance-console.md); the
+operator's own runbook holds the host-specific steps.
+
+1. **PR 835, accounting instrumentation.** Build the gateway image from commit
+   `9d067fc6` and cut over. No configuration change. Rows it writes are readable
+   by the previous image, so rollback is the previous image.
+2. **PR 836, redirect**, once merged. Build from its merge commit and cut over
+   with the configuration unchanged first. Add the
+   `[router.unavailable_redirects]` entry as a separate step, so the code and
+   the behavior change can be rolled back independently. Rollback of the
+   behavior is removing the table entry.
+
+After each cutover, the advisor's gate applies before the next one: watch 200
+`llm.primary` requests including one morning burst. Roll back at once on any
+accounting failure or HTTP 500, and if success falls under 90%, pre-dispatch
+refusals exceed 8%, median latency exceeds 3.5 s, or 95th percentile latency
+exceeds 55 s. For the redirect, use canaries rather than waiting for traffic:
+ten requests to the secondary alias with a credential that holds both aliases
+should all be served by the primary with the redirect header, and one request
+with a credential that holds only the secondary alias should still get the
+unavailable response.
+
+What the first cutover unlocks: `router usage` detail rows will carry an error
+code, admission wait and first-content time, and the decision log will carry a
+readiness reason. That is the data item 2 needs. If the refusals turn out to be
+context, media or tools refusals, they will show as uncoded until the follow-up
+change that writes those three codes; that change must not merge before the
+first cutover has been deployed, or a rollback could meet rows it cannot read.
