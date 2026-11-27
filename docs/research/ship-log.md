@@ -86,7 +86,7 @@ acknowledgement for the three planned windows. Deploys are recorded under
 | --- | --- | --- |
 | 5 | ADR-0034 and ADR-0039 amendments match the replica code | **Shipped.** PR 834 merged; nothing to deploy |
 | 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | **Deployed** 2026-11-27 02:34 UTC (window 1) |
-| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | **Deployed** 2026-11-27: image 04:58 UTC (window 2), redirect entry 05:05 UTC (window 3). Not yet seen redirecting a request |
+| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | **Deployed** 2026-11-27: image 04:58 UTC (window 2), redirect entry 05:05 UTC (window 3). Not yet seen redirecting a request. The secondary tier change made in window 3 was reverted at 07:30 UTC (see the correction entry) |
 | 2 | Fix what the recorded refusal cause shows | Cause found from existing data; no gateway defect (see entry) |
 | 4b | Accounting: emit the new refusal codes | **Deployed** with window 2 (context, media and tools refusals return their code). No such refusal has occurred yet |
 | 4c | Accounting: session identifier | Left for the owner |
@@ -641,4 +641,88 @@ request in flight while the read is called every few seconds):
 This closes the third item under "Not verified" in the window 4 entry. The
 other two stand: no request has been redirected, and no client has used a
 widened key.
+
+### 2026-11-27 — Correction: the secondary is back on its promoted model
+
+**What was wrong in this log.** The entry "The secondary host serves a model
+again" says the model the secondary tier names "can no longer start there"
+because host-memory admission refuses its recipe. That was not tested on the
+day. It was taken from a finding dated the day before, which recorded one
+refusal (41.3 GiB of host memory available, 58.0 GiB required). On that basis a
+smaller stopgap model was served and window 3 pointed the tier at it.
+
+**What that cost.** The stopgap has a 24,576-token context behind an alias
+whose clients are configured for 262,144.
+
+- No request failed. Two secondary requests arrived while the stopgap was
+  routed (05:34 and 06:03 UTC) and both succeeded on the secondary tier, the
+  first successes on that alias in the measured period.
+- The client reconcile could not be applied. Its dry runs refused two agent
+  profiles that use the secondary alias (they compact at 50% of context, which
+  leaves 12,288 tokens against a declared 16,384-token output) and one harness
+  whose compaction budget is global and needs 85,536 tokens. Nothing was
+  written, so clients kept their 262,144-token limits throughout.
+- The stopgap could not have been sized up to match. Its serve log shows a
+  25,984-token cache at the configured GPU share and about 34,000 at the
+  publisher's maximum settings; the publisher's own recipe needs an 80 GB card
+  for 262,144.
+
+**What the owner decided.** Restore the promoted model. A separate operator
+session did it at 07:30 UTC on the owner's instruction:
+
+- The stopgap was unloaded (recipe and evidence kept) and the promoted serve
+  started on the first attempt with no memory setting changed and no
+  application closed; 57.5 GiB of host memory was available at that moment.
+- Preflight over the gateway's network path passed: short coding, structured
+  JSON, 20 of 20 shared-prefix tool calls, a streaming tool call, a tool-result
+  continuation and a needle at about 100,000 tokens.
+- The tier went back to its previous definition with a live route update
+  (route revision 1): no restart and no ingress closure. The redirect entry is
+  unchanged.
+
+**Checked from this session, independently.** The serve reports the promoted
+model at 262,144 tokens. The effective tier in the gateway's route state has
+the previous model, context, output limit, concurrency and fingerprint. The
+effective route digest equals the digest recorded before window 3, so the tier
+is exactly what it was. The gateway container was not restarted, its log has no
+error line, and the first routed secondary request after the update (07:31 UTC)
+was answered by the secondary tier.
+
+**Where window 3 stands.** Its lasting changes are the redirect entry and the
+new route state path. Its tier change is reverted by revision 1. The boot
+configuration still carries the stopgap's tier values; the effective definition
+is the one in the route state, which a restart keeps.
+
+**Lesson.** A dated refusal records the memory state of that day, not a
+property of the recipe. One real start attempt would have settled it before a
+smaller model was substituted.
+
+### 2026-11-27 — The latency gate was changed after it tripped
+
+At 06:36 UTC the watch on window 4 reported a breach: 95th percentile above
+55 s (57.45 s over 56 `llm.primary` requests, with 100% success, no refusal and
+no accounting failure). It was judged not to be a gateway regression and
+nothing was rolled back. The advisor rechecked from the usage rows and,
+separately, from the decision log, and agreed.
+
+- The time the gateway itself adds (latency minus upstream time minus
+  admission wait) was 78 ms at the median and 93 ms at the 95th percentile,
+  against 78 and 92 ms in window 1. Admission wait was 0.
+- Generation speed on long answers was 227 tokens per second, against 224.
+- The slow tail was long work: 91 s for 20,866 output tokens, 66 s for 15,037,
+  and 49.7 s for a 239,410-token prompt.
+- The old threshold was noisy before any deploy. In the 24 hours before window
+  1, a rolling 56-request 95th percentile passed 55 s in 40% of windows, and in
+  21% at 200 requests.
+
+**New rules, on the advisor's ruling.** End-to-end 95th percentile is still
+reported, marked when it passes the old line, and no longer breaches. The watch
+now breaches on what the gateway controls: its own added time above 150 ms at
+the 95th percentile, admission wait above 1 s at the 95th percentile, or a
+median above 2.5 s for requests of 300 output tokens or fewer. The bounds sit
+above the day-before baseline, where the added time never passed 95 ms,
+admission wait was 0 all day, and the short-request median never passed 1.86 s.
+Median above 3.5 s still breaches, from 200 requests. Success, refusal,
+accounting, traceback and restart rules are unchanged. The original breach line
+stays in the watch log.
 
