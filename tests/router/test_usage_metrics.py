@@ -96,6 +96,12 @@ def test_real_owned_active_finalizing_fence_and_unresolved_is_not_active(store, 
         return result
     monkeypatch.setattr(db,'_usage_metrics_snapshot',changing)
     with pytest.raises(UsageError,match='accounting_unavailable'): render(store,active)
+    def sampled(**kw):
+        # A delivery poll's diagnostic sample is not ledger state and does not refuse the scrape.
+        active.observe_request(invocation.registry_id,{},'llm.primary',{'phase':'streaming','last_activity_ms':5})
+        return original(**kw)
+    monkeypatch.setattr(db,'_usage_metrics_snapshot',sampled)
+    assert metric(render(store,active),'active_requests')[0].endswith(' 1')
     monkeypatch.setattr(db,'_usage_metrics_snapshot',original)
     invocation.finish('success')
     raw=render(store,active)

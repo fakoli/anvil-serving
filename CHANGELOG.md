@@ -70,6 +70,19 @@ All notable changes to this project are documented here. The format is based on
   `identity_mismatch` or `probe_pending`. Probe status codes and exception
   names are not recorded, and the one-line audit grammar is unchanged.
 
+### Fixed
+
+- `router usage active` no longer answers `accounting unavailable` for as long
+  as a request is streaming. The read is refused when the workload registry
+  changes while the ledger is read, and every delivery poll of an in-flight
+  request counted as a change. A delivery poll's diagnostic sample no longer
+  counts; ledger writes and request lifecycle changes still do. The usage
+  metrics scrape shares that check and is no longer refused by a sample either.
+  The active read also makes up to four attempts 10 ms apart before it refuses,
+  so a ledger write or a request starting or ending during the read rarely
+  surfaces. It still never reads the ledger during a ledger write, and
+  `registry_revision` is the revision that held across the read.
+
 ## [3.1.0] - 2026-11-23
 
 ### Added

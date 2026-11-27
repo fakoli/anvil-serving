@@ -155,9 +155,10 @@ class RouterWorkloadRegistry:
         with self._lock:
             entry = self._active.get(request_id)
             if entry is not None:
+                # No usage revision bump: this per-poll sample is not ledger state, and
+                # counting it kept the usage fence from ever settling during a stream.
                 self._active[request_id] = dataclasses.replace(entry,
                     diagnostic=tuple(values.items()), diagnostic_at=sampled_at)
-                self._usage_revision += 1
 
     def attach_usage(self, request_id, start):
         from .usage_store import RequestStart
