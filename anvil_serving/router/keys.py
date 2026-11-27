@@ -1610,11 +1610,12 @@ def _store_from_config(config_path: str | None, *, initialize: bool) -> KeyStore
 
 
 def _routable_models(config_path: str) -> frozenset[str]:
-    """Every name this boot config can route: chat aliases, purpose models and audio routes."""
+    """Every name this boot config can route: chat aliases, purpose models, audio and realtime routes."""
     from .config import load
     router = load(config_path)
     return frozenset((*router.model_routes, *(item.model for item in router.purpose_models),
-                      *(item.id for item in router.audio_routes)))
+                      *(item.id for item in router.audio_routes),
+                      *(item.id for item in router.realtime_routes)))
 
 
 def _write_secret(path: str, secret: str) -> None:

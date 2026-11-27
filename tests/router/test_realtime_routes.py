@@ -13,7 +13,8 @@ from typing import Dict, List, Optional
 import pytest
 
 from tests.router.helpers import StaticBackend
-from anvil_serving.router.config import ConfigError, RealtimeRoute, load
+from tests.router.key_fixtures import tmp_path as key_root
+from anvil_serving.router.config import ConfigError, RealtimeRoute, ServerConfig, load
 from anvil_serving.router.front_door import make_server
 from anvil_serving.router.keys import KeyStore, Principal
 from anvil_serving.router.realtime import RealtimeError, RealtimeGateway
@@ -227,6 +228,31 @@ def test_device_keys_grant_realtime_only_with_its_path():
     assert not granted.allows_path("POST", "/v1/realtime")
     models, paths = KeyStore._grants(["voice-proxy"], ["/v1/realtime"])  # realtime alone is a usable grant
     assert paths == ("/v1/models", "/v1/realtime")
+
+
+def test_device_key_realtime_route_grant_matches_exact_spelling(key_root):
+    # Route ids are case-sensitive in config and selection, so a grant for one
+    # spelling must not open a distinct route that differs only by case.
+    upstream = FakeUpstream()
+    store = KeyStore.initialize(key_root / "credentials" / "keys.sqlite3")
+    _, secret = store.create("phone", models=["voice"], paths=["/v1/realtime"])
+    realtime = gateway(route(upstream.port, id="voice"), route(upstream.port, id="Voice"))
+    httpd = make_server("127.0.0.1", 0, StaticBackend("chat"), auth_token="router-token", realtime=realtime,
+                        server_config=ServerConfig(api_keys_path=str(store.path)))
+    thread = threading.Thread(target=httpd.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+    thread.start()
+    try:
+        sock, _, status, _ = upgrade(httpd, query="?route=Voice", token=secret)
+        sock.close()
+        assert status == 403
+        sock, _, status, _ = upgrade(httpd, query="?route=voice", token=secret)
+        sock.close()
+        assert status == 101
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+        upstream.close()
 
 
 BASE = """

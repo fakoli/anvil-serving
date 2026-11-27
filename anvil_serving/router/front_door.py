@@ -2132,7 +2132,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             except RealtimeError as exc:
                 self._error(exc.status, exc.code, exc.message)
                 return
-            if self._anvil_device is not None and not self._anvil_device.allows_model(route.id):
+            if self._anvil_device is not None and not self._anvil_device.allows_model(route.id, normalize=False):
                 self._device_error(403, "key_access_denied", "API key does not grant this realtime route")
                 return
             if not self._admit_router("audio"):
