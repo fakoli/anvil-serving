@@ -149,6 +149,37 @@ them. Nothing in this log has been deployed unless an entry says so.
 - **Deploy.** Not deployed. Before numbers are the baseline table above; the
   after numbers need the owner's cutover and the watch period.
 
+### 2026-11-26 — Item 1, redirect: implemented, in review
+
+- **Change.** An opt-in table, `[router.unavailable_redirects]`, maps one alias
+  to one other alias. When the first alias's tier has a completed negative
+  readiness result, the gateway serves the request from the second alias
+  instead. The caller's credential must already be granted the second alias.
+  One hop, decided before dispatch. The response names the alias that served
+  and carries an `X-Anvil-Redirected-From` header. ADR-0039 and ADR-0034 gain a
+  dated amendment for this single exception, and the documents that said the
+  gateway never falls back are corrected.
+- **What still never redirects.** A quiesced or held tier, a context, media or
+  tools refusal, rate limiting, replica capacity, a pending probe, anything
+  after dispatch, a replica source tier, and any credential not granted the
+  target.
+- **Advisor ruling on quiesce.** The implementer asked whether a quiesced tier
+  should redirect, since same-host mode switches quiesce before stopping a
+  serve. The advisor traced the media switch on a host other than the
+  gateway's: it stops the serve and does not quiesce the gateway's tier, so the
+  gateway sees a failed health probe and the redirect fires. Quiesce stays an
+  operator hold. If the decision log ever shows the secondary as quiesced
+  rather than unavailable, that is a question for the owner, not a reason to
+  widen the rule.
+- **Checks.** 974 router tests pass locally, including 77 new ones; lint and
+  docs audit clean.
+- **Limits the owner should know.** Credentials that hold only the secondary
+  alias keep getting the unavailable response, because the redirect never
+  widens a grant. The shared master credential and clients without per-model
+  grants do redirect.
+- **Review.** Fresh-context Fable review in progress. No pull request yet; it
+  is stacked on PR 835 and opens once that merges.
+
 ### 2026-11-26 — Item 3, measurement only (no change)
 
 The advisor ruled that a full conversation cache is its normal state and asked
