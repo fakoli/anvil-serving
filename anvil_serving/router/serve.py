@@ -966,6 +966,7 @@ class RoutingBackend:
                 planned is not None
                 and planned[0] is snapshot
                 and not self._held_route(planned[1], planned[2].id)
+                and self._admission is not None
                 and self._admission.snapshot(tier.id).state == "admitting"
             ):
                 redirect = UnavailableRedirect(alias, tier, planned[3])
