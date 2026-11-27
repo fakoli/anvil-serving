@@ -101,14 +101,23 @@ def test_container_grant_uses_the_router_mounted_config(container, tmp_path, mon
     mounted = tmp_path / "mounted.toml"
     mounted.write_text('[server]\nauth_env="TEST_MASTER"\napi_keys_path=%s\n' % json.dumps(str(tmp_path / "store" / "keys.sqlite3")))
     monkeypatch.setattr(key_container, "_CONFIG", str(mounted))
+    monkeypatch.delenv("ANVIL_CONFIG", raising=False)
     monkeypatch.setattr(router_config, "load", lambda path: SimpleNamespace(
-        model_routes={"llm.primary": "tier"} if path == str(mounted) else {"llm.other": "tier"},
+        model_routes={"llm.primary": "tier", "vision.ocr": "tier"} if path == str(mounted) else {"llm.other": "tier"},
         purpose_models=(), audio_routes=()))
     grant = ["grant", *common, "--key-id", key_id, "--expected-model", "llm.secondary"]
     assert keys.dispatch([*grant, "--model", "llm.other"]) == 2      # routable only in the caller's copy
     assert keys.dispatch([*grant, "--model", "llm.primary"]) == 0
     assert json.loads(capsys.readouterr().out.splitlines()[-1])["models_after"] == ["llm.secondary", "llm.primary"]
     assert json.loads(calls[-1][1]["input"])["expected_model"] == ["llm.secondary"]
+    # A mounted config that names another key store is refused; the same request passes once it matches.
+    widen = ["grant", *common, "--key-id", key_id, "--expected-model", "llm.secondary",
+             "--expected-model", "llm.primary", "--model", "vision.ocr"]
+    matching = mounted.read_text()
     mounted.write_text('[server]\nauth_env="TEST_MASTER"\napi_keys_path="/elsewhere/keys.sqlite3"\n')
-    assert keys.dispatch(["grant", *common, "--key-id", key_id, "--expected-model", "llm.secondary",
-                          "--expected-model", "llm.primary", "--model", "llm.primary"]) == 2
+    assert keys.dispatch(widen) == 2
+    mounted.write_text(matching)
+    monkeypatch.setenv("ANVIL_CONFIG", str(tmp_path / "absent.toml"))  # the started config wins over the default path
+    assert keys.dispatch(widen) == 2
+    monkeypatch.setenv("ANVIL_CONFIG", str(mounted))
+    assert keys.dispatch(widen) == 0

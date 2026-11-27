@@ -133,11 +133,13 @@ def main() -> int:
         elif action == "grant":
             from .config import load_server_config
             from .keys import _routable_models
-            # The router's own mounted boot config decides what is routable, not the caller's copy.
-            if load_server_config(_CONFIG, container_paths=True).api_keys_path != path:
+            import os
+            # The config this router was started with decides what is routable, not the caller's copy.
+            config = os.environ.get("ANVIL_CONFIG") or _CONFIG
+            if load_server_config(config, container_paths=True).api_keys_path != path:
                 raise KeyStoreError("router credential store path differs")
             data = store.grant_models(payload["key_id"], payload["model"], payload["expected_model"],
-                                      _routable_models(_CONFIG), dry_run=payload["dry_run"])
+                                      _routable_models(config), dry_run=payload["dry_run"])
         elif action in {"backup", "restore"}:
             from .usage_store import UsageStore
             data = (UsageStore(store).backup(payload["out"]) if action == "backup"

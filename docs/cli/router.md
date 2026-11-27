@@ -237,8 +237,11 @@ issue a narrower one.
 
 The output lists the model grants and the key policy digest before and after.
 The store keeps only the current policy, so save that output with your private
-records. The change applies to the next request. A request admitted on the old
-policy at that instant is refused once and can be retried. A wider grant also
+records. The change applies to the next request. Where request accounting is
+on, a request that authenticated on the old policy at that instant is refused
+once with `accounting_unavailable` and can be retried; elsewhere it finishes on
+the narrower policy it authenticated with. In container mode the names are
+checked against the config the router was started with. A wider grant also
 lets an [unavailable redirect](../CONFIGURATION.md#unavailable-redirects) bind
 that caller to the target alias.
 
