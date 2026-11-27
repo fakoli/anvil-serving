@@ -758,8 +758,11 @@ metadata only.
   08:57:53 arrived three seconds after the stop, while the gateway's last
   readiness result still said ready. It was dispatched, the upstream call
   failed, and a failure after dispatch never redirects. The caller got HTTP 500
-  with no traceback in the gateway log. So for up to one readiness interval
-  after a secondary dies, a request can fail before redirects begin.
+  with no traceback in the gateway log. So after a secondary dies, requests
+  can fail before redirects begin for as long as the last readiness result is
+  cached plus the time the next probe takes: while that probe runs, other
+  requests are still given the expired "ready" result. On this gateway that
+  is 5 seconds of cache and a probe bounded at 3 seconds.
 - **First failed request with an error code.** Its usage row carries
   `backend_error`, the field PR 835 added. Before that change it would have
   been a failure with no cause.
