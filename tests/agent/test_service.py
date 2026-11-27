@@ -657,6 +657,11 @@ def test_logs_carry_no_content(live, capfd):
                                                          "Tailscale-User-Login": LOGIN})
     assert status == 200 and [r.get("error", {}).get("code") for r in json.loads(data)] == [-32601, None, -32600]
     err = capfd.readouterr().err
+    deadline = time.monotonic() + 2
+    # each access line is written after its reply, so the last one can trail the response
+    while '"note": "mcp other,ping n=3"' not in err and time.monotonic() < deadline:
+        time.sleep(0.02)
+        err += capfd.readouterr().err
     assert '"path": "/v1/agent/turn"' in err
     assert "private words" not in err and LOGIN not in err and "echo" not in err
     assert "private-method-name" not in err and '"note": "mcp other,ping n=3"' in err
@@ -767,9 +772,16 @@ def test_posts_beyond_the_inflight_cap_get_503_before_their_body_is_read(monkeyp
         release.set()
         holder.join(5)
         assert first["status"] == 200 and json.loads(first["data"])["reply"] == "late reply"
-        # the slot is free again once the first request finished
+        # the slot is free again once the first request finished; the server frees it just
+        # after the reply is on the wire, so give it a moment rather than racing it
         release.set()
-        assert client.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})[0] == 200
+        deadline = time.monotonic() + 2
+        while True:
+            status = client.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})[0]
+            if status == 200 or time.monotonic() >= deadline:
+                break
+            time.sleep(0.02)
+        assert status == 200
     finally:
         release.set()
         server.shutdown()
