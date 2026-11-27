@@ -2103,7 +2103,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self._anvil_usage.capture(purpose, "success" if "payload" in locals() else "rejected" if self._anvil_usage.dispatched is False else "error")
             self._json(200, payload)
 
-        # --- realtime WebSocket relay (ADR-0047) ---------------------------
+        # --- realtime WebSocket relay (ADR-0050) ---------------------------
         def _handle_realtime(self) -> None:
             """Authenticate, resolve one route, then relay the upgraded socket.
 

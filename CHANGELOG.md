@@ -113,7 +113,7 @@ All notable changes to this project are documented here. The format is based on
   `registry_revision` is the revision that held across the read.
 - `[[router.realtime_routes]]` lets the router relay `GET /v1/realtime`
   WebSocket upgrades to an operator-owned Realtime upstream, such as the Anvil
-  Voice proxy (ADR-0047, amending ADR-0019 for this path only). The router
+  Voice proxy (ADR-0050, amending ADR-0019 for this path only). The router
   checks the caller's key, opens the upstream upgrade with only the route's
   `auth_env` token, and copies bytes both ways after a validated `101`. The
   caller's `Authorization`, `Origin`, cookies and credential-bearing

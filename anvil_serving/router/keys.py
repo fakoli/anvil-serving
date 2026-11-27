@@ -49,7 +49,7 @@ _POST_PATHS = frozenset({
     "/v1/audio/transcriptions", "/v1/audio/speech",
 })
 _MODELS_PATH = "/v1/models"
-_REALTIME_PATH = "/v1/realtime"  # GET WebSocket upgrade (ADR-0047); also needs the route id as a model grant
+_REALTIME_PATH = "/v1/realtime"  # GET WebSocket upgrade (ADR-0050); also needs the route id as a model grant
 _CATALOG_PATHS = frozenset({_MODELS_PATH, "/v1/models/capabilities", "/v1/router/status"})
 
 # POSIX close() releases every same-process SQLite lock on that inode. Share

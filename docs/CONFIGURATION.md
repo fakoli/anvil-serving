@@ -672,7 +672,7 @@ never fall back to another route.
 
 `[[router.realtime_routes]]` lets the router relay `GET /v1/realtime`
 WebSocket upgrades to an operator-owned Realtime upstream, such as the Anvil
-Voice proxy ([ADR-0047](adr/0047-router-realtime-websocket-relay.md)). Without
+Voice proxy ([ADR-0050](adr/0050-router-realtime-websocket-relay.md)). Without
 this table, `/v1/realtime` stays `404`.
 
 ```toml

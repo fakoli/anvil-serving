@@ -440,7 +440,7 @@ class RouterConfig:
     audio_max_output_bytes: int = 4 * 1024 * 1024
     audio_max_text_chars: int = 16 * 1024
     audio_max_concurrency: int = 4
-    # Optional Realtime WebSocket relay (ADR-0047). Absent keeps /v1/realtime 404.
+    # Optional Realtime WebSocket relay (ADR-0050). Absent keeps /v1/realtime 404.
     realtime_routes: tuple["RealtimeRoute", ...] = ()
     realtime_max_concurrency: int = 4
     # Device-bound memory routes are additive; no entry leaves memory unavailable.
@@ -1654,7 +1654,7 @@ def _parse_audio_route(raw: object) -> AudioRoute:
 
 
 def _parse_realtime_route(raw: object) -> RealtimeRoute:
-    """Parse one ``[[router.realtime_routes]]`` table (ADR-0047)."""
+    """Parse one ``[[router.realtime_routes]]`` table (ADR-0050)."""
     if not isinstance(raw, dict):
         raise ConfigError(
             f"realtime_routes entry must be a table, got {type(raw).__name__}"

@@ -1,4 +1,4 @@
-# ADR-0047 — The router relays `/v1/realtime` WebSockets
+# ADR-0050 — The router relays `/v1/realtime` WebSockets
 
 - **Status:** Proposed
 - **Date:** 2026-11-23

@@ -1,4 +1,4 @@
-"""Realtime WebSocket relay behind /v1/realtime (ADR-0047)."""
+"""Realtime WebSocket relay behind /v1/realtime (ADR-0050)."""
 from __future__ import annotations
 
 import base64

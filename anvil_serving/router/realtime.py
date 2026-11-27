@@ -1,4 +1,4 @@
-"""Realtime WebSocket relay behind ``/v1/realtime`` (ADR-0047).
+"""Realtime WebSocket relay behind ``/v1/realtime`` (ADR-0050).
 
 The router authenticates the caller and resolves one configured
 ``[[router.realtime_routes]]`` entry. It then opens the upstream upgrade itself,
