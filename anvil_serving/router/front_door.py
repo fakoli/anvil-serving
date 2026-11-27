@@ -485,6 +485,30 @@ def _output_clamp_headers(request) -> dict[str, str]:
     }
 
 
+def _redirect_binding(request):
+    """The route binding when a configured unavailable redirect was taken."""
+    raw = getattr(request, "raw", {})
+    binding = raw.get("_anvil_route_binding") if isinstance(raw, dict) else None
+    # Caller JSON can occupy this key but can never carry the attribute.
+    return binding if getattr(binding, "redirect", None) is not None else None
+
+
+def _response_model(request) -> str:
+    """The alias that serves: the caller's own unless a redirect bound another."""
+    binding = _redirect_binding(request)
+    return request.model if binding is None else binding.alias
+
+
+def _response_headers(request) -> dict[str, str]:
+    """Client-visible metadata for what the router changed about a served request."""
+    headers = _output_clamp_headers(request)
+    binding = _redirect_binding(request)
+    if binding is not None:
+        # Quoted so an operator-chosen alias can never break header framing.
+        headers["X-Anvil-Redirected-From"] = urllib.parse.quote(binding.redirect.alias)
+    return headers
+
+
 def _make_handler(backend: Backend, timeout: Optional[float],
                   model_routes: Iterable[str], exhaustion_status: int = 503,
                   auth_token: Optional[str] = None,
@@ -838,6 +862,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self._anvil_router_permit = None
             self._anvil_router_binding = None
             self._anvil_key_permit = None
+            self._anvil_redirected_from = None
 
         def _admit_key_store(self, *, quiet=False):
             if getattr(self, "_anvil_key_permit", None) is not None:
@@ -883,7 +908,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._device_error(503, "router_quiesced", "router admission is closed")
                 return False
 
-        def _admit_usage(self, kind, model, *, normalize=True, route_association=None):
+        def _admit_usage(self, kind, model, *, normalize=True, route_association=None, redirect_alias=None):
             family = "chat" if kind == "chat" else "audio" if kind in {"stt", "tts"} else "purpose" if kind in {"embedding", "rerank"} else kind
             if not self._admit_router(family):
                 return False
@@ -913,6 +938,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         self._device_error(429, "key_rate_limited", "API key request rate exceeded", decision.retry_after)
                         return False
                     caller = decision.caller_snapshot
+                    # The admitted grant, not the earlier authentication, is
+                    # the authority for the alias a redirect bound.
+                    if redirect_alias is not None and redirect_alias not in (
+                            granted.lower() for granted in caller.grant.models):
+                        raise KeyStoreError("admission_policy_changed")
                 if end_user is not None:
                     caller = forwarded_caller(caller, end_user)
                 self._anvil_caller = caller
@@ -1050,6 +1080,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self.send_header("Connection", "close")
             for _h_name, _h_val in self._correlation_headers().items():
                 self.send_header(_h_name, _h_val)
+            # An admitted, redirected request says so on every JSON answer,
+            # errors included; the served paths pass the same header.
+            redirected_from = getattr(self, "_anvil_redirected_from", None)
+            if redirected_from is not None:
+                extra_headers = {**(extra_headers or {}), "X-Anvil-Redirected-From": redirected_from}
             if extra_headers:
                 for _h_name, _h_val in extra_headers.items():
                     self.send_header(_h_name, _h_val)
@@ -1901,7 +1936,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             ``multiplexer.relay``).
             """
             chunked = self.request_version == "HTTP/1.1"
-            requested_model = request.model
+            response_model = _response_model(request)
 
             # Resolve the direct backend's delta stream BEFORE committing a 200
             # so an unavailable tier can still produce a real HTTP error instead
@@ -1932,7 +1967,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self.send_header("Cache-Control", "no-cache")
                 for _h_name, _h_val in self._correlation_headers().items():
                     self.send_header(_h_name, _h_val)
-                for _h_name, _h_val in _output_clamp_headers(request).items():
+                for _h_name, _h_val in _response_headers(request).items():
                     self.send_header(_h_name, _h_val)
                 if chunked:
                     # Respect the request's Connection intent; BaseHTTPRequestHandler
@@ -1956,7 +1991,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     get_structured=(
                         _get_structured_fn if callable(_get_structured_fn) else None
                     ),
-                    response_model=requested_model,
+                    response_model=response_model,
                 ))
                 def _write_frame(frame: bytes) -> None:
                     if chunked:
@@ -3185,7 +3220,15 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             route_binding = None
             if callable(bind_route):
                 try:
-                    route_binding = bind_route(request)
+                    # A configured unavailable redirect may bind another alias,
+                    # but only one this same credential is already granted. A
+                    # non-device credential is not model-scoped and reaches
+                    # every configured alias today.
+                    device = self._anvil_device
+                    route_binding = bind_route(
+                        request,
+                        redirect_allowed=lambda alias: device is None or device.allows_model(alias),
+                    )
                 except NoAvailableTierError as exc:
                     if getattr(exc, "kind", None) == "unknown_model":
                         self._error(404, "model_not_found", "unknown model", dialect=dialect)
@@ -3195,10 +3238,16 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             if route_binding is not None:
                 request.raw["_anvil_route_delivery_owned"] = True
             self._anvil_request = request
+            redirected = _redirect_binding(request)
             if not self._admit_usage("chat", request.model,
-                                     route_association=(route_binding.route_association if route_binding is not None else None)):
+                                     route_association=(route_binding.route_association if route_binding is not None else None),
+                                     redirect_alias=(redirected.alias if redirected is not None else None)):
                 getattr(backend, "finish_route_request", lambda _request: None)(request)
                 return
+            self._anvil_redirected_from = _response_headers(request).get("X-Anvil-Redirected-From")
+            if self._anvil_usage is not None and route_binding is not None:
+                # Redirect planning, readiness probe included, ran before admission.
+                self._anvil_usage.started -= getattr(route_binding, "planning_s", 0.0)
             request.raw.pop("_anvil_usage", None)
             request.raw.pop("_anvil_parent", None)
 
@@ -3221,7 +3270,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 # backend can raise here, so surface a clean error in the
                 # dialect's native envelope rather than dropping the request with
                 # a traceback.
-                requested_model = request.model
+                response_model = _response_model(request)
                 try:
                     text_parts = []
                     for delta in self._generate_deltas(request):
@@ -3243,7 +3292,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         request,
                         text,
                         structured=_structured,
-                        response_model=requested_model,
+                        response_model=response_model,
                     )
                 except NoAvailableTierError as e:
                     # Keyless handoff contract — see the streaming path above for
@@ -3265,7 +3314,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._json(
                     200,
                     payload,
-                    extra_headers=_output_clamp_headers(request),
+                    extra_headers=_response_headers(request),
                 )
 
         def _write_managed_chat(self, dialect, request):
@@ -3282,6 +3331,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     "admission_timeout_s", "startup_timeout_s", "idle_timeout_s", "total_timeout_s")})
             request.raw["_anvil_control"] = control
             requested_model = request.model
+            response_model = _response_model(request)
             headers_sent = False
             chunked = self.request_version >= "HTTP/1.1"
 
@@ -3303,7 +3353,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         send("started")
                         frames = iter(dialect.stream(request, ready_deltas(),
                             get_structured=get_structured if callable(get_structured) else None,
-                            response_model=requested_model))
+                            response_model=response_model))
                         for frame in frames:
                             if frame:
                                 send("frame", frame)
@@ -3322,7 +3372,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                                 raise TypeError("invalid backend delta")
                         structured = get_structured() if callable(get_structured) else None
                         send("payload", dialect.render(request, "".join(parts),
-                            structured=structured, response_model=requested_model))
+                            structured=structured, response_model=response_model))
                 finally:
                     for generator in (frames, deltas):
                         close = getattr(generator, "close_upstream", None) or getattr(generator, "close", None)
@@ -3364,7 +3414,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         self.send_response(200)
                         self.send_header("Content-Type", "text/event-stream")
                         self.send_header("Cache-Control", "no-cache")
-                        for key, val in {**self._correlation_headers(), **_output_clamp_headers(request)}.items():
+                        for key, val in {**self._correlation_headers(), **_response_headers(request)}.items():
                             self.send_header(key, val)
                         if chunked:
                             self.send_header("Transfer-Encoding", "chunked")
@@ -3389,7 +3439,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                             pending_frames.append(value)
                         heartbeat_at = time.monotonic() + server_config.heartbeat_interval_s
                     elif kind == "payload":
-                        self._json(200, value, extra_headers=_output_clamp_headers(request))
+                        self._json(200, value, extra_headers=_response_headers(request))
                     elif headers_sent and time.monotonic() >= heartbeat_at:
                         write_frame(b": keepalive\n\n")
                         heartbeat_at = time.monotonic() + server_config.heartbeat_interval_s

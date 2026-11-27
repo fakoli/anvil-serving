@@ -35,7 +35,12 @@ The chosen tier remains subject to its configured or inference-reported
 context, declared tool capabilities, health/readiness probes, and concurrency
 admission. If it is unavailable or
 admission is exhausted, the gateway returns its configured exhaustion response;
-it does not select a substitute tier.
+it does not select a substitute tier. The one exception is an alias the
+operator lists in `[router.unavailable_redirects]`: while a completed readiness
+probe shows that alias's tier is not serving its model, its requests are bound
+once, before dispatch, to the one configured target alias, provided the caller
+already holds that alias and the request fits it. Exhausted admission never
+redirects. See [unavailable redirects](CONFIGURATION.md#unavailable-redirects).
 
 The alias-to-tier map is always configured and exact. A tier may optionally set
 `metadata_source = "upstream"` so its one OpenAI-compatible inference service
@@ -189,7 +194,8 @@ serving/controller operations; no read-only endpoint can mutate them.
 
 There are no inference intent presets, classifier, routing policy/profile
 selection, residency selection, cloud escalation, response verification,
-fallback chains, routing calibration, or `/v1/route` decision endpoint.
+fallback chains, routing calibration, or `/v1/route` decision endpoint. The
+only fallback is the explicit one-hop unavailable redirect described above.
 Explicit media workflow profiles do not alter that rule. Measure a concrete serve with
 `eval preflight` and benchmark commands before mapping a capability to it; a
 configuration edit is not a promotion claim.

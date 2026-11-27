@@ -7,7 +7,10 @@ Chat Completions, and a stateless Responses subset, and streams responses
 straight through.
 
 It never guesses. An unknown alias returns 404, and a tier that cannot serve
-returns an error instead of quietly switching to a different model.
+returns an error instead of quietly switching to a different model. The only
+switch is one you declare: an
+[unavailable redirect](../CONFIGURATION.md#unavailable-redirects) names one
+other alias for one alias, and the response says which alias answered.
 
 <!-- product-journey:capability-gateway -->
 

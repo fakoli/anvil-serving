@@ -164,10 +164,22 @@ The Capability Gateway's request path does not:
 - classify a prompt or infer a work class;
 - rank models or providers, or select undeclared/non-equivalent endpoints;
 - choose a model from runtime capacity or benchmark scores;
-- fall back, escalate to cloud, or retry on another tier;
+- fall back on its own initiative, escalate to cloud, or retry on another
+  tier after dispatch;
 - verify a response and substitute a second answer;
 - start, stop, or promote a serve from the request path; or
 - let an inference service rewrite a public capability contract.
+
+One explicit exception exists. An operator may declare, for one alias, a
+single other alias in `[router.unavailable_redirects]`. When a completed
+readiness probe finds the first alias's tier not serving its model, the
+gateway binds the request to the second alias once, before dispatch, and only
+if the caller's credential already grants it. The response names the alias
+that served and carries `X-Anvil-Redirected-From`. It is a declared pair, not
+a selection: nothing is ranked, there is one hop, and a failure after dispatch
+is still returned to the caller. See
+[unavailable redirects](CONFIGURATION.md#unavailable-redirects) and the
+[ADR-0039 amendment](adr/0039-capability-meta-router.md).
 
 It also does not accept arbitrary ComfyUI graphs or give MCP/A2A protocol
 handlers placement, lifecycle, or GPU-reservation authority. Those boundaries

@@ -4,7 +4,11 @@ Chat routing is intentionally small: a caller-selected alias in
 ``[router.model_routes]`` resolves to one local tier.  The gateway retains the
 transport boundaries that matter in operation (authentication, dialect
 translation, readiness, admission, SSE, transition control, and metadata-only
-decision records) but has no classifier, profile, fallback, or cloud path.
+decision records) but has no classifier, profile, fallback chain, or cloud
+path.  Its one fallback is the explicit ``[router.unavailable_redirects]``
+table: an alias whose direct tier is verifiably not serving may be answered by
+one other configured alias the caller already holds, decided once before
+dispatch (ADR-0039 amendment of 2026-11-26).
 """
 from __future__ import annotations
 
@@ -31,6 +35,7 @@ from .availability import (
     AlwaysAvailable,
     AvailabilityResult,
     HttpHealthAvailability,
+    probe_found_unavailable,
     replica_identity_passed,
     resolve_runtime_tier,
     safe_check,
@@ -730,6 +735,15 @@ class _RouteTerminalLease:
 
 
 @dataclass(frozen=True)
+class UnavailableRedirect:
+    """The skipped source of one configured unavailable redirect."""
+
+    alias: str
+    tier: Tier
+    readiness_reason: str
+
+
+@dataclass(frozen=True)
 class RouteBinding:
     """Request-local immutable tier/backend selection and terminal lease."""
 
@@ -739,6 +753,12 @@ class RouteBinding:
     backend: Backend | None
     route_association: object
     terminal_lease: _RouteTerminalLease
+    # Set only when a configured unavailable redirect bound ``alias`` and
+    # ``tier`` in place of the caller's own; it names that skipped source.
+    redirect: Optional[UnavailableRedirect] = None
+    # Seconds the redirect decision took, readiness probe included.  It runs
+    # before admission, so request latency adds it back.
+    planning_s: float = 0.0
 
 
 class RoutingBackend:
@@ -863,13 +883,88 @@ class RoutingBackend:
     def _held_route(self, alias: str, tier_id: str) -> bool:
         return any(alias in hold.aliases or tier_id in hold.tier_ids for hold in self._route_holds.values())
 
-    def bind_route_request(self, request: InternalRequest) -> RouteBinding:
-        """Capture a complete route before usage accounting or admission begins."""
+    def _plan_unavailable_redirect(
+        self, request: InternalRequest, alias: str, allowed: Optional[Callable[[str], bool]],
+    ) -> Optional[tuple[RouteRuntimeSnapshot, str, Tier, str]]:
+        """Decide the one configured redirect for ``alias``, or ``None``.
+
+        The single fallback decision in the gateway (ADR-0039 amendment of
+        2026-11-26).  It runs before the route lock because readiness may
+        probe, and before usage accounting names a route.  Every doubt answers
+        ``None``: the caller stays on its own alias and gets today's response.
+        """
+        try:
+            return self._decide_unavailable_redirect(request, alias, allowed)
+        except Exception:  # noqa: BLE001 - an optional decision never costs the request its own alias
+            return None
+
+    def _source_admitting(self, tier_id: str) -> bool:
+        """Whether a redirect source is admitting; any fault reads as not."""
+        try:
+            return self._admission is not None and self._admission.snapshot(tier_id).state == "admitting"
+        except Exception:  # noqa: BLE001 - a redirect needs positive evidence
+            return False
+
+    def _decide_unavailable_redirect(
+        self, request: InternalRequest, alias: str, allowed: Optional[Callable[[str], bool]],
+    ) -> Optional[tuple[RouteRuntimeSnapshot, str, Tier, str]]:
+        snapshot = self.active_route_snapshot()
+        config = snapshot.config
+        target_alias = config.unavailable_redirects.get(alias)
+        if target_alias is None or not callable(allowed):
+            return None
+        source, target = config.route_tier(alias), config.route_tier(target_alias)
+        if source is None or target is None or source.id == target.id or source.replicas:
+            # Load-time validation holds for the boot config; a live alias move
+            # can still point both names at one tier.
+            return None
+        # A redirect never widens a credential, and an unauthorized caller
+        # never causes a probe.
+        if allowed(target_alias) is not True:
+            return None
+        # Advisory: a source that is already quiesced costs no readiness call.
+        # The bind re-reads admission under the route lock, authoritatively.
+        if not self._source_admitting(source.id):
+            return None
+        # Only a current, completed observation counts.  An availability
+        # provider that cannot attest one never triggers a redirect, and an
+        # expired result served while another probe is in flight is not one.
+        completed = getattr(self._availability, "check_completed", None)
+        readiness = completed(source) if callable(completed) else None
+        if not probe_found_unavailable(readiness):
+            return None
+        # Today's answer must be the unavailable one: a request the source
+        # would refuse for context, media or tools keeps that refusal.  An
+        # upstream-metadata source is refused as unavailable before any of them.
+        if source.metadata_source != METADATA_UPSTREAM and not self._fits(request, source):
+            return None
+        effective = target
+        if target.metadata_source == METADATA_UPSTREAM:
+            effective = resolve_runtime_tier(target, self._availability_for(target))
+        if effective is None or not self._fits(request, effective):
+            return None
+        return snapshot, target_alias, target, readiness.reason
+
+    def bind_route_request(
+        self, request: InternalRequest, *, redirect_allowed: Optional[Callable[[str], bool]] = None,
+    ) -> RouteBinding:
+        """Capture a complete route before usage accounting or admission begins.
+
+        ``redirect_allowed`` is the authenticated caller's own grant check for
+        another alias.  Without it no configured redirect is ever taken.
+        """
         existing = request.raw.get("_anvil_route_binding")
         if isinstance(existing, RouteBinding):
             return existing
         from .usage_store import RouteAssociation
         alias = normalize_model_alias(request.model)
+        planned, planning_s = None, 0.0
+        # An alias with no redirect entry is neither planned nor timed, so its
+        # requests are measured exactly as they were before the table existed.
+        if alias in self.active_route_snapshot().config.unavailable_redirects:
+            plan_started = time.monotonic()
+            planned = self._plan_unavailable_redirect(request, alias, redirect_allowed)
+            planning_s = time.monotonic() - plan_started
         with self._route_lock:
             snapshot = self._active_route_runtime
             tier = snapshot.config.route_tier(alias)
@@ -877,6 +972,19 @@ class RoutingBackend:
                 raise NoAvailableTierError(request.model, (), kind="unknown_model")
             if self._held_route(alias, tier.id):
                 raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
+            redirect = None
+            # The plan is honored only for the exact snapshot it was made
+            # against and never into a route an operator is holding.  An
+            # operator quiesce of the source is a decision, not an outage, and
+            # it is read here, after the probe, so one that landed meanwhile wins.
+            if (
+                planned is not None
+                and planned[0] is snapshot
+                and not self._held_route(planned[1], planned[2].id)
+                and self._source_admitting(tier.id)
+            ):
+                redirect = UnavailableRedirect(alias, tier, planned[3])
+                alias, tier = planned[1], planned[2]
             fingerprint_fields = (tier.params or {}).get("fingerprint")
             fingerprint = (
                 hashlib.sha256(json.dumps(dict(fingerprint_fields), sort_keys=True,
@@ -891,7 +999,8 @@ class RoutingBackend:
             lease = _RouteTerminalLease(self, snapshot.route_revision, tier.id)
             key = (snapshot.route_revision, tier.id)
             self._route_terminals[key] = self._route_terminals.get(key, 0) + 1
-            binding = RouteBinding(snapshot, alias, tier, snapshot.backends.get(tier.id), association, lease)
+            binding = RouteBinding(snapshot, alias, tier, snapshot.backends.get(tier.id), association, lease,
+                                   redirect, planning_s)
             request.raw["_anvil_route_binding"] = binding
             return binding
 
@@ -1133,9 +1242,24 @@ class RoutingBackend:
             } if tier.replica_strategy == "capacity" else {},
         )
         binding = request.raw.get("_anvil_route_binding")
+        redirect = binding.redirect if isinstance(binding, RouteBinding) else None
+        if redirect is not None:
+            if not attempts:
+                # A replica target that admitted no member has no member
+                # attempt, but the record still names the tier that was tried.
+                attempts = (AttemptRecord(
+                    tier.id, served, reason, prompt_tokens, completion_tokens, outcome,
+                ),)
+            # The caller's own tier was skipped as unavailable before this one
+            # was tried; keep both attempts, source first.
+            attempts = (AttemptRecord(
+                redirect.tier.id, False, "unavailable", prompt_tokens, 0, "skipped",
+            ), *attempts)
+            if readiness_reason is None:
+                readiness_reason = redirect.readiness_reason
         decision = DecisionRecord(
             kind="chat",
-            requested_tier=tier.id,
+            requested_tier=redirect.tier.id if redirect is not None else tier.id,
             attempts=attempts,
             served_tier=tier.id if served else None,
             total_prompt_tokens=prompt_tokens,
@@ -1216,8 +1340,39 @@ class RoutingBackend:
             return "content_filter"
         return None
 
+    def _request_refusal(self, request: InternalRequest, tier: Tier) -> Optional[tuple[str, str]]:
+        """Why ``tier`` cannot admit ``request``: (decision reason, error kind).
+
+        The tier's output cap must already be applied, because media admission
+        counts the requested completion budget.
+        """
+        if (
+            tier.context_admission != CONTEXT_ADMISSION_UPSTREAM
+            and self._prompt_tokens(request) > tier.context_limit
+        ):
+            return "over_context", "over_context"
+        media = evaluate_media_admission(
+            tier.params,
+            request.raw,
+            prompt_tokens=self._prompt_tokens(request),
+            context_limit=tier.context_limit,
+        )
+        if not media.allowed:
+            if media.reason == "context_limit":
+                return "over_context", "over_context"
+            return "media_admission_%s" % media.reason, "media_limit"
+        if has_tool_artifacts(request.raw) and not tier.tool_support:
+            return "tools_unsupported", "unsupported_tools"
+        return None
+
+    def _fits(self, request: InternalRequest, tier: Tier) -> bool:
+        """Whether ``tier`` would admit ``request`` under its own cap and limits."""
+        probe = replace(request, raw=dict(request.raw))
+        self._apply_output_cap(probe, tier, warn=False)
+        return self._request_refusal(probe, tier) is None
+
     @staticmethod
-    def _apply_output_cap(request: InternalRequest, tier: Tier) -> None:
+    def _apply_output_cap(request: InternalRequest, tier: Tier, *, warn: bool = True) -> None:
         """Apply an opt-in tier completion ceiling before any relay work."""
         cap = tier.max_output_tokens
         if cap is None:
@@ -1239,6 +1394,8 @@ class RoutingBackend:
         for key in ("max_tokens", "max_completion_tokens", "max_output_tokens"):
             if key in request.raw:
                 request.raw[key] = cap
+        if not warn:
+            return
         print(
             "[anvil] warning output limit clamped "
             f"route={normalize_model_alias(request.model)} tier={tier.id} "
@@ -1342,7 +1499,12 @@ class RoutingBackend:
             )
             return result
 
+        prebound = isinstance(request.raw.get("_anvil_route_binding"), RouteBinding)
         binding = self.bind_route_request(request)
+        if prebound:
+            # The front door bound this route, and any redirect planning with
+            # its readiness probe, before this call started its clock.
+            started -= binding.planning_s
         configured_tier = binding.tier
 
         if workload_token is not None:
@@ -1373,39 +1535,13 @@ class RoutingBackend:
 
         self._apply_output_cap(request, tier)
 
-        if (
-            tier.context_admission != CONTEXT_ADMISSION_UPSTREAM
-            and self._prompt_tokens(request) > tier.context_limit
-        ):
+        refusal = self._request_refusal(request, tier)
+        if refusal is not None:
             record(
-                request, tier, served=False, reason="over_context", outcome="skipped",
+                request, tier, served=False, reason=refusal[0], outcome="skipped",
                 latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
             )
-            raise NoAvailableTierError(request.model, (tier.id,), kind="over_context")
-        media = evaluate_media_admission(
-            tier.params,
-            request.raw,
-            prompt_tokens=self._prompt_tokens(request),
-            context_limit=tier.context_limit,
-        )
-        if not media.allowed:
-            reason = (
-                "over_context"
-                if media.reason == "context_limit"
-                else "media_admission_%s" % media.reason
-            )
-            kind = "over_context" if media.reason == "context_limit" else "media_limit"
-            record(
-                request, tier, served=False, reason=reason, outcome="skipped",
-                latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
-            )
-            raise NoAvailableTierError(request.model, (tier.id,), kind=kind)
-        if has_tool_artifacts(request.raw) and not tier.tool_support:
-            record(
-                request, tier, served=False, reason="tools_unsupported", outcome="skipped",
-                latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
-            )
-            raise NoAvailableTierError(request.model, (tier.id,), kind="unsupported_tools")
+            raise NoAvailableTierError(request.model, (tier.id,), kind=refusal[1])
         # A request must never follow a later publication.  The binding owns
         # both the declared tier and the exact relay wrapper for its lifetime.
         backend = binding.backend
@@ -1499,6 +1635,10 @@ class RoutingBackend:
             # decision/response metadata. Only the private relay copy carries
             # the inference service's currently observed model id.
             relay_request = replace(request, model=tier.model)
+        elif binding.redirect is not None:
+            # A relay with no configured model forwards the alias; it must be
+            # the serving alias, exactly as a direct call to it would send.
+            relay_request = replace(request, model=binding.alias)
         upstream = None
         try:
             control.check_admission()
