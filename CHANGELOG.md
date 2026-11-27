@@ -61,6 +61,12 @@ All notable changes to this project are documented here. The format is based on
   `requested_tier` and usage keeps the requested alias with the serving tier.
   Without the table nothing changes.
   See "Unavailable redirects" in `docs/CONFIGURATION.md`.
+- `router keys grant` adds model grants to one live ordinary key without
+  reissuing its secret. It takes the key's full current model list as a
+  compare-and-swap guard, accepts only names the router's boot config can route,
+  supports `--dry-run`, and prints the grants and policy digest before and
+  after. It never removes a grant and refuses revoked, expired and
+  Connect-owned keys. The store schema is unchanged.
 
 ### Changed
 

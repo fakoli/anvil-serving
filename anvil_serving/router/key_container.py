@@ -8,6 +8,9 @@ import sys
 
 from .keys import KeyStore, KeyStoreError, _write_secret
 
+_CONFIG = "/etc/anvil/config.toml"
+
+
 def _container_id(container: str, path: str) -> str:
     from ..connect.key_transport import _container_id as invoke
     try:
@@ -127,6 +130,16 @@ def main() -> int:
             actor = store.bind_owner(payload["key_id"], payload["kind"], payload["owner_id"],
                                      payload["expected_revision"], dry_run=payload["dry_run"])
             data = {"key_id": payload["key_id"], "actor": actor.to_dict(), "dry_run": payload["dry_run"]}
+        elif action == "grant":
+            from .config import load_server_config
+            from .keys import _routable_models
+            import os
+            # The config this router was started with decides what is routable, not the caller's copy.
+            config = os.environ.get("ANVIL_CONFIG") or _CONFIG
+            if load_server_config(config, container_paths=True).api_keys_path != path:
+                raise KeyStoreError("router credential store path differs")
+            data = store.grant_models(payload["key_id"], payload["model"], payload["expected_model"],
+                                      _routable_models(config), dry_run=payload["dry_run"])
         elif action in {"backup", "restore"}:
             from .usage_store import UsageStore
             data = (UsageStore(store).backup(payload["out"]) if action == "backup"

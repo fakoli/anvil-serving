@@ -1304,6 +1304,40 @@ class KeyStore:
         except sqlite3.Error:
             raise KeyStoreError("owner binding is unavailable") from None
 
+    def grant_models(self, key_id, models, expected, routable, *, dry_run=False):
+        """Operator-only additive model grants on one live ordinary key.
+
+        ``expected`` is the key's full current model list (compare-and-swap) and
+        every added name must be in ``routable``. Paths, rate and expiry are
+        unchanged. The result carries both policy digests because the store
+        keeps only the current policy.
+        """
+        if (not isinstance(key_id, str) or _KEY_ID_RE.fullmatch(key_id) is None
+                or not isinstance(models, list) or not models or not isinstance(expected, list)
+                or not isinstance(routable, frozenset) or type(dry_run) is not bool):
+            raise KeyStoreError("invalid model grant request")
+        try:
+            with self._write() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                now = time.time()  # One clock for both reads: a key cannot expire between them.
+                before = self._caller_candidate(connection, key_id, now, snapshot=True)
+                if before is None or before.owner is not None:
+                    raise KeyStoreError("ordinary credential key is unavailable")
+                if list(before.models) != expected:
+                    raise KeyStoreError("admission_policy_changed")
+                granted, _ = self._grants([*expected, *models], list(before.paths))
+                if not routable.issuperset(granted[len(expected):]):
+                    raise KeyStoreError("model grant is not routable")
+                connection.execute("UPDATE keys SET models=? WHERE key_id=?", (json.dumps(granted), key_id))
+                after = self._caller_candidate(connection, key_id, now, snapshot=True)
+                connection.execute("ROLLBACK" if dry_run else "COMMIT")
+        except sqlite3.Error:
+            raise KeyStoreError("model grant is unavailable") from None
+        return {"key_id": key_id, "dry_run": dry_run,
+                "models_before": list(before.models), "models_after": list(after.models),
+                "policy_digest_before": before.caller_snapshot.grant.policy_digest,
+                "policy_digest_after": after.caller_snapshot.grant.policy_digest}
+
     def _authenticate_in_transaction(self, connection, token, *, snapshot=False):
         """Read token and grants in the caller's already-owned transaction."""
         if type(snapshot) is not bool or not connection.in_transaction:
@@ -1515,7 +1549,7 @@ class _Parser(argparse.ArgumentParser):
 def _parser() -> argparse.ArgumentParser:
     parser = _Parser(prog="anvil-serving router keys", allow_abbrev=False)
     actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
-    for action in ("init", "create", "list", "revoke", "usage", "bind", "backup", "restore", "migrate"):
+    for action in ("init", "create", "list", "revoke", "usage", "bind", "grant", "backup", "restore", "migrate"):
         item = actions.add_parser(action, allow_abbrev=False)
         item.add_argument("--config", metavar="PATH")
         item.add_argument("--container", metavar="NAME")
@@ -1545,6 +1579,11 @@ def _parser() -> argparse.ArgumentParser:
             item.add_argument("--owner-id", required=True)
             item.add_argument("--expected-revision", type=int, required=True)
             item.add_argument("--dry-run", action="store_true")
+        elif action == "grant":
+            item.add_argument("--key-id", required=True)
+            item.add_argument("--model", action="append", required=True)
+            item.add_argument("--expected-model", action="append", required=True)
+            item.add_argument("--dry-run", action="store_true")
         elif action in {"backup", "restore"}:
             item.add_argument("--out", required=True, metavar="PATH")
             if action == "restore":
@@ -1563,6 +1602,14 @@ def _store_from_config(config_path: str | None, *, initialize: bool) -> KeyStore
     if not isinstance(path, str) or not path:
         raise KeyStoreError("router credential store path is not configured")
     return KeyStore.initialize(path) if initialize else KeyStore(path)
+
+
+def _routable_models(config_path: str) -> frozenset[str]:
+    """Every name this boot config can route: chat aliases, purpose models and audio routes."""
+    from .config import load
+    router = load(config_path)
+    return frozenset((*router.model_routes, *(item.model for item in router.purpose_models),
+                      *(item.id for item in router.audio_routes)))
 
 
 def _write_secret(path: str, secret: str) -> None:
@@ -1645,6 +1692,10 @@ def dispatch(argv: list[str] | None = None) -> int:
                 actor = store.bind_owner(args.key_id, args.kind, args.owner_id, args.expected_revision,
                                          dry_run=args.dry_run)
                 result = {"key_id": args.key_id, "actor": actor.to_dict(), "dry_run": args.dry_run}
+            elif args.action == "grant":
+                from .serve import resolve_config_path
+                result = store.grant_models(args.key_id, args.model, args.expected_model,
+                                            _routable_models(resolve_config_path(args.config)), dry_run=args.dry_run)
             elif args.action == "revoke":
                 if not store.revoke(args.key_id):
                     raise KeyStoreError("credential key was not found")
