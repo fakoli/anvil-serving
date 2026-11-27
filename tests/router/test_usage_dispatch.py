@@ -19,7 +19,7 @@ from anvil_serving.router.decision_log import DecisionLog
 from anvil_serving.router.front_door import make_server
 from anvil_serving.router.identity import legacy_caller
 from anvil_serving.router.internal import UsageInvocation, usage_invocation
-from anvil_serving.router.request_control import RequestCancelledError, RequestDeadlineExceeded, request_control
+from anvil_serving.router.request_control import RequestCancelledError, RequestControl, RequestDeadlineExceeded, request_control
 from anvil_serving.router.usage_store import Terminal, UsageError
 from anvil_serving.router.workloads import RouterWorkloadRegistry
 from tests.router.helpers import make_tier
@@ -612,9 +612,23 @@ def test_generation_deadline_delivered_as_a_plain_error_keeps_request_timeout(st
 
 
 @pytest.mark.parametrize("expires", [True, False], ids=["queue_timeout", "queued_then_served"])
-def test_admission_queue_wait_is_measured_and_is_upstream_time_only_after_dispatch(store, expires):
+def test_admission_queue_wait_is_measured_and_is_upstream_time_only_after_dispatch(store, expires, monkeypatch):
     usage, *_ = store
-    entered, release = threading.Event(), threading.Event()
+    entered, release, queued_up = threading.Event(), threading.Event(), threading.Event()
+    begin_wait, waits = RequestControl.begin_admission_wait, []
+
+    def note_queued(self):
+        begin_wait(self)
+        waits.append(self)
+        if len(waits) == 2:  # Every request starts the clock; the second one is the one that queues.
+            queued_up.set()
+
+    monkeypatch.setattr(RequestControl, "begin_admission_wait", note_queued)
+
+    def release_once_queued():
+        if queued_up.wait(5):
+            time.sleep(0.1)
+        release.set()
 
     class Slow:
         usage_transport_boundary = True
@@ -633,7 +647,8 @@ def test_admission_queue_wait_is_measured_and_is_upstream_time_only_after_dispat
                 held = pool.submit(post, conn)
                 assert entered.wait(5)
                 if not expires:
-                    threading.Timer(0.1, release.set).start()
+                    # Free the slot only once the second request is queued, so its wait is real.
+                    threading.Thread(target=release_once_queued).start()
                 status = post(other)[0]  # Waits behind the one admitted request.
                 release.set()
                 assert held.result(timeout=5)[0] == 200
