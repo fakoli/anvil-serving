@@ -705,9 +705,11 @@ no accounting failure). It was judged not to be a gateway regression and
 nothing was rolled back. The advisor rechecked from the usage rows and,
 separately, from the decision log, and agreed.
 
-- The time the gateway itself adds (latency minus upstream time minus
-  admission wait) was 78 ms at the median and 93 ms at the 95th percentile,
-  against 78 and 92 ms in window 1. Admission wait was 0.
+- The time the gateway itself adds (latency minus upstream duration) was 78 ms
+  at the median and 93 ms at the 95th percentile, against 78 and 92 ms in
+  window 1. Admission wait was 0 on every request. The upstream timer starts
+  before the tier's concurrency queue, so upstream duration already contains
+  any admission wait and the wait is not subtracted a second time.
 - Generation speed on long answers was 227 tokens per second, against 224.
 - The slow tail was long work: 91 s for 20,866 output tokens, 66 s for 15,037,
   and 49.7 s for a 239,410-token prompt.
@@ -717,8 +719,9 @@ separately, from the decision log, and agreed.
 
 **New rules, on the advisor's ruling.** End-to-end 95th percentile is still
 reported, marked when it passes the old line, and no longer breaches. The watch
-now breaches on what the gateway controls: its own added time above 150 ms at
-the 95th percentile, admission wait above 1 s at the 95th percentile, or a
+now breaches on what the gateway controls: its own added time (latency minus
+upstream duration) above 150 ms at the 95th percentile, admission wait above
+1 s at the 95th percentile, or a
 median above 2.5 s for requests of 300 output tokens or fewer. The bounds sit
 above the day-before baseline, where the added time never passed 95 ms,
 admission wait was 0 all day, and the short-request median never passed 1.86 s.
