@@ -332,10 +332,33 @@ anvil-serving host desktop mode media --confirm
 
 These selections are idempotent. They share the existing desktop lock and
 10-second cooldown; they never alternate into another mode on a repeated press.
-The configuration declares `schema = "anvil-serving.desktop-modes/v1"`, one
-`secondary_manifest`, a `media_manifest`, additional `model_manifests`,
-`worker_containers`, `guard_cli`, and `guard_config`. Paths resolve relative to
-that configuration file. Keep real assignments and local paths private.
+The private configuration declares `schema = "anvil-serving.desktop-modes/v1"`,
+`media_manifest`, `model_manifests`, `worker_containers`, `guard_cli`, and
+`guard_config`. Paths resolve relative to the configuration file. Use
+`secondary_manifest` for a fixed assignment. To follow a router alias, use
+these settings in its place:
+
+```toml
+secondary_router_url = "https://router.example.test"
+secondary_router_alias = "llm.secondary"
+secondary_router_token_file = "client-router.env"
+secondary_router_token_env = "ANVIL_ROUTER_TOKEN"
+secondary_manifest_dir = "desktop-secondary"
+```
+
+The button reads the assignment from the router on each secondary selection.
+Use configured model metadata so the router can identify the model while its
+serve is parked. If Docker Desktop also hosts the router, set `router_container`
+to its container name. Secondary mode keeps that container running. With Docker
+stopped, an independent router can still be queried. For a co-hosted router,
+a preview defers the lookup until the confirmed selection starts Docker.
+The named credential must be able to read the tier ID and model in the alias's
+capabilities response. To verify HTTPS using a specific trusted PEM bundle,
+set `secondary_router_ca_file` to its path. Register each local backer in a `serves.*.toml` file in
+the configured directory with its `router_tier` and served model name. The
+button requires exactly one match. Preview the selection with
+`anvil-serving host desktop mode secondary --dry-run`. Gaming and media do
+not need a router connection.
 
 Gaming and secondary modes refuse active media workers unless their idle state
 and lifecycle ownership can be verified. An optional private `[idle_teardown]` binding declares `worker`, `controller`,
@@ -358,8 +381,9 @@ wrong mode on the next boot.
 Secondary mode starts the existing declared model and verifies its health and
 declared API served name. Media mode stops declared models while keeping their containers,
 starts the media controls and verifies the gateway and host-memory safety signal.
-Its media worker stays on demand. Missing secondary containers fail rather than
-creating or selecting another model. Explicit selections archive a pending legacy
+Its media worker stays on demand. A parked secondary container can be restarted.
+A dynamic assignment can also start from its declared managed launch when its
+container is absent. Explicit selections archive a pending legacy
 restore journal privately, without restoring the competing mode first.
 
 For Stream Deck, use one **System > Open** action for each selection. Retain the
