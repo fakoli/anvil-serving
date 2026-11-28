@@ -1286,14 +1286,18 @@ def _validate_promotion_topology(serves, plan):
             port = 443 if parsed.scheme == "https" else 80 if parsed.scheme == "http" else None
         return port == old["port"]
 
-    shared = [tier.id for tier in rolled_back.tiers if tier.id not in affected
-              and not tier.replicas and uses_displaced_owner(tier.base_url)]
-    shared.extend("purpose:" + route.id for route in rolled_back.purpose_models
-                  if uses_displaced_owner(route.base_url))
-    shared.extend("audio:" + route.id for route in rolled_back.audio_routes
-                  if uses_displaced_owner(route.base_url))
-    shared.extend("replica:" + tier.id for tier in rolled_back.tiers if tier.id not in affected
-                  and any(uses_displaced_owner(member.base_url) for member in tier.replicas))
+    shared = set()
+    for router_config in (promoted, rolled_back):
+        shared.update(tier.id for tier in router_config.tiers if tier.id not in affected
+                      and not tier.replicas and uses_displaced_owner(tier.base_url))
+        shared.update("purpose:" + route.id for route in router_config.purpose_models
+                      if uses_displaced_owner(route.base_url))
+        shared.update("audio:" + route.id for route in router_config.audio_routes
+                      if uses_displaced_owner(route.base_url))
+        shared.update("realtime:" + route.id for route in router_config.realtime_routes
+                      if uses_displaced_owner(route.base_url))
+        shared.update("replica:" + tier.id for tier in router_config.tiers if tier.id not in affected
+                      and any(uses_displaced_owner(member.base_url) for member in tier.replicas))
     if shared:
         raise ValueError(
             "promotion affected_tiers omits shared endpoint tier(s): %s"

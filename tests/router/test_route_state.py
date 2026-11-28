@@ -613,6 +613,46 @@ base_url = "http://127.0.0.1:30001/v1"
         manager.close()
 
 
+def test_tier_replacement_rejects_shared_realtime_listener(tmp_path):
+    realtime = b'''\n[[router.realtime_routes]]
+id = "voice"
+base_url = "http://127.0.0.1:30001/v1"
+auth_env = "VOICE_TOKEN"
+default = true
+'''
+    raw = configuration() + realtime
+    candidate = raw.replace(b'model = "model-a"', b'model = "replacement"')
+    path = tmp_path / "routes.json"
+    updates.initialize_route_state(raw, path)
+    manager = updates.RouteUpdateManager(Runtime(raw), raw, path)
+    try:
+        manager.restore()
+        with pytest.raises(updates.RouteUpdateError, match="shared_owner"):
+            manager.preview(candidate)
+        assert not manager.routing.holds and manager.status()["route_revision"] == 0
+    finally:
+        manager.close()
+
+
+def test_tier_replacement_allows_distinct_realtime_listener(tmp_path):
+    raw = configuration() + b'''\n[[router.realtime_routes]]
+id = "voice"
+base_url = "http://127.0.0.1:8765/v1"
+auth_env = "VOICE_TOKEN"
+default = true
+'''
+    candidate = raw.replace(b'model = "model-a"', b'model = "replacement"')
+    path = tmp_path / "routes.json"
+    updates.initialize_route_state(raw, path)
+    manager = updates.RouteUpdateManager(Runtime(raw), raw, path)
+    try:
+        manager.restore()
+        assert apply(manager, candidate)["route_revision"] == 1
+        assert manager.routing.snapshot.config.tier("a").model == "replacement"
+    finally:
+        manager.close()
+
+
 @pytest.mark.parametrize("phase", ["committed", "readmitted", "complete"])
 @pytest.mark.parametrize("failed_reads", [1, 2])
 def test_installed_write_with_uncertain_readback_recovers_in_process(manager, monkeypatch, phase, failed_reads):

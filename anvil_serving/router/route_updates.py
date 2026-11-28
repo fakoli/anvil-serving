@@ -262,7 +262,8 @@ def _validate_release_scope(config, tier_ids):
         endpoints = [member.base_url for member in tier.replicas] if tier.replicas else [tier.base_url]
         _require(not any(_normalized_replica_endpoint(endpoint, "route")[:3] in affected for endpoint in endpoints),
                  "route_shared_owner_release_unsupported")
-    for route in (*config.purpose_models, *config.audio_routes, *config.memory_routes):
+    for route in (*config.purpose_models, *config.audio_routes, *config.realtime_routes,
+                  *config.memory_routes):
         _require(_normalized_replica_endpoint(route.base_url, "route")[:3] not in affected,
                  "route_shared_owner_release_unsupported")
 
