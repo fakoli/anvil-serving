@@ -375,21 +375,23 @@ class RealtimeGateway:
         try:
             with selectors.DefaultSelector() as selector:
                 while True:
-                    for index in (0, 1):
-                        if eof[index] or len(buf[index]) >= _RELAY_BUFFER_LIMIT:
-                            continue
-                        sock = socks[index]
-                        if isinstance(sock, ssl.SSLSocket) and sock.pending() > 0:
-                            do_read(index)
-                            if broken:
-                                break
-                    if broken or (eof[0] and not buf[0]) or (eof[1] and not buf[1]):
+                    if not (eof[0] or eof[1]):
+                        for index in (0, 1):
+                            if len(buf[index]) >= _RELAY_BUFFER_LIMIT:
+                                continue
+                            sock = socks[index]
+                            if isinstance(sock, ssl.SSLSocket) and sock.pending() > 0:
+                                do_read(index)
+                                if broken or eof[0] or eof[1]:
+                                    break
+                    if broken or ((eof[0] or eof[1]) and not buf[0] and not buf[1]):
                         break
 
+                    stopping = eof[0] or eof[1]
                     any_registered = False
                     for index in (0, 1):
                         other = 1 - index
-                        can_read = (not eof[index]) and (len(buf[index]) < _RELAY_BUFFER_LIMIT)
+                        can_read = (not stopping) and (len(buf[index]) < _RELAY_BUFFER_LIMIT)
                         can_write = bool(buf[other])
                         if not can_read:
                             read_want[index] = 0
@@ -426,7 +428,7 @@ class RealtimeGateway:
                             do_write(index)
                             if broken:
                                 break
-                        if (not eof[index]) and len(buf[index]) < _RELAY_BUFFER_LIMIT and (mask & read_want[index]):
+                        if (not (eof[0] or eof[1])) and len(buf[index]) < _RELAY_BUFFER_LIMIT and (mask & read_want[index]):
                             do_read(index)
                             if broken:
                                 break

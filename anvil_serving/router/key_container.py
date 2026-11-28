@@ -35,9 +35,6 @@ def _config_from_argv(argv: list[str]) -> str | None:
 
 
 def _runtime_config() -> str:
-    env_config = os.environ.get("ANVIL_CONFIG")
-    if env_config:
-        return env_config
     try:
         raw = Path(_PROC_CMDLINE).read_bytes()
     except OSError:
@@ -47,7 +44,7 @@ def _runtime_config() -> str:
         explicit = _config_from_argv(argv)
         if explicit:
             return explicit
-    return _CONFIG
+    return os.environ.get("ANVIL_CONFIG") or _CONFIG
 
 
 def _container_id(container: str, path: str) -> str:

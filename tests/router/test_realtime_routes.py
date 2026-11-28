@@ -758,3 +758,54 @@ def test_realtime_relay_full_duplex_concurrent_tls_without_race_or_corruption(tm
     assert bytes(got_at_upstream) == expected_up
     assert bytes(got_at_client) == expected_down
     assert relay_result == [(len(expected_up), len(expected_down))]
+
+
+def test_realtime_relay_flushes_opposite_buffered_bytes_after_half_close():
+    from anvil_serving.router.realtime import UpstreamSession
+
+    app_client, relay_client = socket.socketpair()
+    relay_upstream, app_upstream = socket.socketpair()
+    try:
+        # Half-close the client write side so relay_client hits EOF immediately
+        # while both client_leftover and opposite-direction upstream.leftover
+        # still need to be flushed cleanly.
+        app_client.shutdown(socket.SHUT_WR)
+        client_leftover = b"CLIENT-PIPELINED"
+        upstream_leftover = b"UPSTREAM-LEFTOVER-" * 2048
+
+        got_client = bytearray()
+        got_upstream = bytearray()
+        errors: list[BaseException] = []
+
+        def drain(sock: socket.socket, dest: bytearray):
+            try:
+                sock.settimeout(5)
+                while True:
+                    chunk = sock.recv(8192)
+                    if not chunk:
+                        break
+                    dest.extend(chunk)
+            except BaseException as exc:  # noqa: BLE001
+                errors.append(exc)
+
+        t_client = threading.Thread(target=drain, args=(app_client, got_client), daemon=True)
+        t_upstream = threading.Thread(target=drain, args=(app_upstream, got_upstream), daemon=True)
+        t_client.start()
+        t_upstream.start()
+
+        rt = RealtimeGateway([], max_concurrency=1, env={})
+        session = UpstreamSession(sock=relay_upstream, leftover=upstream_leftover, response=b"")
+        sent, received = rt.relay(relay_client, client_leftover, session, idle_timeout=2.0)
+
+        t_client.join(timeout=5)
+        t_upstream.join(timeout=5)
+        assert errors == []
+        assert bytes(got_upstream) == client_leftover
+        assert bytes(got_client) == upstream_leftover
+        assert (sent, received) == (len(client_leftover), len(upstream_leftover))
+    finally:
+        for sock in (app_client, relay_client, relay_upstream, app_upstream):
+            try:
+                sock.close()
+            except OSError:
+                pass

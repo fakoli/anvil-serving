@@ -127,7 +127,8 @@ def test_container_grant_uses_the_router_mounted_config(container, tmp_path, mon
     ["/usr/local/bin/python", "/usr/local/bin/anvil-serving", "router", "run", "--config", "{cfg}", "--host", "0.0.0.0"],
     ["anvil-serving", "router", "run", "--config={cfg}", "--host", "0.0.0.0"],
 ])
-def test_container_grant_honors_explicit_config_argv_when_env_unset(container, tmp_path, monkeypatch, capsys, cmdline_args):
+@pytest.mark.parametrize("env_baked", [False, True], ids=["env_unset", "env_set_to_default"])
+def test_container_grant_honors_explicit_config_argv_over_default_env(container, tmp_path, monkeypatch, capsys, cmdline_args, env_baked):
     from anvil_serving.router import config as router_config
 
     host_config, _, _ = container
@@ -145,7 +146,12 @@ def test_container_grant_honors_explicit_config_argv_when_env_unset(container, t
     argv = [part.format(cfg=str(argv_config)) for part in cmdline_args]
     proc_cmdline.write_bytes(b"\x00".join(part.encode("utf-8") for part in argv) + b"\x00")
 
-    monkeypatch.delenv("ANVIL_CONFIG", raising=False)
+    if env_baked:
+        # Dockerfile bakes ENV ANVIL_CONFIG=/etc/anvil/config.toml into the runtime image;
+        # an explicit --config in PID 1 argv must still win over the baked env var.
+        monkeypatch.setenv("ANVIL_CONFIG", str(default_config))
+    else:
+        monkeypatch.delenv("ANVIL_CONFIG", raising=False)
     monkeypatch.setattr(key_container, "_CONFIG", str(default_config))
     monkeypatch.setattr(key_container, "_PROC_CMDLINE", str(proc_cmdline))
     monkeypatch.setattr(router_config, "load", lambda path: SimpleNamespace(
