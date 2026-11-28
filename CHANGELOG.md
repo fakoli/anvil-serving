@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [3.2.1] - 2026-11-28
+
 ### Fixed
 
 - Chat tier replacement and managed promotion check for realtime routes that

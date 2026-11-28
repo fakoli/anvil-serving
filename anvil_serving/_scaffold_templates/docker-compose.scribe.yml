@@ -8,13 +8,13 @@
 # gateway listens on host loopback, and `tailscale serve` proxies the tailnet
 # edge to the same 127.0.0.1 listener. Nothing else publishes this port.
 #
-# Build: docker build --target scribe -t anvil-serving-scribe:3.2.0 .
+# Build: docker build --target scribe -t anvil-serving-scribe:3.2.1 .
 # SCRIBE_IMAGE is a per-invocation candidate override.
 name: anvil-scribe
 
 services:
   scribe:
-    image: ${SCRIBE_IMAGE:-anvil-serving-scribe:3.2.0}
+    image: ${SCRIBE_IMAGE:-anvil-serving-scribe:3.2.1}
     container_name: anvil-scribe
     restart: unless-stopped
     network_mode: host
