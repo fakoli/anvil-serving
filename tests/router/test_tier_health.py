@@ -20,8 +20,9 @@ from anvil_serving.router.availability import (
     AvailabilityResult,
 )
 from tests.router.helpers import StaticBackend
-from anvil_serving.router.config import AudioRoute, PurposeModel, RouterConfig, Tier
+from anvil_serving.router.config import AudioRoute, PurposeModel, RealtimeRoute, RouterConfig, Tier
 from anvil_serving.router.front_door import TIER_HEALTH_ENDPOINT, make_server
+from anvil_serving.router.realtime import RealtimeGateway
 from anvil_serving.router.serve import RoutingBackend
 
 TOKEN = "s3cr3t-router-token"
@@ -65,12 +66,14 @@ def _config(
     *tiers: Tier,
     purpose_models: tuple = (),
     audio_routes: tuple = (),
+    realtime_routes: tuple = (),
 ) -> RouterConfig:
     return RouterConfig(
         tiers=tuple(tiers),
         model_routes={f"llm.{t.id}": t.id for t in tiers},
         purpose_models=tuple(purpose_models),
         audio_routes=tuple(audio_routes),
+        realtime_routes=tuple(realtime_routes),
     )
 
 
@@ -80,8 +83,8 @@ def _routing(config: RouterConfig, availability) -> RoutingBackend:
 
 
 @contextmanager
-def _server(backend, *, token: Optional[str] = TOKEN):
-    httpd = make_server("127.0.0.1", 0, backend, auth_token=token)
+def _server(backend, *, token: Optional[str] = TOKEN, realtime=None):
+    httpd = make_server("127.0.0.1", 0, backend, auth_token=token, realtime=realtime)
     host, port = httpd.server_address[:2]
     thread = threading.Thread(target=httpd.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
@@ -160,6 +163,31 @@ def test_snapshot_has_a_row_per_configured_serve_with_roles():
     for row in rows:
         assert set(row) == {"id", "role", "status", "last_check", "latency_ms", "reason"}
         assert row["status"] in ("up", "degraded", "down")
+
+
+def test_snapshot_uses_the_bound_realtime_gateway_health_for_every_route():
+    ready = RealtimeRoute(
+        id="voice-ready", base_url="http://127.0.0.1:30111/v1", health_path="/ready",
+    )
+    down = RealtimeRoute(
+        id="voice-down", base_url="http://127.0.0.1:30112/v1", health_path="/down",
+    )
+    calls = []
+    realtime = RealtimeGateway(
+        (ready, down), max_concurrency=1,
+        probe=lambda url, timeout: calls.append(url) or (200 if url.endswith("/ready") else 503),
+    )
+    routing = _routing(_config(_tier("primary-local", 30000), realtime_routes=(ready, down)), AlwaysAvailable())
+
+    with _server(routing, realtime=realtime) as (host, port):
+        status, raw = _get(host, port, HEALTH)
+
+    assert status == 200
+    rows = {row["id"]: row for row in json.loads(raw)["tiers"]}
+    assert rows["voice-ready"]["role"] == "realtime"
+    assert rows["voice-ready"]["status"] == "up"
+    assert rows["voice-down"]["status"] == "down"
+    assert calls == ["http://127.0.0.1:30111/ready", "http://127.0.0.1:30112/down"]
 
 
 # --------------------------------------------------------------------------- #

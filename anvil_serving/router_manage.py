@@ -15,6 +15,7 @@ import urllib.request
 
 from . import envfile, guard
 from .paths import config_path, resolve_topology_path, runtime_url
+from .router.realtime import probe_realtime_health, realtime_health_url
 from .serves import docker_state, _serving_authority_mutation
 from .transports import _is_safe_controller_ip
 
@@ -1403,6 +1404,17 @@ def _probe_endpoint(url, timeout=4.0, _open=urllib.request.urlopen):
         return False, type(exc).__name__
 
 
+def _probe_realtime_endpoint(url, timeout=4.0):
+    """Match the relay's direct, token-free, exact-200 readiness check."""
+    try:
+        status = probe_realtime_health(url, timeout)
+        return status == 200, "HTTP %s" % status
+    except urllib.error.HTTPError as exc:
+        return False, "HTTP %s" % exc.code
+    except Exception as exc:  # noqa: BLE001 - any transport failure is "down"
+        return False, type(exc).__name__
+
+
 # The router runs in a container, so its config names the Docker host as
 # `host.docker.internal`. That name does not resolve on the host itself, so
 # probing it from here would report a healthy serve as unreachable. Translating
@@ -1459,9 +1471,11 @@ def _endpoint_kind(base_url):
     return "public-network"
 
 
-def _failure_class(*, reachable, endpoint_kind, perspective):
+def _failure_class(*, reachable, endpoint_kind, perspective, detail, kind):
     if reachable:
         return None
+    if kind == "realtime" and detail.startswith("HTTP "):
+        return "health_http_not_ready"
     if endpoint_kind == "host-relative-loopback" and perspective == "command-host":
         return "probe_perspective_mismatch"
     return "transport_unreachable"
@@ -1474,6 +1488,7 @@ def fleet_status(
     *,
     probe_perspective="command-host",
     evidence_source="configured-file",
+    _realtime_probe=None,
 ):
     """Probe every configured capability and report which are actually served.
 
@@ -1483,23 +1498,29 @@ def fleet_status(
     timeout = _validated_probe_timeout(timeout)
     rows = []
     seen = {}
+    if _realtime_probe is None:
+        _realtime_probe = _probe_realtime_endpoint if _probe is _probe_endpoint else _probe
 
-    def _check(base_url, health_path):
+    def _check_url(url, probe):
+        probe_url, translated = _probe_url_for_perspective(url, probe_perspective)
+        cache_key = (id(probe), probe_url)
+        if cache_key not in seen:
+            seen[cache_key] = probe(probe_url, timeout=timeout)
+        ok, detail = seen[cache_key]
+        if translated:
+            detail += " via host-relative loopback"
+        return ok, detail
+
+    def _health_url(base_url, health_path):
         url = base_url.rstrip("/")
         if url.endswith("/v1"):
             url = url[: -len("/v1")]
         url += health_path if health_path.startswith("/") else "/" + health_path
-        probe_url, translated = _probe_url_for_perspective(url, probe_perspective)
-        if probe_url not in seen:
-            seen[probe_url] = _probe(probe_url, timeout=timeout)
-        ok, detail = seen[probe_url]
-        if translated:
-            detail += " via host-relative loopback"
-        endpoint_kind = _endpoint_kind(base_url)
-        return ok, detail, endpoint_kind
+        return url
 
-    def _row(kind, name, target, base_url, health_path):
-        ok, detail, endpoint_kind = _check(base_url, health_path)
+    def _row(kind, name, target, base_url, health_path, *, health_url=None, probe=None):
+        ok, detail = _check_url(health_url or _health_url(base_url, health_path), probe or _probe)
+        endpoint_kind = _endpoint_kind(base_url)
         return {
             "kind": kind,
             "name": name,
@@ -1512,6 +1533,8 @@ def fleet_status(
                 reachable=ok,
                 endpoint_kind=endpoint_kind,
                 perspective=probe_perspective,
+                detail=detail,
+                kind=kind,
             ),
         }
 
@@ -1541,6 +1564,10 @@ def fleet_status(
 
     for route in getattr(config, "audio_routes", ()) or ():
         rows.append(_row("audio", route.id, route.purpose, route.base_url, "/health"))
+
+    for route in getattr(config, "realtime_routes", ()) or ():
+        rows.append(_row("realtime", route.id, "realtime", route.base_url, route.health_path,
+                         health_url=realtime_health_url(route), probe=_realtime_probe))
 
     unreachable = [r for r in rows if not r["reachable"]]
     return {

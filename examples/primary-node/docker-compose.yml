@@ -454,6 +454,8 @@ services:
       - "${ROUTER_PUBLISH:-127.0.0.1}:8000:8000"
     environment:
       ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN:-}
+      # Upstream credential for a configured Voice Realtime relay route.
+      ANVIL_VOICE_REALTIME_TOKEN: ${ANVIL_VOICE_REALTIME_TOKEN:-}
       # Media remains disabled unless [server].media_principal is configured.
       # When enabled, the gateway and same-host lifecycle controller share the
       # bind-mounted SQLite/artifact root below. Backend and controller origins

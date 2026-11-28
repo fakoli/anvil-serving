@@ -23,7 +23,7 @@ from typing import Callable, Dict, Mapping, Optional, Sequence, Tuple
 from ..websocket_handshake import compute_accept_key, is_websocket_upgrade
 from .config import RealtimeRoute
 
-__all__ = ["REALTIME_PATH", "RealtimeError", "RealtimeGateway", "UpstreamSession", "is_websocket_upgrade"]
+__all__ = ["REALTIME_PATH", "RealtimeError", "RealtimeGateway", "UpstreamSession", "is_websocket_upgrade", "probe_realtime_health", "realtime_health_url"]
 
 REALTIME_PATH = "/v1/realtime"
 HANDSHAKE_TIMEOUT_SECONDS = 10.0
@@ -38,6 +38,12 @@ _RELAY_CHUNK = 64 * 1024
 _CREDENTIAL_PROTOCOL_PREFIXES = ("openai-insecure-api-key.",)
 _CLIENT_KEY = re.compile(r"[A-Za-z0-9+/]{22}==")
 _TOKEN_CHARS = frozenset("!#$%&'*+-.^_`|~0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+
+def realtime_health_url(route: RealtimeRoute) -> str:
+    """Return the route's token-free configured health path on its own origin."""
+    parsed = urllib.parse.urlsplit(route.base_url)
+    return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, route.health_path, "", ""))
 
 
 class RealtimeError(Exception):
@@ -101,7 +107,7 @@ class RealtimeGateway:
         import os
         environ = os.environ if env is None else env
         self._connect = connect
-        self._probe = probe or _probe_status
+        self._probe = probe or probe_realtime_health
         self._monotonic = monotonic
         self._limit = threading.BoundedSemaphore(max_concurrency)
         self._routes: Dict[str, RealtimeRoute] = {}
@@ -145,15 +151,18 @@ class RealtimeGateway:
             cached = self._health.get(route.id)
             if cached is not None and now - cached[0] < HEALTH_CACHE_SECONDS:
                 return cached[1]
-        parsed = urllib.parse.urlsplit(route.base_url)
-        url = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, route.health_path, "", ""))
         try:
-            ok = self._probe(url, HEALTH_TIMEOUT_SECONDS) == 200
+            ok = self._probe(realtime_health_url(route), HEALTH_TIMEOUT_SECONDS) == 200
         except Exception:  # noqa: BLE001 - any probe failure means not ready
             ok = False
         with self._health_lock:
             self._health[route.id] = (now, ok)
         return ok
+
+    def route_healthy(self, route_id: str) -> bool:
+        """Return the bound route's cached token-free readiness."""
+        route = self._routes.get(route_id)
+        return route is not None and self.healthy(route)
 
     def open_upstream(self, route: RealtimeRoute, headers, query: str,
                       request_id: Optional[str] = None) -> UpstreamSession:
@@ -300,8 +309,11 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def _probe_status(url: str, timeout: float) -> int:
+def probe_realtime_health(url: str, timeout: float) -> int:
     # No proxy handler: a probe must reach the configured origin directly.
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
     with opener.open(urllib.request.Request(url, method="GET"), timeout=timeout) as response:
         return response.status
+
+
+_probe_status = probe_realtime_health

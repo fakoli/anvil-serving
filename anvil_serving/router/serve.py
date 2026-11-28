@@ -844,6 +844,7 @@ class RoutingBackend:
         # (sink-enabled) log is falsy and `or` would silently replace it.
         self._decision_log = DecisionLog() if decision_log is None else decision_log
         self._thread_local: threading.local = threading.local()
+        self._realtime_gateway: Optional[RealtimeGateway] = None
         self._workload_registry: Optional[RouterWorkloadRegistry] = None
         self._trace_exporter: Optional[TraceExporter] = None
         self._router_admission = RouterAdmission(self._request_config_sha256)
@@ -856,6 +857,10 @@ class RoutingBackend:
         """Install the managed accounting reader used for destructive drains."""
         self._route_drain_usage_store = usage_store
         self._route_drain_usage_authority = usage_authority
+
+    def set_realtime_gateway(self, realtime: Optional[RealtimeGateway]) -> None:
+        """Install the front-door-owned realtime gateway for health reporting."""
+        self._realtime_gateway = realtime
 
     def route_drain_accounting_ready(self) -> bool:
         """Whether a destructive route drain has its durable authority."""
@@ -1863,7 +1868,7 @@ class RoutingBackend:
 
     def tier_health(self) -> dict:
         snapshot = self.active_route_snapshot()
-        result = build_tier_health(snapshot.config, self._availability)
+        result = build_tier_health(snapshot.config, self._availability, realtime=self._realtime_gateway)
         result.update(route_revision=snapshot.route_revision, effective_route_sha256=snapshot.effective_route_sha256)
         return result
 

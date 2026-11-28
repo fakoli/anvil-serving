@@ -1588,10 +1588,6 @@ def _build_realtime_server(data: dict, voice: Dict[str, Any], *, allow_non_loopb
     turns that into a clean, non-crashing CLI error instead of a traceback.
     Nothing is bound/started before that guard runs.
 
-    ``allow_non_loopback`` forwards the same-named opt-out to
-    :func:`build_realtime_server_from_manifest` -> ``make_ws_server``'s F2 bind
-    guard, for the Docker-managed proxy container that binds ``0.0.0.0``
-    in-container but is published only to ``127.0.0.1`` on the host.
     """
     return build_realtime_server_from_manifest(
         data, voice, allow_non_loopback=allow_non_loopback
@@ -1662,14 +1658,8 @@ def _cmd_run_direct(args, resolved, direct: Dict[str, str]) -> int:
         )
         return 1
 
-    # Only the managed container's wildcard bind (published to 127.0.0.1 on the
-    # host) may run without a token. A specific LAN/tailnet address, or a
-    # wildcard on a bare host, must set realtime_token_env (make_ws_server's F2 guard).
-    allow_non_loopback = _host_is_wildcard(bind_host) and _running_in_container()
     try:
-        server, pool = _build_realtime_server(
-            data, voice, allow_non_loopback=allow_non_loopback
-        )
+        server, pool = _build_realtime_server(data, voice)
     except ValueError as exc:
         print("voice proxy run: %s" % exc, file=sys.stderr)
         return 2
@@ -2040,10 +2030,6 @@ def _bounded_operation_timeout(value: str) -> float:
             "operation timeout must be between 1 and 7200 seconds"
         )
     return timeout
-
-
-def _running_in_container() -> bool:
-    return os.path.exists("/.dockerenv") or os.path.exists("/run/.containerenv")
 
 
 def _host_is_loopback(host: str) -> bool:

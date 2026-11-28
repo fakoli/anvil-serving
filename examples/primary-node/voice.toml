@@ -8,6 +8,9 @@
 name = "anvil-voice-dark"
 realtime_host = "127.0.0.1"
 realtime_port = 8765
+# Required by the Docker-managed proxy too: its in-container 0.0.0.0 listener
+# must authenticate even when Compose currently publishes it only to loopback.
+realtime_token_env = "ANVIL_VOICE_REALTIME_TOKEN"
 
 [voice.llm]
 base_url = "http://127.0.0.1:8000/v1"
