@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+import errno
 import http.client
 import json
 import threading
 from types import SimpleNamespace
 
+import pytest
 
 from anvil_serving.control_plane.authorization import AuthorizationError
 import anvil_serving.router.serve as router_serve
@@ -66,6 +68,37 @@ def _configured_server(tmp_path):
         "omni-local": StaticBackend(["ok"]),
     }
     return config, backends
+
+
+def test_router_run_reports_occupied_port_without_starting(tmp_path, monkeypatch, capsys):
+    config, backends = _configured_server(tmp_path)
+
+    def local_server(path, **kwargs):
+        return build_server(path, **kwargs, backends=backends,
+                            env={"ROUTER_TEST_TOKEN": "test-only"})
+
+    monkeypatch.setattr(router_serve, "build_server", local_server)
+    monkeypatch.setattr(router_serve, "serve_until_signal", lambda server: server.server_close())
+    with local_server(str(config), port=0) as incumbent:
+        port = incumbent.server_address[1]
+        assert router_serve.main(["--config", str(config), "--port", str(port)]) != 0
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert len(output.err.splitlines()) == 1
+    assert str(port) in output.err and "already in use" in output.err and "--port" in output.err
+
+
+def test_router_run_does_not_mislabel_unrelated_startup_errors(tmp_path, monkeypatch):
+    config, _ = _configured_server(tmp_path)
+    error = OSError(errno.EADDRINUSE, "unrelated startup operation")
+
+    def fail_before_listener(*args, **kwargs):
+        raise error
+
+    monkeypatch.setattr(router_serve, "build_server", fail_before_listener)
+    with pytest.raises(OSError) as captured:
+        router_serve.main(["--config", str(config)])
+    assert captured.value is error
 
 
 def test_malformed_optional_policy_leaves_legacy_router_authenticated(tmp_path, monkeypatch):
