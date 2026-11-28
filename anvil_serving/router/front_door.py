@@ -2112,12 +2112,18 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             refuses new sessions and drain waits for open ones.
             """
             self.close_connection = True  # an upgraded or refused socket is never reused
-            if self.headers.get_all("Transfer-Encoding") or (self.headers.get("Content-Length") or "0") != "0":
-                self._error(400, "invalid_request", "a realtime upgrade must not carry a body")
-                return
             if not self._authenticated():
                 self._json(401, {"error": {"type": "authentication_error",
                                            "message": "invalid or missing API key"}})
+                return
+            self._start_request_correlation()
+            content_lengths = self.headers.get_all("Content-Length") or []
+            if (
+                self.headers.get_all("Transfer-Encoding")
+                or len(content_lengths) > 1
+                or any(value.strip() != "0" for value in content_lengths)
+            ):
+                self._error(400, "invalid_request", "a realtime upgrade must not carry a body")
                 return
             if not is_websocket_upgrade(self.headers):
                 self._error(426, "upgrade_required", "use a WebSocket upgrade for /v1/realtime")
@@ -2130,6 +2136,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             try:
                 route = realtime.resolve(selected[0] if selected else None)
             except RealtimeError as exc:
+                if self._anvil_device is not None:
+                    self._device_error(403, "key_access_denied", "API key does not grant this realtime route")
+                    return
                 self._error(exc.status, exc.code, exc.message)
                 return
             if self._anvil_device is not None and not self._anvil_device.allows_model(route.id, normalize=False):
@@ -2483,7 +2492,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     return
                 self._respond_after_release(_MANAGEMENT_LIMIT, lambda: self._management_get(route))
                 return
-            if route == REALTIME_PATH and realtime is not None:
+            if route == REALTIME_PATH and realtime:
                 self._handle_realtime()
                 return
             # Acquire the concurrency semaphore FIRST — before draining any body

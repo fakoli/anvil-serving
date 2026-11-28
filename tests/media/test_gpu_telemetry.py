@@ -202,3 +202,28 @@ def test_low_latest_sample_fences_old_high_before_controller_can_latch_fault(mon
             helper.sample()
     finally:
         helper.close()
+
+
+def test_provider_failure_followed_by_containment_stays_unavailable_not_contained(monkeypatch):
+    from anvil_serving.media import gpu_telemetry as module
+
+    helper = sampler(monkeypatch, HELPER.format(reply="s.sendall(b'x'); s.close(); break"), timeout=0.2)
+    try:
+        with pytest.raises(MediaError) as first_error:
+            helper.sample_with_revision()
+        assert type(first_error.value) is MediaError
+        assert first_error.value.code == "gpu_telemetry_unavailable"
+
+        with helper.contain():
+            with pytest.raises(MediaError) as during_contain:
+                helper.sample_with_revision()
+            assert type(during_contain.value) is MediaError
+            assert not isinstance(during_contain.value, module.GpuTelemetryContained)
+
+        with pytest.raises(MediaError) as after_contain:
+            helper.sample_with_revision()
+        assert type(after_contain.value) is MediaError
+        assert not isinstance(after_contain.value, module.GpuTelemetryContained)
+        assert after_contain.value.code == "gpu_telemetry_unavailable"
+    finally:
+        helper.close()

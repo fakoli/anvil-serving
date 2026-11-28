@@ -642,17 +642,23 @@ def test_admission_queue_wait_is_measured_and_is_upstream_time_only_after_dispat
     config = ServerConfig(admission_timeout_s=0.15) if expires else ServerConfig()
     with server(routed(Slow(), max_concurrency=1), store, server_config=config) as conn:
         other = http.client.HTTPConnection(conn.host, conn.port, timeout=10)
+        releaser = None
         try:
             with ThreadPoolExecutor(max_workers=1) as pool:
                 held = pool.submit(post, conn)
                 assert entered.wait(5)
                 if not expires:
                     # Free the slot only once the second request is queued, so its wait is real.
-                    threading.Thread(target=release_once_queued).start()
+                    releaser = threading.Thread(target=release_once_queued, daemon=True)
+                    releaser.start()
                 status = post(other)[0]  # Waits behind the one admitted request.
                 release.set()
                 assert held.result(timeout=5)[0] == 200
         finally:
+            queued_up.set()
+            release.set()
+            if releaser is not None:
+                releaser.join(timeout=5)
             other.close()
     held, queued = sorted(wait_details(usage, 2), key=lambda terminal: terminal.admission_wait_ms)
     # An uncontended pass through the gate can still measure a few milliseconds.

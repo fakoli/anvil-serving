@@ -50,6 +50,11 @@ _POST_PATHS = frozenset({
 })
 _MODELS_PATH = "/v1/models"
 _REALTIME_PATH = "/v1/realtime"  # GET WebSocket upgrade (ADR-0050); also needs the route id as a model grant
+_EXACT_CASE_PATHS = frozenset({
+    "/v1/embeddings", "/v1/rerank",
+    "/v1/audio/transcriptions", "/v1/audio/speech",
+    _REALTIME_PATH,
+})
 _CATALOG_PATHS = frozenset({_MODELS_PATH, "/v1/models/capabilities", "/v1/router/status"})
 
 # POSIX close() releases every same-process SQLite lock on that inode. Share
@@ -1176,6 +1181,11 @@ class KeyStore:
         granted = tuple(dict.fromkeys(paths))
         if len(granted) != len(paths) or not any(path in usable for path in granted):
             raise KeyStoreError("at least one POST or realtime path grant is required")
+        # Chat and memory aliases are matched case-insensitively; non-chat
+        # purpose/audio/realtime route IDs retain exact case-sensitive uniqueness.
+        if not (set(granted) & _EXACT_CASE_PATHS):
+            if len({model.lower() for model in granted_models}) != len(granted_models):
+                raise KeyStoreError("model grants must be unique")
         return granted_models, tuple(dict.fromkeys((_MODELS_PATH, *granted)))
 
     def create(self, name: str, models: list[str], paths: list[str], rpm: int = 60,

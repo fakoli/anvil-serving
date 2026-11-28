@@ -202,6 +202,8 @@ class NvmlSampler:
 
         if self._evidence.breached:
             raise _reserve_breached()
+        if self._closed or self._evidence.provider_failed:
+            raise _unavailable()
         if self._frozen.is_set():
             raise GpuTelemetryContained()
         if not self._lock.acquire(timeout=self._timeout):
@@ -209,7 +211,7 @@ class NvmlSampler:
         try:
             if self._evidence.breached:
                 raise _reserve_breached()
-            if self._closed:
+            if self._closed or self._evidence.provider_failed:
                 raise _unavailable()
             if self._frozen.is_set() or (self._socket is None and self._evidence.contained):
                 raise GpuTelemetryContained()

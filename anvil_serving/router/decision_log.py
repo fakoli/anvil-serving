@@ -57,6 +57,9 @@ _READINESS_FAMILIES = (
 _READINESS_REASONS = frozenset(_READINESS_FAMILIES) | {
     "identity_malformed", "identity_mismatch", "identity_oversized",
     "probe_invalidated", "probe_pending",
+    "upstream_metadata_context_missing", "upstream_metadata_identity_mismatch",
+    "upstream_metadata_model_count", "upstream_metadata_model_invalid",
+    "upstream_metadata_output_limit_conflict",
 }
 _MAX_MEASUREMENT = 1_000_000_000_000_000
 _REPLICA_MEMBER_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}")

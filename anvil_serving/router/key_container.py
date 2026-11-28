@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import os
+from pathlib import Path
 import re
 import subprocess
 import sys
@@ -9,6 +11,43 @@ import sys
 from .keys import KeyStore, KeyStoreError, _write_secret
 
 _CONFIG = "/etc/anvil/config.toml"
+_PROC_CMDLINE = "/proc/1/cmdline"
+
+
+def _config_from_argv(argv: list[str]) -> str | None:
+    if not any("anvil-serving" in arg or "anvil_serving" in arg for arg in argv):
+        return None
+    found = None
+    index = 0
+    while index < len(argv):
+        arg = argv[index]
+        if arg == "--config":
+            if index + 1 < len(argv) and argv[index + 1]:
+                found = argv[index + 1]
+                index += 2
+                continue
+        elif arg.startswith("--config="):
+            value = arg.split("=", 1)[1]
+            if value:
+                found = value
+        index += 1
+    return found
+
+
+def _runtime_config() -> str:
+    env_config = os.environ.get("ANVIL_CONFIG")
+    if env_config:
+        return env_config
+    try:
+        raw = Path(_PROC_CMDLINE).read_bytes()
+    except OSError:
+        raw = b""
+    if raw:
+        argv = [part.decode("utf-8", errors="surrogateescape") for part in raw.split(b"\x00") if part]
+        explicit = _config_from_argv(argv)
+        if explicit:
+            return explicit
+    return _CONFIG
 
 
 def _container_id(container: str, path: str) -> str:
@@ -133,9 +172,8 @@ def main() -> int:
         elif action == "grant":
             from .config import load_server_config
             from .keys import _routable_models
-            import os
             # The config this router was started with decides what is routable, not the caller's copy.
-            config = os.environ.get("ANVIL_CONFIG") or _CONFIG
+            config = _runtime_config()
             if load_server_config(config, container_paths=True).api_keys_path != path:
                 raise KeyStoreError("router credential store path differs")
             data = store.grant_models(payload["key_id"], payload["model"], payload["expected_model"],

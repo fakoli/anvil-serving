@@ -121,3 +121,38 @@ def test_container_grant_uses_the_router_mounted_config(container, tmp_path, mon
     assert keys.dispatch(widen) == 2
     monkeypatch.setenv("ANVIL_CONFIG", str(mounted))
     assert keys.dispatch(widen) == 0
+
+
+@pytest.mark.parametrize("cmdline_args", [
+    ["/usr/local/bin/python", "/usr/local/bin/anvil-serving", "router", "run", "--config", "{cfg}", "--host", "0.0.0.0"],
+    ["anvil-serving", "router", "run", "--config={cfg}", "--host", "0.0.0.0"],
+])
+def test_container_grant_honors_explicit_config_argv_when_env_unset(container, tmp_path, monkeypatch, capsys, cmdline_args):
+    from anvil_serving.router import config as router_config
+
+    host_config, _, _ = container
+    common = ["--container", "anvil-router", "--config", str(host_config)]
+    assert keys.dispatch(["init", *common]) == 0
+    assert keys.dispatch(["create", *common, "--name", "laptop", "--model", "llm.secondary",
+                          "--path", "/v1/chat/completions", "--out", str(tmp_path / "secrets" / "device.key")]) == 0
+    key_id = json.loads(capsys.readouterr().out.splitlines()[-1])["key_id"]
+
+    argv_config = tmp_path / "explicit-argv.toml"
+    argv_config.write_text('[server]\nauth_env="TEST_MASTER"\napi_keys_path=%s\n' % json.dumps(str(tmp_path / "store" / "keys.sqlite3")))
+    default_config = tmp_path / "default.toml"
+    default_config.write_text('[server]\nauth_env="TEST_MASTER"\napi_keys_path="/elsewhere/keys.sqlite3"\n')
+    proc_cmdline = tmp_path / "proc-1-cmdline"
+    argv = [part.format(cfg=str(argv_config)) for part in cmdline_args]
+    proc_cmdline.write_bytes(b"\x00".join(part.encode("utf-8") for part in argv) + b"\x00")
+
+    monkeypatch.delenv("ANVIL_CONFIG", raising=False)
+    monkeypatch.setattr(key_container, "_CONFIG", str(default_config))
+    monkeypatch.setattr(key_container, "_PROC_CMDLINE", str(proc_cmdline))
+    monkeypatch.setattr(router_config, "load", lambda path: SimpleNamespace(
+        model_routes={"llm.argv": "tier"} if path == str(argv_config) else {"llm.default": "tier"},
+        purpose_models=(), audio_routes=(), realtime_routes=()))
+
+    grant = ["grant", *common, "--key-id", key_id, "--expected-model", "llm.secondary"]
+    assert keys.dispatch([*grant, "--model", "llm.default"]) == 2
+    assert keys.dispatch([*grant, "--model", "llm.argv"]) == 0
+    assert json.loads(capsys.readouterr().out.splitlines()[-1])["models_after"] == ["llm.secondary", "llm.argv"]

@@ -112,12 +112,16 @@ also carries `readiness_reason`, one of a closed set:
 | `probe_pending` | Another request was probing the tier and no earlier result existed. |
 | `probe_invalidated` | Readiness was invalidated while the probe ran, so its result was discarded. |
 | `availability_check` | The readiness checker itself failed. |
+| `upstream_metadata_model_count` | An upstream-metadata tier did not advertise exactly one model. |
+| `upstream_metadata_model_invalid` | An upstream-metadata tier advertised an invalid model identifier. |
+| `upstream_metadata_identity_mismatch` | Upstream `/props` reported a different model alias than `/v1/models`. |
+| `upstream_metadata_context_missing` | An upstream-metadata tier did not report a usable context limit. |
+| `upstream_metadata_output_limit_conflict` | The tier's configured output limit exceeded the upstream context limit. |
 
 The status code or exception name behind a category is not recorded;
 `GET /v1/health/tiers` reports the current one. The field is null on every
-other record, including a replica-tier refusal, a quiesced tier (attempt reason
-`quiesced`), and a tier whose upstream metadata is unavailable. The diagnostic
-envelope does not include it.
+other record, including a replica-tier refusal and a quiesced tier (attempt
+reason `quiesced`). The diagnostic envelope does not include it.
 
 ## Evidence boundaries
 

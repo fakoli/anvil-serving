@@ -272,3 +272,20 @@ def test_cli_grant_checks_the_selected_config_and_prints_both_digests(tmp_path, 
         "llm.secondary", "llm.primary", "embed-small", "stt-main", "voice-proxy"]
     assert applied["models_after"] == ["llm.secondary", "llm.primary"] and len(applied["policy_digest_after"]) == 64
     assert dispatch([*base, "--model", "stt-main"]) == 2  # the expected list is now stale
+
+
+def test_chat_alias_uniqueness_is_case_insensitive_while_exact_routes_preserve_case(tmp_path):
+    store = _store(tmp_path)
+    with pytest.raises(KeyStoreError, match="unique"):
+        keys.KeyStore._grants(["LLM.Primary", "llm.primary"], ["/v1/chat/completions"])
+    meta, _ = store.create("phone", ["LLM.Primary"], ["/v1/chat/completions"])
+    with pytest.raises(KeyStoreError, match="unique"):
+        store.grant_models(meta["key_id"], ["llm.primary"], ["LLM.Primary"], frozenset({"llm.primary"}))
+
+    # Non-chat exact-case route paths still allow distinct case spellings.
+    for path in ("/v1/realtime", "/v1/audio/transcriptions", "/v1/embeddings"):
+        models, _ = keys.KeyStore._grants(["voice", "Voice"], [path])
+        assert models == ("voice", "Voice")
+    rt_meta, _ = store.create("rt", ["voice"], ["/v1/realtime"])
+    granted = store.grant_models(rt_meta["key_id"], ["Voice"], ["voice"], frozenset({"Voice"}))
+    assert granted["models_after"] == ["voice", "Voice"]

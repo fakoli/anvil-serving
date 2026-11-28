@@ -1512,6 +1512,10 @@ def _validate_route_origin(base_url: object, label: str) -> str:
             f"https:// URL (got {base_url!r}); file://, ftp://, and other "
             "schemes are rejected to prevent SSRF and local-file access"
         )
+    if any(ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7F for ch in base_url):
+        raise ConfigError(
+            f"{label}: base_url must not contain whitespace or control characters"
+        )
     parsed_url = urllib.parse.urlparse(base_url)
     try:
         port = parsed_url.port
@@ -1677,10 +1681,11 @@ def _parse_realtime_route(raw: object) -> RealtimeRoute:
         or health_path.startswith("//")
         or "?" in health_path
         or "#" in health_path
+        or any(ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7F for ch in health_path)
     ):
         raise ConfigError(
-            f"{label}: health_path must be an absolute URL path without query/fragment, "
-            f"got {health_path!r}"
+            f"{label}: health_path must be an absolute URL path without query, fragment, "
+            f"whitespace, or control characters, got {health_path!r}"
         )
     default = raw.get("default", False)
     if not isinstance(default, bool):
