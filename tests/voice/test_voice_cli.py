@@ -419,14 +419,12 @@ def _direct_run_fakes(monkeypatch, seen):
     monkeypatch.setattr(voice_cli, "_wait_forever_default", lambda: None)
 
 
-def test_run_direct_host_port_override_allows_wildcard_bind(
+def test_run_direct_container_wildcard_bind_keeps_the_token_guard(
     direct_proxy_manifest, monkeypatch
 ):
     _no_topology_guard(monkeypatch)
     seen = {}
     _direct_run_fakes(monkeypatch, seen)
-    monkeypatch.setattr(voice_cli, "_running_in_container", lambda: True)
-
     rc = voice_cli.main([
         "proxy", "run", "--config", direct_proxy_manifest, "--host", "0.0.0.0", "--port", "9999",
     ])
@@ -434,22 +432,20 @@ def test_run_direct_host_port_override_allows_wildcard_bind(
     assert rc == 0
     assert seen["realtime_host"] == "0.0.0.0"
     assert seen["realtime_port"] == 9999
-    # A wildcard in-container bind opts out of the F2 loopback guard (published
-    # only to 127.0.0.1 on the host).
-    assert seen["allow_non_loopback"] is True
+    # Container detection is not a network boundary: Compose publication may
+    # expose this port off-host, so the normal bearer-token guard stays on.
+    assert seen["allow_non_loopback"] is False
 
 
-@pytest.mark.parametrize("host,in_container", [("100.64.0.20", True), ("100.64.0.20", False), ("0.0.0.0", False)])
+@pytest.mark.parametrize("host", ["100.64.0.20", "0.0.0.0"])
 def test_run_direct_specific_or_bare_host_bind_keeps_the_token_guard(
-    direct_proxy_manifest, monkeypatch, host, in_container
+    direct_proxy_manifest, monkeypatch, host
 ):
     # A tailnet/LAN address, or a wildcard outside a container, is reachable
     # off-host: make_ws_server must still demand realtime_token_env.
     _no_topology_guard(monkeypatch)
     seen = {}
     _direct_run_fakes(monkeypatch, seen)
-    monkeypatch.setattr(voice_cli, "_running_in_container", lambda: in_container)
-
     assert voice_cli.main(["proxy", "run", "--config", direct_proxy_manifest, "--host", host]) == 0
     assert seen["allow_non_loopback"] is False
 

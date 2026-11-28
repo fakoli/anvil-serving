@@ -24,7 +24,7 @@ name = "anvil-voice"
 realtime_host = "127.0.0.1"   # the Realtime WebSocket server binds here (never localhost)
 realtime_port = 8765
 # pool_size = 4                        # concurrent Realtime sessions (anvil_serving.voice.realtime.pool)
-# realtime_token_env = "ANVIL_VOICE_REALTIME_TOKEN"  # required if realtime_host is non-loopback (LAN/tailnet)
+# realtime_token_env = "ANVIL_VOICE_REALTIME_TOKEN"  # required for every non-loopback bind, including containers
 
 # The brain: OpenAI Chat Completions ONLY (never the Responses API), pointed
 # at the Anvil Serving Capability Gateway using the configured `llm.voice`
@@ -81,5 +81,6 @@ api_key_env = "ANVIL_VOICE_TTS_TOKEN"   # optional; omit if the serve is unauthe
 # Bring the managed proxy up with `anvil-serving voice proxy up`; bring the
 # STT/TTS audio serves up first with `anvil-serving voice audio up` (the proxy
 # preflights STT/TTS/router on run, so it comes last). The in-container bind is
-# 0.0.0.0 via `--host 0.0.0.0` on the launch command; it is published only to
-# 127.0.0.1 on the host (see examples/primary-node/docker-compose.voice-proxy.yml).
+# 0.0.0.0 via `--host 0.0.0.0` on the launch command, so it must set
+# `realtime_token_env` and receive that named credential even if Compose
+# currently publishes only to 127.0.0.1 on the host.

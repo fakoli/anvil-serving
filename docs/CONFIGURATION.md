@@ -343,8 +343,10 @@ The same `Host` rule protects the other listeners that can run without a
 token: the telemetry server behind `anvil-serving dashboard serve` when no
 `--auth-env` token is set and no web console is attached (the console keeps
 its own Host, Origin and CSRF checks), the model-swap multiplexer, and the
-Anvil Voice Realtime server when `voice.realtime_token_env` is unset. The
-Realtime server also refuses browser origins that are not allowlisted; see
+Anvil Voice Realtime server when `voice.realtime_token_env` is unset. That
+voice option is permitted only for a `127.0.0.1` bind; an in-container
+`0.0.0.0` bind must configure the token even if its Compose publication is
+currently loopback-only. The Realtime server also refuses browser origins that are not allowlisted; see
 [Browser origins and Host checks](VOICE.md#browser-origins-and-host-checks).
 
 For transport, controller and session caveats, see the
@@ -682,7 +684,7 @@ realtime_max_concurrency = 4      # open sessions across all routes, 1-64
 [[router.realtime_routes]]
 id = "voice-proxy"                  # callers select ?route=voice-proxy or take the default
 base_url = "http://100.64.0.20:8765/v1"   # the router connects to <base>/realtime
-auth_env = "ANVIL_VOICE_PROXY_TOKEN"         # upstream bearer token, by variable name
+auth_env = "ANVIL_VOICE_REALTIME_TOKEN"      # upstream bearer token, by variable name
 health_path = "/healthz"          # token-free readiness check; the default
 default = true                    # required when more than one route exists
 ```

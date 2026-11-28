@@ -118,10 +118,9 @@ def build_realtime_server_from_manifest(
     Returns ``(server, pool)``. The server socket is bound, but the caller
     still owns ``serve_forever`` startup and shutdown.
 
-    ``allow_non_loopback`` forwards to ``make_ws_server`` to opt out of the F2
-    non-loopback bind guard -- used only by the Docker-managed proxy container
-    (``voice proxy run --host 0.0.0.0``), which binds wide in-container but is
-    published only to ``127.0.0.1`` on the host.
+    ``allow_non_loopback`` remains a compatibility keyword only. It does not
+    bypass the WebSocket server's token requirement for off-loopback binds.
+
     """
     voice_table: Dict[str, Any] = dict(voice or data.get("voice", {}))
     size = int(pool_size if pool_size is not None else voice_table.get("pool_size", DEFAULT_POOL_SIZE))
