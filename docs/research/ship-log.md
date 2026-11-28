@@ -86,14 +86,15 @@ acknowledgement for the three planned windows. Deploys are recorded under
 | --- | --- | --- |
 | 5 | ADR-0034 and ADR-0039 amendments match the replica code | **Shipped.** PR 834 merged; nothing to deploy |
 | 2+4a | Accounting: populate admission wait, first-content time, error codes; read new codes | **Deployed** 2026-11-27 02:34 UTC (window 1) |
-| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | **Deployed** 2026-11-27: image 04:58 UTC (window 2), redirect entry 05:05 UTC (window 3). Not yet seen redirecting a request |
+| 1 | `llm.secondary` redirects to `llm.primary` when its model is not served, with an ADR amendment | **Deployed** 2026-11-27: image 04:58 UTC (window 2), redirect entry 05:05 UTC (window 3). **Verified on real requests** 08:57 UTC (see the entry). The secondary tier change made in window 3 was reverted at 07:30 UTC (see the correction entry) |
 | 2 | Fix what the recorded refusal cause shows | Cause found from existing data; no gateway defect (see entry) |
-| 4b | Accounting: emit the new refusal codes | **Deployed** with window 2 (context, media and tools refusals return their code). No such refusal has occurred yet |
+| 4b | Accounting: emit the new refusal codes | **Deployed** with window 2 (context, media and tools refusals return their code). None of those three refusals has occurred yet; a failed request has now been seen carrying its error code (`backend_error`) |
 | 4c | Accounting: session identifier | Left for the owner |
 | 3 | Conversation-cache budget | Measured; no change justified (see entry) |
 | extra | Two racing tests that kept breaking CI | **Merged**, PR 837, on the owner's instruction |
 | extra | Active-usage read fails while a request streams | **Deployed** 2026-11-27 05:39 UTC (window 4), PR 840. Seen working during a live request (see the last entry) |
 | extra | Widen the secondary-only keys so the redirect can bind them | **Deployed** with window 4, PR 841 (`router keys grant`). Two of three keys widened; the third is Connect-owned and left for the owner |
+| extra | Intermittent CI failures | **Merged**, PR 845. Six tests fixed at their causes; two were product defects. Not deployed to the gateway |
 
 ## Entries
 
@@ -641,4 +642,153 @@ request in flight while the read is called every few seconds):
 This closes the third item under "Not verified" in the window 4 entry. The
 other two stand: no request has been redirected, and no client has used a
 widened key.
+
+### 2026-11-27 — Correction: the secondary is back on its promoted model
+
+**What was wrong in this log.** The entry "The secondary host serves a model
+again" says the model the secondary tier names "can no longer start there"
+because host-memory admission refuses its recipe. That was not tested on the
+day. It was taken from a finding dated the day before, which recorded one
+refusal (41.3 GiB of host memory available, 58.0 GiB required). On that basis a
+smaller stopgap model was served and window 3 pointed the tier at it.
+
+**What that cost.** The stopgap has a 24,576-token context behind an alias
+whose clients are configured for 262,144.
+
+- No request failed. Two secondary requests arrived while the stopgap was
+  routed (05:34 and 06:03 UTC) and both succeeded on the secondary tier, the
+  first successes on that alias in the measured period.
+- The client reconcile could not be applied. Its dry runs refused two agent
+  profiles that use the secondary alias (they compact at 50% of context, which
+  leaves 12,288 tokens against a declared 16,384-token output) and one harness
+  whose compaction budget is global and needs 85,536 tokens. Nothing was
+  written, so clients kept their 262,144-token limits throughout.
+- The stopgap could not have been sized up to match. Its serve log shows a
+  25,984-token cache at the configured GPU share and about 34,000 at the
+  publisher's maximum settings; the publisher's own recipe needs an 80 GB card
+  for 262,144.
+
+**What the owner decided.** Restore the promoted model. A separate operator
+session did it at 07:30 UTC on the owner's instruction:
+
+- The stopgap was unloaded (recipe and evidence kept) and the promoted serve
+  started on the first attempt with no memory setting changed and no
+  application closed; 57.5 GiB of host memory was available at that moment.
+- Preflight over the gateway's network path passed: short coding, structured
+  JSON, 20 of 20 shared-prefix tool calls, a streaming tool call, a tool-result
+  continuation and a needle at about 100,000 tokens.
+- The tier went back to its previous definition with a live route update
+  (route revision 1): no restart and no ingress closure. The redirect entry is
+  unchanged.
+
+**Checked from this session, independently.** The serve reports the promoted
+model at 262,144 tokens. The effective tier in the gateway's route state has
+the previous model, context, output limit, concurrency and fingerprint. The
+effective route digest equals the digest recorded before window 3, so the tier
+is exactly what it was. The gateway container was not restarted, its log has no
+error line, and the first routed secondary request after the update (07:31 UTC)
+was answered by the secondary tier.
+
+**Where window 3 stands.** Its lasting changes are the redirect entry and the
+new route state path. Its tier change is reverted by revision 1. The boot
+configuration still carries the stopgap's tier values; the effective definition
+is the one in the route state, which a restart keeps.
+
+**Lesson.** A dated refusal records the memory state of that day, not a
+property of the recipe. One real start attempt would have settled it before a
+smaller model was substituted.
+
+### 2026-11-27 — The latency gate was changed after it tripped
+
+At 06:36 UTC the watch on window 4 reported a breach: 95th percentile above
+55 s (57.45 s over 56 `llm.primary` requests, with 100% success, no refusal and
+no accounting failure). It was judged not to be a gateway regression and
+nothing was rolled back. The advisor rechecked from the usage rows and,
+separately, from the decision log, and agreed.
+
+- The time the gateway itself adds (latency minus upstream duration) was 78 ms
+  at the median and 93 ms at the 95th percentile, against 78 and 92 ms in
+  window 1. Admission wait was 0 on every request. The upstream timer starts
+  before the tier's concurrency queue, so upstream duration already contains
+  any admission wait and the wait is not subtracted a second time.
+- Generation speed on long answers was 227 tokens per second, against 224.
+- The slow tail was long work: 91 s for 20,866 output tokens, 66 s for 15,037,
+  and 49.7 s for a 239,410-token prompt.
+- The old threshold was noisy before any deploy. In the 24 hours before window
+  1, a rolling 56-request 95th percentile passed 55 s in 40% of windows, and in
+  21% at 200 requests.
+
+**New rules, on the advisor's ruling.** End-to-end 95th percentile is still
+reported, marked when it passes the old line, and no longer breaches. The watch
+now breaches on what the gateway controls: its own added time (latency minus
+upstream duration) above 150 ms at the 95th percentile, admission wait above
+1 s at the 95th percentile, or a
+median above 2.5 s for requests of 300 output tokens or fewer. The bounds sit
+above the day-before baseline, where the added time never passed 95 ms,
+admission wait was 0 all day, and the short-request median never passed 1.86 s.
+Median above 3.5 s still breaches, from 200 requests. Success, refusal,
+accounting, traceback and restart rules are unchanged. The original breach line
+stays in the watch log.
+
+### 2026-11-27 — The redirect, seen on real requests
+
+The owner ran one scripted check at 08:57 UTC with an existing caller key that
+holds both aliases. This session could not run it: its permission guard refused
+both creating a test key and using an existing one, so the check was written as
+a single command and its key-free parts were dry-run first. The script sends
+tiny requests to `llm.secondary`, stops the secondary serve with the supported
+unload, and starts it again with the supported load. It records routing
+metadata only.
+
+| Time (UTC) | Secondary serve | HTTP | `model` in reply | Redirect header | Served by (usage row) |
+| --- | --- | --- | --- | --- | --- |
+| 08:57:49 | running | 200 | `llm.secondary` | none | secondary tier |
+| 08:57:53 | just stopped | 500 | none | none | secondary tier, outcome error, code `backend_error` |
+| 08:57:58 | stopped | 200 | `llm.primary` | `X-Anvil-Redirected-From: llm.secondary` | primary tier, under the requested alias |
+| 08:58:29 | running again | 200 | `llm.secondary` | none | secondary tier |
+
+- **The redirect works as specified.** The reply names the alias that served
+  it and carries the header. The decision record keeps the secondary as the
+  requested tier and shows the secondary attempt as skipped for `unavailable`
+  with the readiness reason, then the primary as served. The usage row keeps
+  the requested alias with the primary tier as backend.
+- **It turns off again on its own.** Thirty-one seconds after the redirected
+  request, with the serve back, the secondary answered directly with no header.
+- **The one failure is the documented gap, not a fault.** The request at
+  08:57:53 arrived three seconds after the stop, while the gateway's last
+  readiness result still said ready. It was dispatched, the upstream call
+  failed, and a failure after dispatch never redirects. The caller got HTTP 500
+  with no traceback in the gateway log. So after a secondary dies, requests
+  can fail before redirects begin for as long as the last readiness result is
+  cached plus the time the next probe takes: while that probe runs, other
+  requests are still given the expired "ready" result. On this gateway that
+  is 5 seconds of cache and a probe bounded at 3 seconds.
+- **First failed request with an error code.** Its usage row carries
+  `backend_error`, the field PR 835 added. Before that change it would have
+  been a failure with no cause.
+- All four rows were accounted and finalized. The secondary was unavailable for
+  about 35 seconds.
+
+Two notes for later, neither acted on here. That 500 is how the gateway has
+always reported an upstream relay failure (the mapping is in the release this
+train started from); a 502 with a typed error would describe it better. And the
+watch rule "any HTTP 500 rolls back the latest window" would have fired on this
+deliberate test if it read the gateway log for status lines; it was judged by
+hand as test-induced, on the secondary alias, with no primary request affected.
+
+### 2026-11-27 — PR 845: intermittent CI failures
+
+Twelve of the previous sixty CI runs had failed, each on a different test and
+none on the change under review, two of them on `main`. PR 845 fixed the six
+tests behind those failures. Two were product defects: Anvil Agent kept a
+request's intake slot until after its reply was written, so a client sending
+its next request at once could get `503 busy`; and bounded Docker log capture
+let a `PermissionError` escape on macOS when the child's process group had
+already exited. Four were tests that bet on runner speed. On a macOS
+workstation under full CPU load the unfixed tests failed 2 of 25 loops and the
+fixed ones 0 of 25. Review found two gaps in the first version of the fix (the
+slot was released while the upload was still held in memory, and the new kill
+test could pass without the fix); both were corrected before merge. None of
+this is in the gateway image; it is recorded here because the failures kept
+blocking merges during this train.
 

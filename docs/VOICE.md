@@ -216,7 +216,8 @@ Manifest hygiene follows the rest of the repo:
 - Store credentials in environment variables and reference only the env-var
   name with `*_env` keys.
 - Do not embed credentials in URLs.
-- A non-loopback `realtime_host` requires `realtime_token_env`.
+- Every non-loopback Realtime bind requires `realtime_token_env`, including a
+  Docker container that binds `0.0.0.0` internally.
 - Use profiles for repeatable topology switches instead of copying manifests or
   maintaining one-off shell scripts.
 - `voice.llm.history_max_turns` controls session-local memory for completed
@@ -661,11 +662,14 @@ sync; raise it only when an operator deliberately trades latency for reasoning.
 stale `talk.consultBootstrapContextMode` values during sync; set it to `full`
 only when the voice workflow needs the normal OpenClaw agent bootstrap context.
 
-Same-host Anvil Voice can omit a realtime token. If the Realtime server binds
-to a private/tailnet address, set `voice.realtime_token_env` in the voice
-manifest and pass `--voice-api-key-env ANVIL_VOICE_REALTIME_TOKEN` to the
-harness sync command. The emitted OpenClaw config references the env var by
-name; it does not contain the token value.
+Native same-host Anvil Voice can omit a realtime token. A Docker-managed proxy
+cannot: it binds `0.0.0.0` inside its network namespace even when Compose
+currently publishes the port only to loopback. Set
+`voice.realtime_token_env = "ANVIL_VOICE_REALTIME_TOKEN"`, make that protected
+environment variable available to the proxy container, and pass
+`--voice-api-key-env ANVIL_VOICE_REALTIME_TOKEN` to the harness sync command
+for every OpenClaw client of that listener. The emitted OpenClaw config
+references the env var by name; it does not contain the token value.
 
 ## Realtime server
 
@@ -681,7 +685,33 @@ It refuses to start if required endpoints are unreachable. A 401, 403, 404, or
 or 5xx response blocks startup.
 
 Loopback binds may omit `realtime_token_env` for trusted local development.
-Non-loopback binds require a bearer token env var in the manifest.
+Every non-loopback bind requires a bearer-token env var in the manifest,
+including `0.0.0.0` inside a container. Container detection and a current
+loopback-only Compose publication do not relax this requirement.
+
+### Managed proxy migration
+
+When upgrading from 3.2.0, name the dedicated inbound credential
+`ANVIL_VOICE_REALTIME_TOKEN`. Existing read-only `voice.toml` mounts must add
+this under `[voice]`:
+
+```toml
+realtime_token_env = "ANVIL_VOICE_REALTIME_TOKEN"
+```
+
+Set a non-blank value in the protected operator environment that Compose reads,
+then update the proxy Compose service to pass the same named variable. Start
+the proxy only through `anvil-serving voice proxy up`; it fails closed when the
+reference or value is missing. OpenClaw and other direct WebSocket clients must
+send `Authorization: Bearer <value>`; use their credential-reference setting
+(for OpenClaw sync, `--voice-api-key-env ANVIL_VOICE_REALTIME_TOKEN`) rather
+than placing the value in configuration. `/healthz` remains token-free and
+constant for readiness, while `/pool` and `/usage` require the bearer token.
+Fresh or refreshed full `anvil-serving init` provisions this credential
+independently in its destination operator environment, preserving an effective
+non-blank credential already available to that same home. Initializing a
+different `--out-dir` creates destination-local credentials instead of
+borrowing another operator home's secrets.
 
 ### Browser origins and Host checks
 
@@ -705,17 +735,16 @@ realtime_allowed_origins = ["https://talk.example.ts.net"]
 
 Without `realtime_token_env`, every request must also carry a `Host` header
 that names `127.0.0.1`, `[::1]`, or the configured bind host, the same rule the
-router applies. This blocks DNS rebinding. Clients of the Docker-managed proxy
-reach it through the `127.0.0.1` publish and are unaffected; if you publish it
-on another address, configure `realtime_token_env`.
+router applies. This blocks DNS rebinding. Docker-managed proxies always
+configure `realtime_token_env`, regardless of their current publication.
 
 The `/pool` and `/usage` introspection routes follow the same rules: with
 `realtime_token_env` configured they require the bearer token and answer 401
 without it; without a token they apply the Host check above. `GET /healthz`
 needs no token and answers only `{"ok": true}` (the Host check still applies
 when no token is configured); it is the default proxy readiness probe. An
-existing `ready_url` that points at `/usage` keeps working on a token-free
-listener.
+existing `ready_url` that points at `/usage` keeps working only on a token-free
+listener; migrate it to `/healthz` when adding an inbound token.
 
 ### Assistant transcript events
 

@@ -220,7 +220,7 @@ required operands, choices, and defaults.
 | `router routes status` | Show durable live route transaction state. | `read` / `bounded` | `--router-url` |
 | `router routes rollback` | Preview rollback to one retained route revision. | `read` / `bounded` | `--revision`<br>`--router-url` |
 | `router routes resume` | Preview recovery of a held route transaction. | `read` / `bounded` | `--transaction-id`<br>`--router-url` |
-| `router routes rebase` | Rebase stopped protected route authority across a memory-route-only boot-config migration. | `mutate` / `bounded` | `--old-config`<br>`--new-config`<br>`--compose`<br>`--env-file`<br>`--startup-abort-config`<br>`--current-stop-receipt`<br>`--helper-image-id`<br>`--expected-state-sha256`<br>`--expected-plan-sha256`<br>`--dry-run`<br>`--confirm` |
+| `router routes rebase` | Rebase stopped protected route authority across a memory- or realtime-route-only boot-config migration. | `mutate` / `bounded` | `--old-config`<br>`--new-config`<br>`--compose`<br>`--env-file`<br>`--startup-abort-config`<br>`--current-stop-receipt`<br>`--helper-image-id`<br>`--expected-state-sha256`<br>`--expected-plan-sha256`<br>`--dry-run`<br>`--confirm` |
 | `router endpoint` | Show the router listen address and this node's Tailscale DNS name. | `read` / `bounded` | - |
 | `router status` | Show router status. | `read` / `bounded` | - |
 | `router fleet-status` | Report which configured capabilities have a reachable backing serve. | `read` / `bounded` | `--config`<br>`--live`<br>`--container`<br>`--installed-config`<br>`--probe-perspective`<br>`--timeout` |

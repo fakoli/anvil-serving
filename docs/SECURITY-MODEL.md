@@ -19,7 +19,7 @@ defense in depth on top of tokens, not a replacement.
 | Router | `127.0.0.1:8000` | Optional `[server].auth_env` |
 | Controller | `127.0.0.1:8765` | Token required unless `--allow-unauthenticated-loopback` |
 | Anvil Workbench (`dashboard serve`) | `127.0.0.1:8766` | Optional `--auth-env` |
-| Voice Realtime | `127.0.0.1:8765` (`voice.realtime_host`/`realtime_port`) | Optional `realtime_token_env` |
+| Voice Realtime | `127.0.0.1:8765` (`voice.realtime_host`/`realtime_port`) | Optional on loopback; required for every non-loopback bind, including containers |
 | Model-swap multiplexer | `127.0.0.1:8000` | None |
 
 **Listeners with no token must stay on loopback.** The `Host` checks below stop DNS rebinding
@@ -36,7 +36,9 @@ load and evict GPU models.
 - Without a token, the router answers 403 `forbidden_host` unless the `Host` header names
   `127.0.0.1`, `[::1]` or the exact `--host` value. This blocks DNS rebinding. The dashboard
   telemetry server (no token, no web console), the multiplexer, and the voice Realtime
-  server (no `voice.realtime_token_env`) apply the same rule.
+  server (no `voice.realtime_token_env`) apply the same rule. A Docker
+  Realtime proxy binds `0.0.0.0` inside its container, so it must configure an
+  inbound token even when Compose currently publishes only a loopback port.
 - With a wildcard bind (`--host 0.0.0.0`), only loopback `Host` names pass, so remote clients
   that use a hostname or address get 403 even with `--allow-unauthenticated-public-bind`. Bind
   a specific address, or set `auth_env`.

@@ -520,33 +520,45 @@ def scaffold_home(
 
 
 ROUTER_TOKEN_ENV = "ANVIL_ROUTER_TOKEN"
+VOICE_REALTIME_TOKEN_ENV = "ANVIL_VOICE_REALTIME_TOKEN"
 
 
-def ensure_router_token(out_dir):
-    """Provision ``ANVIL_ROUTER_TOKEN`` in ``out_dir/.env`` unless already defined.
+def _reject_blank_process_token(token_env):
+    if token_env in os.environ and not (os.environ.get(token_env) or "").strip():
+        raise InitError(
+            "%s is blank in the process environment and would override the operator .env; "
+            "unset it or provide a non-blank value before running init" % token_env
+        )
 
-    Defined means: process environment, ``out_dir/.env``, or the operator
-    ``.env`` chain. An existing value is never overwritten; other lines in an
-    existing file are untouched. New files are created 0600. The value is
-    never returned. Result: ``{"status": "present"|"created"|"appended",
-    "path": ..., "tightened": bool}``.
+
+def _ensure_token(out_dir, token_env, *, allow_fallback):
+    """Provision ``token_env`` in ``out_dir/.env`` unless already defined.
+
+    Defined means: process environment, ``out_dir/.env``, or, when
+    ``allow_fallback`` is true, the operator ``.env`` chain. An existing value
+    is never overwritten; other lines in an existing file are untouched. New
+    files are created 0600. The value is never returned. Result:
+    ``{"status": "present"|"created"|"appended", "path": ..., "tightened":
+    bool}``.
     """
     path = os.path.join(os.path.abspath(os.path.expanduser(out_dir)), ".env")
-    if (os.environ.get(ROUTER_TOKEN_ENV) or "").strip():
+    if (os.environ.get(token_env) or "").strip():
         return {"status": "present", "path": "environment", "tightened": False}
     try:
-        local_value = envfile.read_dotenv(path).get(ROUTER_TOKEN_ENV, "").strip()
+        local_values = envfile.read_dotenv(path)
     except (OSError, UnicodeError) as exc:
         raise InitError("could not read %s (%s)" % (path, exc)) from exc
+    local_value = local_values.get(token_env, "").strip()
     if local_value:
         return {"status": "present", "path": path, "tightened": False}
-    chain_value, chain_source = envfile.resolve_env_value(ROUTER_TOKEN_ENV)
-    if chain_value:
-        return {"status": "present", "path": chain_source, "tightened": False}
+    if allow_fallback:
+        chain_value, chain_source = envfile.resolve_env_value(token_env)
+        if chain_value and token_env not in local_values:
+            return {"status": "present", "path": chain_source, "tightened": False}
     if os.path.islink(path):
-        raise InitError("refusing to write the router token through symlink %s; "
-                        "replace it with a regular file and re-run" % path)
-    line = "%s=%s\n" % (ROUTER_TOKEN_ENV, secrets.token_urlsafe(32))
+        raise InitError("refusing to write %s through symlink %s; "
+                        "replace it with a regular file and re-run" % (token_env, path))
+    line = "%s=%s\n" % (token_env, secrets.token_urlsafe(32))
     existed = os.path.exists(path)
     tightened = False
     try:
@@ -566,6 +578,16 @@ def ensure_router_token(out_dir):
         raise InitError("could not write %s (%s)" % (path, exc)) from exc
     return {"status": "appended" if existed else "created", "path": path,
             "tightened": tightened}
+
+
+def ensure_router_token(out_dir, *, allow_fallback=True):
+    """Provision the router credential without exposing its value."""
+    return _ensure_token(out_dir, ROUTER_TOKEN_ENV, allow_fallback=allow_fallback)
+
+
+def ensure_voice_realtime_token(out_dir, *, allow_fallback=False):
+    """Provision the independent inbound Realtime credential."""
+    return _ensure_token(out_dir, VOICE_REALTIME_TOKEN_ENV, allow_fallback=allow_fallback)
 
 
 def render_gateway_only_config(upstream, model, alias="llm.primary", context_limit=8192):
@@ -1001,6 +1023,12 @@ def _token_source(token):
     return "process environment" if token["path"] in ("env", "environment") else token["path"]
 
 
+def _is_current_config_home(path):
+    return os.path.abspath(os.path.expanduser(path)) == os.path.abspath(
+        os.path.expanduser(config_home())
+    )
+
+
 def _main_gateway_only(a):
     try:
         r = scaffold_gateway_only(a.out_dir, upstream=a.upstream, model=a.model,
@@ -1031,6 +1059,8 @@ def _main_gateway_only(a):
 def _main_home(a):
     """Scaffold every canonical config into the operator config home."""
     try:
+        _reject_blank_process_token(ROUTER_TOKEN_ENV)
+        _reject_blank_process_token(VOICE_REALTIME_TOKEN_ENV)
         result = scaffold_home(
             out_dir=a.out_dir,
             detect_host=not a.no_detect_host,
@@ -1045,7 +1075,13 @@ def _main_home(a):
         return 2
 
     try:
-        token = ensure_router_token(result["out_dir"])
+        allow_fallback = _is_current_config_home(result["out_dir"])
+        tokens = {
+            ROUTER_TOKEN_ENV: ensure_router_token(result["out_dir"], allow_fallback=allow_fallback),
+            VOICE_REALTIME_TOKEN_ENV: ensure_voice_realtime_token(
+                result["out_dir"], allow_fallback=allow_fallback
+            ),
+        }
     except InitError as e:
         print(f"[anvil-serving] {e}", file=sys.stderr)
         return 2
@@ -1093,15 +1129,17 @@ def _main_home(a):
     else:
         print("  Topology command host: not detected; set command_host and "
               "command_runtime in operator-topology.toml to this machine's role")
-    if token["status"] == "present":
-        print("  Router token: %s already set (%s); left unchanged."
-              % (ROUTER_TOKEN_ENV, _token_source(token)))
-    else:
-        print("  Router token: generated %s in %s (not shown)."
-              % (ROUTER_TOKEN_ENV, token["path"]))
-        if token["tightened"]:
-            print("  WARNING: %s was readable by other users; permissions set to 0600."
-                  % token["path"], file=sys.stderr)
+    for label, token_env in (("Router", ROUTER_TOKEN_ENV), ("Voice Realtime", VOICE_REALTIME_TOKEN_ENV)):
+        token = tokens[token_env]
+        if token["status"] == "present":
+            print("  %s token: %s already set (%s); left unchanged."
+                  % (label, token_env, _token_source(token)))
+        else:
+            print("  %s token: generated %s in %s (not shown)."
+                  % (label, token_env, token["path"]))
+            if token["tightened"]:
+                print("  WARNING: %s was readable by other users; permissions set to 0600."
+                      % token["path"], file=sys.stderr)
     if not (discovery["compute_a_gpu"] and discovery["compute_b_gpu"]):
         why = ("was not probed (--no-detect-host)" if a.no_detect_host
                else "has no detected two-GPU topology")
@@ -1120,7 +1158,7 @@ def _main_home(a):
         print()
     print("Next steps (zero hand-assembly):")
     print("  1. add host values and secrets from .env.example to %s"
-          "   # do not cp over it: it holds the router token"
+          "   # do not cp over it: it holds protected router and voice tokens"
           % os.path.join(result["out_dir"], ".env"))
     print("  2. anvil-serving serves groups          # see the resolvable groups")
     print("     For media, first: anvil-serving host docker-image build media-worker --confirm")

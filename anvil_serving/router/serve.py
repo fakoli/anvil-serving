@@ -31,6 +31,7 @@ from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Seque
 
 from .admission import AdmissionLease, TierAdmission, RouterAdmission, owned_dispatch, managed_router_admission, _member_id, _reason_code
 from .audio import AudioGateway
+from .realtime import RealtimeGateway
 from .availability import (
     AlwaysAvailable,
     AvailabilityResult,
@@ -843,6 +844,7 @@ class RoutingBackend:
         # (sink-enabled) log is falsy and `or` would silently replace it.
         self._decision_log = DecisionLog() if decision_log is None else decision_log
         self._thread_local: threading.local = threading.local()
+        self._realtime_gateway: Optional[RealtimeGateway] = None
         self._workload_registry: Optional[RouterWorkloadRegistry] = None
         self._trace_exporter: Optional[TraceExporter] = None
         self._router_admission = RouterAdmission(self._request_config_sha256)
@@ -855,6 +857,10 @@ class RoutingBackend:
         """Install the managed accounting reader used for destructive drains."""
         self._route_drain_usage_store = usage_store
         self._route_drain_usage_authority = usage_authority
+
+    def set_realtime_gateway(self, realtime: Optional[RealtimeGateway]) -> None:
+        """Install the front-door-owned realtime gateway for health reporting."""
+        self._realtime_gateway = realtime
 
     def route_drain_accounting_ready(self) -> bool:
         """Whether a destructive route drain has its durable authority."""
@@ -1862,7 +1868,7 @@ class RoutingBackend:
 
     def tier_health(self) -> dict:
         snapshot = self.active_route_snapshot()
-        result = build_tier_health(snapshot.config, self._availability)
+        result = build_tier_health(snapshot.config, self._availability, realtime=self._realtime_gateway)
         result.update(route_revision=snapshot.route_revision, effective_route_sha256=snapshot.effective_route_sha256)
         return result
 
@@ -2482,6 +2488,10 @@ def build_server(
         raise ConfigError(
             "[[router.audio_routes]] require a resolved [server].auth_env"
         )
+    if config.realtime_routes and auth_token is None:
+        raise ConfigError(
+            "[[router.realtime_routes]] require a resolved [server].auth_env"
+        )
     scoped_policy = None
     policy_path = authorization_policy or server_config.authorization_policy_path
     if policy_path is not None:
@@ -2613,6 +2623,10 @@ def build_server(
                 transport=audio_transport,
                 decision_log=routing._decision_log,
             )
+        realtime: Optional[RealtimeGateway] = None
+        if config.realtime_routes:
+            realtime = RealtimeGateway(config.realtime_routes,
+                                       max_concurrency=config.realtime_max_concurrency, env=env)
         memory: Optional[MemoryRouter] = None
         if config.memory_routes:
             memory = MemoryRouter(config.memory_routes, env=environ)
@@ -2762,7 +2776,7 @@ def build_server(
                 httpd = make_server(
                     host, port, routing, timeout=timeout, model_routes=config.model_routes,
                     exhaustion_status=config.exhaustion_status, auth_token=auth_token,
-                    purpose=purpose, audio=audio, gateway=gateway, memory=memory,
+                    purpose=purpose, audio=audio, gateway=gateway, memory=memory, realtime=realtime,
                     media_signed_downloads=environ.get("ANVIL_MEDIA_SIGNED_DOWNLOADS", "0"),
                     authorization_policy=scoped_policy,
                     operator_routes=operator_routes,

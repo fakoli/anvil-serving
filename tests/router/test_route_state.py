@@ -613,6 +613,46 @@ base_url = "http://127.0.0.1:30001/v1"
         manager.close()
 
 
+def test_tier_replacement_rejects_shared_realtime_listener(tmp_path):
+    realtime = b'''\n[[router.realtime_routes]]
+id = "voice"
+base_url = "http://127.0.0.1:30001/v1"
+auth_env = "VOICE_TOKEN"
+default = true
+'''
+    raw = configuration() + realtime
+    candidate = raw.replace(b'model = "model-a"', b'model = "replacement"')
+    path = tmp_path / "routes.json"
+    updates.initialize_route_state(raw, path)
+    manager = updates.RouteUpdateManager(Runtime(raw), raw, path)
+    try:
+        manager.restore()
+        with pytest.raises(updates.RouteUpdateError, match="shared_owner"):
+            manager.preview(candidate)
+        assert not manager.routing.holds and manager.status()["route_revision"] == 0
+    finally:
+        manager.close()
+
+
+def test_tier_replacement_allows_distinct_realtime_listener(tmp_path):
+    raw = configuration() + b'''\n[[router.realtime_routes]]
+id = "voice"
+base_url = "http://127.0.0.1:8765/v1"
+auth_env = "VOICE_TOKEN"
+default = true
+'''
+    candidate = raw.replace(b'model = "model-a"', b'model = "replacement"')
+    path = tmp_path / "routes.json"
+    updates.initialize_route_state(raw, path)
+    manager = updates.RouteUpdateManager(Runtime(raw), raw, path)
+    try:
+        manager.restore()
+        assert apply(manager, candidate)["route_revision"] == 1
+        assert manager.routing.snapshot.config.tier("a").model == "replacement"
+    finally:
+        manager.close()
+
+
 @pytest.mark.parametrize("phase", ["committed", "readmitted", "complete"])
 @pytest.mark.parametrize("failed_reads", [1, 2])
 def test_installed_write_with_uncertain_readback_recovers_in_process(manager, monkeypatch, phase, failed_reads):
@@ -914,3 +954,56 @@ def test_mixed_projection_formats_fail_closed_without_rewrite(legacy_authority, 
     with pytest.raises(updates.RouteUpdateError, match="state_unavailable"):
         manager.restore()
     assert manager.path.read_bytes() == original and not manager.routing.events
+
+
+def realtime_configuration(*route_ids, cap=None, memory=()):
+    raw = memory_configuration(*memory)
+    if cap is not None:
+        raw = raw.replace(b"[router.model_routes]", f"[router]\nrealtime_max_concurrency = {cap}\n[router.model_routes]".encode(), 1)
+    for index, route_id in enumerate(route_ids):
+        raw += f'''\n[[router.realtime_routes]]
+id = "{route_id}"
+base_url = "http://127.0.0.1:{8765 + index}/v1"
+auth_env = "VOICE_TOKEN"
+default = {"true" if index == 0 else "false"}
+'''.encode()
+    return raw
+
+
+def test_realtime_route_rebase_preserves_route_authority_and_reverses(tmp_path):
+    old = realtime_configuration()
+    path = tmp_path / "routes.json"
+    updates.initialize_route_state(old, path)
+    before = json.loads(path.read_text())
+    new = realtime_configuration("voice-proxy", "spare", cap=2)
+    applied = updates.migrate_route_state_base_config(
+        old, new, path, expected_old_config_sha256=sha256(old), expected_new_config_sha256=sha256(new),
+        expected_state_sha256=sha256(path.read_bytes()), apply=True,
+    )
+    assert applied["direction"] == "realtime" and applied["realtime_route_count"] == 2
+    after = json.loads(path.read_text())
+    assert after["base_config_sha256"] == sha256(new)
+    assert {k: v for k, v in after.items() if k != "base_config_sha256"} == {
+        k: v for k, v in before.items() if k != "base_config_sha256"}
+    reverse = updates.migrate_route_state_base_config(
+        new, old, path, expected_old_config_sha256=sha256(new), expected_new_config_sha256=sha256(old),
+        expected_state_sha256=sha256(path.read_bytes()), apply=True,
+    )
+    assert reverse["realtime_route_count"] == 0 and json.loads(path.read_text()) == before
+
+
+def test_realtime_route_rebase_refuses_mixed_or_unrelated_changes(tmp_path):
+    old = realtime_configuration()
+    path = tmp_path / "routes.json"
+    updates.initialize_route_state(old, path)
+    mixed = realtime_configuration("voice-proxy", memory=[("memory.alpha", "device_a", "bank_a")])
+    unrelated = realtime_configuration("voice-proxy").replace(b"context_limit = ", b"context_limit = 1", 1)
+    for candidate in (mixed, unrelated):
+        assert candidate != old
+        with pytest.raises(updates.RouteUpdateError) as raised:
+            updates.migrate_route_state_base_config(
+                old, candidate, path, expected_old_config_sha256=sha256(old),
+                expected_new_config_sha256=sha256(candidate),
+                expected_state_sha256=sha256(path.read_bytes()), apply=False,
+            )
+        assert raised.value.code == "route_realtime_migration_restart_required"

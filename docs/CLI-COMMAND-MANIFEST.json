@@ -15395,7 +15395,7 @@
       "recovery_capable": false,
       "remote_operation": null,
       "resource_role": "router",
-      "summary": "Rebase stopped protected route authority across a memory-route-only boot-config migration.",
+      "summary": "Rebase stopped protected route authority across a memory- or realtime-route-only boot-config migration.",
       "transports": [
         "local"
       ],

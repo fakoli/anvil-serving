@@ -33,7 +33,6 @@ socket pair without any third-party dependency.
 from __future__ import annotations
 
 import base64
-import hashlib
 import hmac
 import json
 import os
@@ -45,9 +44,14 @@ from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Tuple
 
 from anvil_serving.http_host import request_host_allowed
 
-#: RFC 6455 s1.3 magic GUID appended to the client's Sec-WebSocket-Key before
-#: SHA-1 + base64 to compute Sec-WebSocket-Accept.
-_WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+# The handshake helpers live in a neutral module so the router can share
+# them without importing the voice package (which imports the router).
+from anvil_serving.websocket_handshake import (  # noqa: F401 - re-exported
+    _WS_GUID,
+    _header_contains_token,
+    compute_accept_key,
+    is_websocket_upgrade,
+)
 
 # Opcodes (RFC 6455 s5.2).
 OP_CONTINUATION = 0x0
@@ -99,41 +103,6 @@ DEFAULT_IDLE_TIMEOUT_SECONDS: Optional[float] = float(
 
 class WebSocketError(Exception):
     """Raised on a framing violation or a peer that closed mid-frame."""
-
-
-def compute_accept_key(client_key: str) -> str:
-    """RFC 6455 s1.3: base64(SHA1(client_key + magic GUID))."""
-    digest = hashlib.sha1((client_key + _WS_GUID).encode("ascii")).digest()
-    return base64.b64encode(digest).decode("ascii")
-
-
-def _header_contains_token(value: Optional[str], token: str) -> bool:
-    """True if comma-separated ``value`` contains ``token`` (case-insensitive).
-
-    Both ``Connection`` and ``Upgrade`` are allowed to carry a comma-separated
-    list per RFC 7230 s6.1/s6.7 (e.g. ``Connection: keep-alive, Upgrade``).
-    """
-    if not value:
-        return False
-    return token.lower() in [part.strip().lower() for part in value.split(",")]
-
-
-def is_websocket_upgrade(headers) -> bool:
-    """True if ``headers`` (an ``email.message.Message`` or a plain dict) is a
-    valid RFC 6455 upgrade request: ``Upgrade: websocket``, ``Connection``
-    containing ``upgrade``, a present ``Sec-WebSocket-Key``, and
-    ``Sec-WebSocket-Version: 13``.
-    """
-    get = headers.get
-    if not _header_contains_token(get("Upgrade"), "websocket"):
-        return False
-    if not _header_contains_token(get("Connection"), "upgrade"):
-        return False
-    if not (get("Sec-WebSocket-Key") or "").strip():
-        return False
-    if (get("Sec-WebSocket-Version") or "").strip() != "13":
-        return False
-    return True
 
 
 def _extract_bearer_token(headers) -> Optional[str]:
@@ -774,14 +743,9 @@ def make_ws_server(
     the connection is closed and the thread exits; ``None``/``0`` disables it.
     Defaults to ``DEFAULT_IDLE_TIMEOUT_SECONDS``.
 
-    ``allow_non_loopback`` opts OUT of the F2 non-loopback bind guard for a
-    trusted deployment topology that already isolates the socket -- the
-    Docker-managed proxy container binds ``0.0.0.0`` INSIDE the container but is
-    published only to ``127.0.0.1`` on the host (see the voice-proxy compose
-    example), so the wide bind is not actually network-reachable. It is a
-    deliberate, caller-supplied override (``anvil-serving voice proxy run
-    --host 0.0.0.0`` on the managed direct-endpoint path); the default stays
-    fail-closed for every other caller.
+    ``allow_non_loopback`` is retained as a compatibility keyword but no
+    longer relaxes authentication. Every non-loopback bind requires
+    ``token_env``, including container listeners.
 
     ``allowed_origins`` lists the exact browser origins (``scheme://host[:port]``)
     that may open the WebSocket. An upgrade carrying any other ``Origin`` is
@@ -797,12 +761,13 @@ def make_ws_server(
     auth_token: Optional[str] = None
     if token_env:
         auth_token = os.environ.get(token_env)
-        if not auth_token:
+        if not auth_token or not auth_token.strip():
             raise ValueError(
                 "token_env names %r, which is not set (or empty) in the environment" % token_env
             )
+        auth_token = auth_token.strip()
 
-    if not _is_loopback_host(host) and auth_token is None and not allow_non_loopback:
+    if not _is_loopback_host(host) and auth_token is None:
         raise ValueError(
             "refusing to bind non-loopback host %r for the Realtime WS server "
             "without a bearer token configured -- pass token_env=<ENV_VAR_NAME> "

@@ -214,6 +214,20 @@ def test_model_grant_is_additive_routable_and_compare_and_swap(tmp_path):
         store.grant_models(meta["key_id"], ["vision.ocr"], current, frozenset({"vision.ocr"}))
 
 
+def test_routable_models_include_realtime_route_ids(tmp_path):
+    # `router keys grant` checks names against this set, so a configured
+    # realtime route must be grantable alongside chat, purpose and audio names.
+    config = tmp_path / "router.toml"
+    config.write_text(
+        '[server]\nauth_env = "TEST_MASTER"\n\n[router]\nmodel_routes = { "llm.primary" = "chat" }\n\n'
+        '[[router.tiers]]\nid = "chat"\nbase_url = "http://127.0.0.1:30000/v1"\nmodel = "chat"\n'
+        'dialect = "openai"\ncontext_limit = 4096\nprivacy = "local"\ntool_support = true\n'
+        'auth_env = "ANVIL_CHAT_KEY"\n\n'
+        '[[router.realtime_routes]]\nid = "voice-proxy"\nbase_url = "http://127.0.0.1:8765/v1"\n'
+        'auth_env = "ANVIL_VOICE_PROXY_TOKEN"\n', encoding="utf-8")
+    assert {"llm.primary", "voice-proxy"} <= keys._routable_models(str(config))
+
+
 def test_model_grant_refuses_connect_owned_and_expired_keys(tmp_path, monkeypatch):
     from anvil_serving.router import connect_keys
     store = _store(tmp_path)
@@ -245,13 +259,16 @@ def test_cli_grant_checks_the_selected_config_and_prints_both_digests(tmp_path, 
     config.write_text("[server]\nauth_env='TEST_MASTER'\napi_keys_path=%s\n" % json.dumps(str(tmp_path / "keys.sqlite3")))
     monkeypatch.setattr(router_config, "load", lambda path: SimpleNamespace(
         model_routes={"llm.primary": "tier", "llm.secondary": "other"},
-        purpose_models=(SimpleNamespace(model="embed-small"),), audio_routes=(SimpleNamespace(id="stt-main"),)))
+        purpose_models=(SimpleNamespace(model="embed-small"),), audio_routes=(SimpleNamespace(id="stt-main"),),
+        realtime_routes=(SimpleNamespace(id="voice-proxy"),)))
     meta, _ = _store(tmp_path).create("phone", ["llm.secondary"], ["/v1/chat/completions"])
     base = ["grant", "--config", str(config), "--key-id", meta["key_id"], "--expected-model", "llm.secondary"]
     assert dispatch([*base, "--model", "llm.missing"]) == 2
-    assert dispatch([*base, "--model", "llm.primary", "--model", "embed-small", "--model", "stt-main", "--dry-run"]) == 0
+    assert dispatch([*base, "--model", "llm.primary", "--model", "embed-small", "--model", "stt-main",
+                     "--model", "voice-proxy", "--dry-run"]) == 0
     assert dispatch([*base, "--model", "llm.primary"]) == 0
     preview, applied = (json.loads(line) for line in capsys.readouterr().out.splitlines())
-    assert preview["dry_run"] and preview["models_after"] == ["llm.secondary", "llm.primary", "embed-small", "stt-main"]
+    assert preview["dry_run"] and preview["models_after"] == [
+        "llm.secondary", "llm.primary", "embed-small", "stt-main", "voice-proxy"]
     assert applied["models_after"] == ["llm.secondary", "llm.primary"] and len(applied["policy_digest_after"]) == 64
     assert dispatch([*base, "--model", "stt-main"]) == 2  # the expected list is now stale

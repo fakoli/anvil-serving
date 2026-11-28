@@ -789,6 +789,36 @@ def test_posts_beyond_the_inflight_cap_get_503_before_their_body_is_read(monkeyp
         server.server_close()
 
 
+def test_back_to_back_posts_never_see_their_own_busy_slot(monkeypatch):
+    # A handler thread that is slow to give its slot back must not still hold it once the
+    # client has the reply; the next request follows at once.
+    class SlowRelease:
+        def __init__(self, value):
+            self._inner = threading.Semaphore(value)
+
+        def acquire(self, *args, **kwargs):
+            return self._inner.acquire(*args, **kwargs)
+
+        def release(self):
+            time.sleep(0.05)
+            self._inner.release()
+
+    monkeypatch.setattr(agent, "MAX_INFLIGHT_POSTS", 1)
+    with monkeypatch.context() as patch:
+        patch.setattr(threading, "BoundedSemaphore", SlowRelease)
+        server = agent.make_server(make_config(), ask=lambda agent_id, text: ("ok", "s", "stop"))
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    client = Client(server)
+    ctype, body = multipart({"text": (None, b"again")})
+    try:
+        statuses = [client.request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})[0]
+                    for _ in range(4)]
+        assert statuses == [200, 200, 200, 200]
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
 def test_an_answer_gets_through_while_asks_hold_every_general_slot(monkeypatch):
     monkeypatch.setattr(agent, "MAX_INFLIGHT_POSTS", 1)
     server = agent.make_server(make_config(), ask=lambda agent_id, text: ("ok", "s", "stop"))

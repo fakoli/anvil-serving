@@ -262,7 +262,8 @@ def _validate_release_scope(config, tier_ids):
         endpoints = [member.base_url for member in tier.replicas] if tier.replicas else [tier.base_url]
         _require(not any(_normalized_replica_endpoint(endpoint, "route")[:3] in affected for endpoint in endpoints),
                  "route_shared_owner_release_unsupported")
-    for route in (*config.purpose_models, *config.audio_routes, *config.memory_routes):
+    for route in (*config.purpose_models, *config.audio_routes, *config.realtime_routes,
+                  *config.memory_routes):
         _require(_normalized_replica_endpoint(route.base_url, "route")[:3] not in affected,
                  "route_shared_owner_release_unsupported")
 
@@ -396,6 +397,33 @@ def _lock_authority(path):
     return descriptor
 
 
+_REALTIME_FIELDS = ("realtime_routes", "realtime_max_concurrency")
+
+
+def _realtime_route_migration_scope(old_config, new_config, old_document, new_document):
+    """Realtime routes never enter route projections, so a realtime-only delta keeps authority valid."""
+    old_document, new_document = _plain(old_document), _plain(new_document)
+    for document in (old_document, new_document):
+        router = dict(document.get("router", {}))
+        for name in _REALTIME_FIELDS:
+            router.pop(name, None)
+        document["router"] = router
+    _require(old_document == new_document, "route_realtime_migration_restart_required")
+    for field in fields(old_config):
+        if field.name not in _REALTIME_FIELDS:
+            _require(getattr(old_config, field.name) == getattr(new_config, field.name),
+                     "route_realtime_migration_restart_required")
+    return {"direction": "realtime", "memory_route_count": 0,
+            "realtime_route_count": len(new_config.realtime_routes)}
+
+
+def _route_migration_scope(old_config, new_config, old_document, new_document):
+    """One change family per rebase: memory routes or realtime routes, never both."""
+    if any(getattr(old_config, name) != getattr(new_config, name) for name in _REALTIME_FIELDS):
+        return _realtime_route_migration_scope(old_config, new_config, old_document, new_document)
+    return _memory_route_migration_scope(old_config, new_config, old_document, new_document)
+
+
 def _memory_route_migration_scope(old_config, new_config, old_document, new_document):
     """Return the one-way, bounded memory-route delta allowed for a rebase."""
     old_document = _plain(old_document)
@@ -426,12 +454,14 @@ def migrate_route_state_base_config(
     old_config_bytes, new_config_bytes, state_path, *, expected_old_config_sha256,
     expected_new_config_sha256, expected_state_sha256, apply=False,
 ):
-    """Atomically rebind settled route authority to a memory-route-only config.
+    """Atomically rebind settled route authority across a memory- or realtime-route-only config change.
 
-    This deliberately permits only one to three complete memory-route additions
-    or removals. Every overlapping route and every non-memory setting must have
-    identical parsed semantics; route state, projections, revisions, and
-    operation history are preserved unchanged except for the boot-config hash.
+    Memory changes are limited to one to three complete memory-route additions
+    or removals. A realtime change may add, remove or edit realtime routes and
+    the realtime session cap, which never enter route projections. Every other
+    setting must have identical parsed semantics; route state, projections,
+    revisions, and operation history are preserved unchanged except for the
+    boot-config hash.
     """
     _require(type(apply) is bool, "route_migration_apply_invalid", status=400)
     old_config, old_document = _document(old_config_bytes)
@@ -444,7 +474,7 @@ def migrate_route_state_base_config(
              and expected_new_config_sha256 == new_sha256, "route_migration_new_config_mismatch")
     _require(type(expected_state_sha256) is str and _DIGEST.fullmatch(expected_state_sha256),
              "route_migration_state_digest_invalid")
-    scope = _memory_route_migration_scope(old_config, new_config, old_document, new_document)
+    scope = _route_migration_scope(old_config, new_config, old_document, new_document)
     path = Path(state_path)
     _require(path.is_absolute(), "route_state_path_invalid")
     descriptor = _lock_authority(path)

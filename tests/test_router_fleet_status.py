@@ -79,6 +79,63 @@ def test_localhost_is_not_substituted(tmp_path):
     assert all("localhost" not in u for u in urls)
 
 
+def test_realtime_routes_use_their_configured_token_free_health_path(tmp_path):
+    config = _config(tmp_path, _TWO_TIERS + """
+        [[router.realtime_routes]]
+        id = "voice-proxy"
+        base_url = "http://127.0.0.1:30111/proxy/v1/"
+        health_path = "/ready"
+        default = true
+
+        [[router.realtime_routes]]
+        id = "voice-down"
+        base_url = "http://127.0.0.1:30112/v1"
+        health_path = "/not-ready"
+    """)
+    urls = []
+
+    def probe(url, timeout=4.0):
+        urls.append((url, timeout))
+        return True, "HTTP 200"
+
+    def realtime_probe(url, timeout=4.0):
+        urls.append((url, timeout))
+        return (
+            url.endswith("/ready"),
+            "HTTP 200" if url.endswith("/ready") else "HTTP 503",
+        )
+
+    report = router_manage.fleet_status(
+        config,
+        timeout=0.25,
+        _probe=probe,
+        _realtime_probe=realtime_probe,
+    )
+
+    rows = {row["name"]: row for row in report["rows"] if row["kind"] == "realtime"}
+    assert rows["voice-proxy"]["reachable"] is True
+    assert rows["voice-down"]["reachable"] is False
+    assert rows["voice-down"]["detail"] == "HTTP 503"
+    assert rows["voice-down"]["failure_class"] == "health_http_not_ready"
+    assert report["unreachable"] == 1
+    assert report["unreachable_aliases"] == []
+    assert urls == [
+        ("http://127.0.0.1:30002/health", 0.25),
+        ("http://127.0.0.1:30003/health", 0.25),
+        ("http://127.0.0.1:30111/ready", 0.25),
+        ("http://127.0.0.1:30112/not-ready", 0.25),
+    ]
+
+
+@pytest.mark.parametrize("status", [302, 401, 503])
+def test_realtime_probe_requires_the_relay_health_status(monkeypatch, status):
+    monkeypatch.setattr(router_manage, "probe_realtime_health", lambda url, timeout: status)
+
+    assert router_manage._probe_realtime_endpoint("http://127.0.0.1:30111/ready", 0.25) == (
+        False, "HTTP %s" % status,
+    )
+
+
 def test_cmd_exits_nonzero_only_for_unreachable_aliases(tmp_path, capsys):
     path = tmp_path / "router.toml"
     path.write_text(textwrap.dedent(_TWO_TIERS), encoding="utf-8")

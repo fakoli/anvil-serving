@@ -104,7 +104,7 @@ def test_container_grant_uses_the_router_mounted_config(container, tmp_path, mon
     monkeypatch.delenv("ANVIL_CONFIG", raising=False)
     monkeypatch.setattr(router_config, "load", lambda path: SimpleNamespace(
         model_routes={"llm.primary": "tier", "vision.ocr": "tier"} if path == str(mounted) else {"llm.other": "tier"},
-        purpose_models=(), audio_routes=()))
+        purpose_models=(), audio_routes=(), realtime_routes=()))
     grant = ["grant", *common, "--key-id", key_id, "--expected-model", "llm.secondary"]
     assert keys.dispatch([*grant, "--model", "llm.other"]) == 2      # routable only in the caller's copy
     assert keys.dispatch([*grant, "--model", "llm.primary"]) == 0

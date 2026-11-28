@@ -170,7 +170,7 @@ api_keys_path = "/var/lib/anvil-serving/router-keys/keys.sqlite3"
 For the standard Compose deployment, use the dedicated durable
 `anvil-router-keys:/var/lib/anvil-serving/router-keys` mount from the updated
 Compose template. The image seeds it with the router user and private permissions.
-For an existing installation, update only the router image to `anvil-serving:3.1.0`
+For an existing installation, update only the router image to `anvil-serving:3.2.1`
 and add the following entries to the existing operator-home `docker-compose.yml`
 once, retaining its other services, ports, and settings. Do not rerun `init` over
 customized configuration to acquire this mount.
@@ -186,7 +186,7 @@ volumes:
 
 This is a partial configuration delta; merge these entries into the existing
 `services.router.volumes` list and top-level `volumes` mapping. After building or
-installing the 3.1.0 image, preview and recreate the router while retaining its
+installing the 3.2.1 image, preview and recreate the router while retaining its
 current installed router configuration:
 
 ```bash
@@ -279,7 +279,9 @@ Repeat `--model` and `--path` for additional grants. Both must authorize a
 request. Chat grants use the router's trimmed, case-insensitive aliases;
 embeddings and reranking use exact served-model names. Supported inference
 paths are `/v1/chat/completions`, `/v1/messages`, `/v1/responses`,
-`/v1/embeddings`, and `/v1/rerank`. `/v1/models` is granted automatically and
+`/v1/embeddings`, and `/v1/rerank`. `--path /v1/realtime` grants the Realtime
+WebSocket upgrade; pair it with `--model <realtime route id>`.
+`/v1/models` is granted automatically and
 returns only granted chat aliases. The same discovery grant permits
 `GET /v1/models/capabilities` and `GET /v1/router/status` for authenticated client
 catalog reconciliation. Device capability rows contain only granted aliases and
@@ -438,7 +440,7 @@ anvil-serving router fleet-status
 ```
 
 By default it asks the deployed router container to read its installed config
-and probe every declared alias, purpose model, and audio route from inside that
+and probe every declared alias, purpose model, audio route, and realtime route from inside that
 same runtime. The operation is read-only: Docker is used only as the bounded
 execution boundary, and no lifecycle or configuration state changes.
 `--json` emits the same report structurally; `--timeout` bounds each probe.
@@ -461,14 +463,15 @@ controller exposes the same live-only behavior through the bounded
 `router_fleet_status` tool.
 
 It exits non-zero when a **declared alias** has no reachable backing serve,
-so it works as a pre-promotion or monitoring check. Purpose models and audio
-routes are reported but do not fail the command on their own.
+so it works as a pre-promotion or monitoring check. Purpose models, audio
+routes, and realtime routes are reported but do not fail the command on their
+own. Realtime routes use their configured, same-origin token-free `health_path`.
 
 Two behaviours worth knowing:
 
-- **An authenticated endpoint answering `401` counts as reachable.** Something
-  is serving and asking for a token; treating that as down would report every
-  authenticated tier as broken.
+- **An authenticated endpoint answering `401` counts as reachable** for aliases,
+  purpose models, and audio routes. Realtime routes instead use their token-free
+  readiness path and require an exact `200`, matching the WebSocket relay gate.
 - **Runtime-relative endpoints stay runtime-relative in live mode.** A
   `host.docker.internal` endpoint is probed unchanged from the router runtime.
   During explicit command-host file inspection it is translated to
@@ -1139,8 +1142,8 @@ published revision remains a separate, newly previewed route change.
 ### Stopped route-authority rebase
 
 When a selected successor has already been stopped through the protected failed-startup
-path, a memory-route-only boot-config migration can rebase its protected route authority
-without starting a listener:
+path, a memory-route-only or realtime-route-only boot-config migration can rebase its
+protected route authority without starting a listener:
 
 ```bash
 anvil-serving router routes rebase --old-config /protected/predecessor.toml --new-config /protected/successor.toml --compose /protected/successor-compose.yml --env-file /protected/router.env --startup-abort-config /protected/startup-abort.json --current-stop-receipt /protected/current-stop.json --helper-image-id sha256:HELPER --expected-state-sha256 STATE_SHA256 --dry-run
@@ -1154,8 +1157,9 @@ helper itself has no network or added privileges. Both receipts,
 the stopped container, selected Compose hash, configured image, writable storage owner,
 and the original predecessor configuration digest are rechecked before the helper runs.
 The fixed helper image is taken only from the completed startup-abort declaration. It
-accepts only a strict add or remove of `router.memory_routes`; every other parsed TOML
-setting must remain semantically equal. It never starts or readmits the router.
+accepts only a strict add or remove of `router.memory_routes`, or a change limited to
+`router.realtime_routes` and `realtime_max_concurrency`; every other parsed TOML setting
+must remain semantically equal. It never starts or readmits the router.
 
 ## Failed startup recovery
 

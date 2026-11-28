@@ -1225,21 +1225,21 @@ def test_promotion_accepts_supported_docker_owner_perspective(tmp_path):
     assert serves._validate_promotion_topology(serves.load_manifest(path), serves.load_promotions(path)[0]) is True
 
 
-@pytest.mark.parametrize("family", ["purpose", "audio"])
-def test_promotion_refuses_shared_nonchat_endpoint(tmp_path, family):
+@pytest.mark.parametrize("family", ["purpose", "audio", "realtime"])
+@pytest.mark.parametrize("config_name", ["router-promoted.toml", "router-rollback.toml"])
+def test_promotion_refuses_shared_nonchat_endpoint(tmp_path, family, config_name):
     path = _promotion_manifest(tmp_path)
-    for filename in ("router-promoted.toml", "router-rollback.toml"):
-        config = tmp_path / filename
-        if family == "purpose":
-            extra = '''
+    config = tmp_path / config_name
+    if family == "purpose":
+        extra = '''
 [[router.purpose_models]]
 id = "shared-embedding"
 kind = "embedding"
 model = "embed"
 base_url = "http://127.0.0.1:30002/v1"
 '''
-        else:
-            extra = '''
+    elif family == "audio":
+        extra = '''
 [[router.audio_routes]]
 id = "shared-tts"
 purpose = "tts"
@@ -1247,9 +1247,33 @@ model = "voice"
 base_url = "http://127.0.0.1:30002/v1"
 source_sample_rate = 24000
 '''
-        config.write_text(config.read_text(encoding="utf-8") + extra, encoding="utf-8")
+    else:
+        extra = '''
+[[router.realtime_routes]]
+id = "shared-realtime"
+base_url = "http://127.0.0.1:30002/v1"
+auth_env = "VOICE_TOKEN"
+default = true
+'''
+    config.write_text(config.read_text(encoding="utf-8") + extra, encoding="utf-8")
     with pytest.raises(ValueError, match="shared endpoint"):
         serves._validate_promotion_topology(serves.load_manifest(path), serves.load_promotions(path)[0])
+
+
+def test_promotion_allows_distinct_realtime_listener(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    for filename in ("router-promoted.toml", "router-rollback.toml"):
+        config = tmp_path / filename
+        config.write_text(config.read_text(encoding="utf-8") + '''
+[[router.realtime_routes]]
+id = "voice"
+base_url = "http://127.0.0.1:8765/v1"
+auth_env = "VOICE_TOKEN"
+default = true
+''', encoding="utf-8")
+    assert serves._validate_promotion_topology(
+        serves.load_manifest(path), serves.load_promotions(path)[0]
+    ) is True
 
 
 def test_promotion_refuses_same_owner_port_through_different_url(tmp_path):

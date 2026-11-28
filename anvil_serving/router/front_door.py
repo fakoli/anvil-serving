@@ -97,6 +97,7 @@ from .usage_store import UsageError, UsageQuery, AuthorityScope
 from ..observability.dashboard.contracts import strict_json
 from .memory import MemoryError, MemoryRouter
 from .memory_mcp import MemoryMCP
+from .realtime import REALTIME_PATH, RealtimeError, RealtimeGateway, is_websocket_upgrade
 from ..control_plane.authorization import (
     AuthorizationPolicy,
     INFERENCE_USE,
@@ -528,7 +529,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   server_config=None, api_keys=None, connect_keys=None, connect_verifier=None,
                   usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=(), usage_domain_id=None, usage_metrics=None, router_admission=None,
                   media_signed_downloads: str | None = None, route_manager=None,
-                  bind_host: str = "127.0.0.1"):
+                  bind_host: str = "127.0.0.1", realtime: Optional[RealtimeGateway] = None):
     if gateway is not None:
         signed_downloads = (os.environ.get("ANVIL_MEDIA_SIGNED_DOWNLOADS", "0")
                             if media_signed_downloads is None else media_signed_downloads)
@@ -1140,7 +1141,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             required = None
             if (self.command == "POST" and path in _ROUTES or
                     self.command == "GET" and path in {
-                        "/v1/models", "/v1/models/capabilities", "/v1/models/capacity"}):
+                        "/v1/models", "/v1/models/capabilities", "/v1/models/capacity", REALTIME_PATH}):
                 required = INFERENCE_USE
             elif self.command == "GET" and (path == "/v1/requests" or path.startswith("/v1/requests/")):
                 required = WORKLOADS_READ
@@ -2102,6 +2103,77 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self._anvil_usage.capture(purpose, "success" if "payload" in locals() else "rejected" if self._anvil_usage.dispatched is False else "error")
             self._json(200, payload)
 
+        # --- realtime WebSocket relay (ADR-0050) ---------------------------
+        def _handle_realtime(self) -> None:
+            """Authenticate, resolve one route, then relay the upgraded socket.
+
+            Every refusal is answered before any ``101``. A session holds an
+            ``audio`` router-admission permit for its whole life, so quiesce
+            refuses new sessions and drain waits for open ones.
+            """
+            self.close_connection = True  # an upgraded or refused socket is never reused
+            if self.headers.get_all("Transfer-Encoding") or (self.headers.get("Content-Length") or "0") != "0":
+                self._error(400, "invalid_request", "a realtime upgrade must not carry a body")
+                return
+            if not self._authenticated():
+                self._json(401, {"error": {"type": "authentication_error",
+                                           "message": "invalid or missing API key"}})
+                return
+            if not is_websocket_upgrade(self.headers):
+                self._error(426, "upgrade_required", "use a WebSocket upgrade for /v1/realtime")
+                return
+            query = urllib.parse.urlsplit(self.path).query
+            selected = urllib.parse.parse_qs(query, keep_blank_values=True).get("route")
+            if selected is not None and (len(selected) != 1 or not selected[0]):
+                self._error(400, "invalid_request", "route must be given once")
+                return
+            try:
+                route = realtime.resolve(selected[0] if selected else None)
+            except RealtimeError as exc:
+                self._error(exc.status, exc.code, exc.message)
+                return
+            if self._anvil_device is not None and not self._anvil_device.allows_model(route.id, normalize=False):
+                self._device_error(403, "key_access_denied", "API key does not grant this realtime route")
+                return
+            if not self._admit_router("audio"):
+                return
+            if not realtime.acquire():
+                self._error(503, "server_busy", "realtime gateway busy; try again later")
+                return
+            try:
+                if not realtime.healthy(route):
+                    self._error(503, "upstream_unavailable", "realtime upstream is not ready")
+                    return
+                try:
+                    upstream = realtime.open_upstream(
+                        route, self.headers, query,
+                        request_id=(self._anvil_correlation or {}).get("gateway_request_id"))
+                except RealtimeError as exc:
+                    self._error(exc.status, exc.code, exc.message)
+                    return
+                started, sent, received = time.monotonic(), 0, 0
+                try:
+                    self.wfile.flush()
+                    self._anvil_http_status = 101  # the key audit records the session afterwards
+                    self.connection.sendall(upstream.response)
+                    # Take any bytes the caller pipelined after its request out of
+                    # the buffered reader once; the relay then uses the raw socket.
+                    self.connection.setblocking(False)
+                    try:
+                        leftover = self.rfile.read1(65536) or b""
+                    except OSError:
+                        leftover = b""
+                    sent, received = realtime.relay(self.connection, leftover, upstream)
+                except OSError:
+                    pass  # the caller went away; the upstream socket is closed below
+                finally:
+                    upstream.close()
+                print(f"[anvil] event=realtime_session route={route.id} "
+                      f"seconds={time.monotonic() - started:.1f} bytes_up={sent} bytes_down={received} "
+                      f"{self._log_request_context()}", file=sys.stderr, flush=True)
+            finally:
+                realtime.release()
+
         # --- normalized one-shot audio gateway ----------------------------
         def _handle_audio(self, kind: str, body: dict) -> None:
             """Handle an authenticated JSON ``/v1/audio/*`` request.
@@ -2411,6 +2483,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     return
                 self._respond_after_release(_MANAGEMENT_LIMIT, lambda: self._management_get(route))
                 return
+            if route == REALTIME_PATH and realtime is not None:
+                self._handle_realtime()
+                return
             # Acquire the concurrency semaphore FIRST — before draining any body
             # bytes — so a flood of GETs with large bodies is gated here, not
             # outside the limiter (mirrors do_POST).
@@ -2481,6 +2556,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                                TIER_HEALTH_ENDPOINT]
                             + (list(_PURPOSE_PATHS) if purpose is not None else [])
                             + (list(audio.paths) if audio is not None else [])
+                            + ([REALTIME_PATH] if realtime else [])
                         ),
                     })
                 elif route == TIER_HEALTH_ENDPOINT:
@@ -3535,6 +3611,7 @@ def make_server(host: str, port: int,
                 usage_domain_id=None, usage_metrics=None, router_admission=None,
                 media_signed_downloads: str | None = None,
                 route_manager=None,
+                realtime: Optional[RealtimeGateway] = None,
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
@@ -3566,6 +3643,12 @@ def make_server(host: str, port: int,
     """
     if audio is not None and auth_token is None:
         raise ValueError("an AudioGateway requires a resolved front-door auth token")
+    if realtime is not None and len(realtime) and not auth_token:
+        # The relay carries the route's upstream credential; never offer it unauthenticated.
+        raise ValueError("realtime routes require front-door authentication")
+    set_realtime_gateway = getattr(backend, "set_realtime_gateway", None)
+    if realtime is not None and callable(set_realtime_gateway):
+        set_realtime_gateway(realtime)
     if gateway is not None and auth_token is None:
         raise ValueError("a ProtocolGateway requires a resolved front-door auth token")
     if memory is not None and (auth_token is None or server_config is None or server_config.api_keys_path is None):
@@ -3634,7 +3717,7 @@ def make_server(host: str, port: int,
             workload_host, workload_registry, workload_clock,
             server_config, api_keys, connect_keys, connect_verifier,
             usage_store, usage_run_id, usage_authority, webui_bindings, usage_domain_id, usage_metrics, router_admission,
-                    media_signed_downloads, route_manager, bind_host=host,
+                    media_signed_downloads, route_manager, bind_host=host, realtime=realtime,
         ),
     )
     httpd.anvil_router_admission = router_admission

@@ -9,13 +9,13 @@
 # proxies the tailnet edge to the same 127.0.0.1 listener. Nothing else
 # publishes this port. The service stores nothing, so it has no data volume.
 #
-# Build: docker build --target agent -t anvil-serving-agent:3.1.0 .
+# Build: docker build --target agent -t anvil-serving-agent:3.2.1 .
 # AGENT_IMAGE is a per-invocation candidate override.
 name: anvil-agent
 
 services:
   agent:
-    image: ${AGENT_IMAGE:-anvil-serving-agent:3.1.0}
+    image: ${AGENT_IMAGE:-anvil-serving-agent:3.2.1}
     container_name: anvil-agent
     restart: unless-stopped
     network_mode: host

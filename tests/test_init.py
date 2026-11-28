@@ -208,6 +208,7 @@ def token_home(tmp_path, monkeypatch):
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
     monkeypatch.setenv("ANVIL_SERVING_NO_HOME_ENV", "1")
     monkeypatch.delenv("ANVIL_ROUTER_TOKEN", raising=False)
+    monkeypatch.delenv("ANVIL_VOICE_REALTIME_TOKEN", raising=False)
     return home
 
 
@@ -221,6 +222,13 @@ def _init_cli(capsys, *extra):
 def _env_token(home):
     for line in (home / ".env").read_text(encoding="utf-8").splitlines():
         if line.startswith("ANVIL_ROUTER_TOKEN="):
+            return line.split("=", 1)[1]
+    return None
+
+
+def _env_value(home, name):
+    for line in (home / ".env").read_text(encoding="utf-8").splitlines():
+        if line.startswith(name + "="):
             return line.split("=", 1)[1]
     return None
 
@@ -242,19 +250,35 @@ def test_init_generates_private_token_without_printing_it(token_home, capsys):
     assert "export ANVIL_SERVING_HOME=" not in output
 
 
+def test_init_generates_independent_realtime_token_without_printing_it(token_home, capsys):
+    output = _init_cli(capsys)
+
+    router_token = _env_token(token_home)
+    realtime_token = _env_value(token_home, "ANVIL_VOICE_REALTIME_TOKEN")
+    assert realtime_token and len(realtime_token) >= 32
+    assert realtime_token != router_token
+    assert (os.stat(token_home / ".env").st_mode & 0o777) == 0o600
+    assert realtime_token not in output
+    assert "ANVIL_VOICE_REALTIME_TOKEN" in output
+
+
 def test_init_twice_keeps_token(token_home, capsys):
     _init_cli(capsys)
     first = _env_token(token_home)
+    first_realtime = _env_value(token_home, "ANVIL_VOICE_REALTIME_TOKEN")
     output = _init_cli(capsys)
     assert _env_token(token_home) == first
+    assert _env_value(token_home, "ANVIL_VOICE_REALTIME_TOKEN") == first_realtime
     assert first not in output
+    assert first_realtime not in output
     assert (token_home / ".env").read_text(encoding="utf-8").count("ANVIL_ROUTER_TOKEN=") == 1
+    assert (token_home / ".env").read_text(encoding="utf-8").count("ANVIL_VOICE_REALTIME_TOKEN=") == 1
 
 
 def test_init_respects_existing_environment_variable(token_home, monkeypatch, capsys):
     monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "already-set-by-operator")
     output = _init_cli(capsys)
-    assert not (token_home / ".env").exists()
+    assert _env_value(token_home, "ANVIL_VOICE_REALTIME_TOKEN")
     assert "already-set-by-operator" not in output
 
 
@@ -337,6 +361,118 @@ def test_init_never_overwrites_existing_token_in_env_file(token_home, capsys):
     output = _init_cli(capsys)
     assert _env_token(token_home) == "operator-value"
     assert "operator-value" not in output
+
+
+def test_init_migrates_router_only_env_with_independent_realtime_token(token_home, capsys):
+    token_home.mkdir()
+    env = token_home / ".env"
+    env.write_text("ANVIL_ROUTER_TOKEN=operator-router-value\n", encoding="utf-8")
+    env.chmod(0o600)
+
+    output = _init_cli(capsys)
+
+    assert _env_token(token_home) == "operator-router-value"
+    realtime_token = _env_value(token_home, "ANVIL_VOICE_REALTIME_TOKEN")
+    assert realtime_token and realtime_token != "operator-router-value"
+    assert "operator-router-value" not in output
+    assert realtime_token not in output
+    assert "ANVIL_VOICE_REALTIME_TOKEN" in output
+
+
+def test_full_init_out_dir_does_not_borrow_tokens_from_another_operator_home(token_home, tmp_path, capsys):
+    from anvil_serving import envfile
+
+    token_home.mkdir()
+    source_env = token_home / ".env"
+    source_env.write_text(
+        "ANVIL_ROUTER_TOKEN=old-router-token\n"
+        "ANVIL_VOICE_REALTIME_TOKEN=old-voice-token\n",
+        encoding="utf-8",
+    )
+    source_env.chmod(0o600)
+    target = tmp_path / "new-operator-home"
+
+    output = _init_cli(capsys, "--out-dir", str(target))
+
+    target_values = envfile.read_dotenv(str(target / ".env"))
+    assert target_values["ANVIL_ROUTER_TOKEN"] not in {"old-router-token", "old-voice-token"}
+    assert target_values["ANVIL_VOICE_REALTIME_TOKEN"] not in {"old-router-token", "old-voice-token"}
+    assert target_values["ANVIL_ROUTER_TOKEN"] != target_values["ANVIL_VOICE_REALTIME_TOKEN"]
+    assert "old-router-token" not in output
+    assert "old-voice-token" not in output
+    assert (os.stat(target / ".env").st_mode & 0o777) == 0o600
+
+
+def test_full_init_preserves_effective_fallback_tokens_for_current_home(token_home, monkeypatch, capsys):
+    fallback_values = {
+        "ANVIL_ROUTER_TOKEN": "fallback-router-token",
+        "ANVIL_VOICE_REALTIME_TOKEN": "fallback-voice-token",
+    }
+    monkeypatch.setattr(
+        init.envfile,
+        "resolve_env_value",
+        lambda name: (fallback_values.get(name), "/synthetic/shared.env") if name in fallback_values else (None, ""),
+    )
+
+    output = _init_cli(capsys)
+
+    assert not (token_home / ".env").exists()
+    assert "fallback-router-token" not in output
+    assert "fallback-voice-token" not in output
+    assert "/synthetic/shared.env" in output
+
+
+def test_init_preserves_existing_realtime_token_and_managed_env_receives_it(token_home, capsys):
+    from anvil_serving import envfile, serves
+
+    token_home.mkdir()
+    env = token_home / ".env"
+    env.write_text(
+        "ANVIL_ROUTER_TOKEN=operator-router-value\n"
+        "ANVIL_VOICE_REALTIME_TOKEN=operator-voice-value\n",
+        encoding="utf-8",
+    )
+    env.chmod(0o600)
+
+    output = _init_cli(capsys)
+
+    assert envfile.read_dotenv(str(env))["ANVIL_VOICE_REALTIME_TOKEN"] == "operator-voice-value"
+    assert serves._serve_env({"_manifest_dir": str(token_home)})["ANVIL_VOICE_REALTIME_TOKEN"] == "operator-voice-value"
+    assert "operator-voice-value" not in output
+    assert "already set" in output
+
+
+def test_init_replaces_blank_local_realtime_token_for_managed_env(token_home, capsys):
+    from anvil_serving import envfile, serves
+
+    token_home.mkdir()
+    env = token_home / ".env"
+    env.write_text(
+        "ANVIL_ROUTER_TOKEN=operator-router-value\n"
+        "ANVIL_VOICE_REALTIME_TOKEN=   \n",
+        encoding="utf-8",
+    )
+    env.chmod(0o600)
+
+    output = _init_cli(capsys)
+
+    realtime_token = envfile.read_dotenv(str(env))["ANVIL_VOICE_REALTIME_TOKEN"]
+    assert realtime_token and realtime_token != "operator-router-value"
+    assert serves._serve_env({"_manifest_dir": str(token_home)})["ANVIL_VOICE_REALTIME_TOKEN"] == realtime_token
+    assert realtime_token not in output
+    assert (os.stat(env).st_mode & 0o777) == 0o600
+
+
+def test_init_refuses_blank_process_realtime_token_before_scaffolding(token_home, monkeypatch, capsys):
+    from anvil_serving import cli
+
+    monkeypatch.setenv("ANVIL_VOICE_REALTIME_TOKEN", " \t\n")
+
+    assert cli.main(["init", "--no-detect-host"]) == 2
+    output = capsys.readouterr().err
+    assert "ANVIL_VOICE_REALTIME_TOKEN" in output
+    assert "blank" in output
+    assert not token_home.exists()
 
 
 # ---- init --gateway-only: gateway in front of an existing server (WP-05) -----------
@@ -527,6 +663,24 @@ def test_gateway_only_reports_where_existing_token_came_from(token_home, monkeyp
     (token_home / ".env").chmod(0o600)
     output = _init_cli(capsys, "--gateway-only", "--upstream", "http://127.0.0.1:1/v1", "--model", "m")
     assert str(token_home / ".env") in output and "file-secret" not in output
+
+
+def test_gateway_only_blank_process_token_uses_effective_fallback(token_home, monkeypatch, capsys):
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", " \t\n")
+    monkeypatch.setattr(
+        init.envfile,
+        "resolve_env_value",
+        lambda name: ("fallback-router-token", "/synthetic/shared.env")
+        if name == "ANVIL_ROUTER_TOKEN" else (None, ""),
+    )
+
+    output = _init_cli(
+        capsys, "--gateway-only", "--upstream", "http://127.0.0.1:1/v1", "--model", "m"
+    )
+
+    assert not (token_home / ".env").exists()
+    assert "fallback-router-token" not in output
+    assert "/synthetic/shared.env" in output
 
 
 # ---- fresh scaffold is internally consistent (#384) ---------------------------

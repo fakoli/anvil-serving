@@ -241,6 +241,7 @@ def test_non_loopback_bind_with_token_gates_the_upgrade_on_a_valid_bearer_token(
         0,
         lambda conn, path: conn.close(),
         token_env="ANVIL_TEST_WS_TOKEN",
+        allow_non_loopback=True,
     )
     server.timeout = 5
     thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
@@ -277,6 +278,20 @@ def test_non_loopback_bind_with_token_gates_the_upgrade_on_a_valid_bearer_token(
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+@pytest.mark.parametrize("allow_non_loopback", [False, True])
+def test_non_loopback_bind_never_bypasses_token_guard(allow_non_loopback):
+    with pytest.raises(ValueError, match="without a bearer token"):
+        make_ws_server("0.0.0.0", 0, allow_non_loopback=allow_non_loopback)
+
+
+@pytest.mark.parametrize("value", ["", " \t\r\n "])
+def test_non_loopback_bind_rejects_empty_or_whitespace_token(monkeypatch, value):
+    monkeypatch.setenv("ANVIL_TEST_WS_TOKEN", value)
+
+    with pytest.raises(ValueError, match=r"not set \(or empty\)"):
+        make_ws_server("0.0.0.0", 0, token_env="ANVIL_TEST_WS_TOKEN")
 
 
 # --------------------------------------------------------------------------- #

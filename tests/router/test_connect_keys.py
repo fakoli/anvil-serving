@@ -72,7 +72,10 @@ def test_approval_ownership_grants_usage_and_revocation(portal):
     assert p.store.authenticate(other["secret"]) is None
 
 
-def test_shared_atomic_rate_and_active_key_cap(portal):
+def test_shared_atomic_rate_and_active_key_cap(portal, monkeypatch):
+    from anvil_serving.router import keys as key_store
+    # Ten writers queue on one store; a slow disk must not turn that into a queue refusal here.
+    monkeypatch.setattr(key_store, "_WRITER_WAIT_SECONDS", 30.0)
     p, _ = portal
     approve(p,rpm=3)
     keys = [issue(p)["key"]["key_id"] for _ in range(10)]

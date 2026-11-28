@@ -145,7 +145,7 @@ Build the `agent` image target, which shares the Scribe stage's ffmpeg layer,
 then manage the container through the generic serve lifecycle:
 
 ```bash
-docker build --target agent -t anvil-serving-agent:3.1.0 .
+docker build --target agent -t anvil-serving-agent:3.2.1 .
 anvil-serving agent validate
 anvil-serving serves up agent --manifest serves.agent.toml --dry-run
 anvil-serving serves up agent --manifest serves.agent.toml --confirm
