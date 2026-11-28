@@ -707,6 +707,11 @@ send `Authorization: Bearer <value>`; use their credential-reference setting
 (for OpenClaw sync, `--voice-api-key-env ANVIL_VOICE_REALTIME_TOKEN`) rather
 than placing the value in configuration. `/healthz` remains token-free and
 constant for readiness, while `/pool` and `/usage` require the bearer token.
+Fresh or refreshed full `anvil-serving init` provisions this credential
+independently in its destination operator environment, preserving an effective
+non-blank credential already available to that same home. Initializing a
+different `--out-dir` creates destination-local credentials instead of
+borrowing another operator home's secrets.
 
 ### Browser origins and Host checks
 
