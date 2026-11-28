@@ -92,7 +92,7 @@ acknowledgement for the three planned windows. Deploys are recorded under
 | 4c | Accounting: session identifier | Left for the owner |
 | 3 | Conversation-cache budget | Measured; no change justified (see entry) |
 | extra | Two racing tests that kept breaking CI | **Merged**, PR 837, on the owner's instruction |
-| extra | Active-usage read fails while a request streams | **Deployed** 2026-11-27 05:39 UTC (window 4), PR 840. Seen working during a live request (see the last entry) |
+| extra | Active-usage read fails while a request streams | **Deployed** 2026-11-27 05:39 UTC (window 4), PR 840. Seen working during a live request (see the 2026-11-27 PR 840 window-4 verification entry) |
 | extra | Widen the secondary-only keys so the redirect can bind them | **Deployed** with window 4, PR 841 (`router keys grant`). Two of three keys widened; the third is Connect-owned and left for the owner |
 | extra | Intermittent CI failures | **Merged**, PR 845. Six tests fixed at their causes; two were product defects. Not deployed to the gateway |
 
@@ -257,8 +257,8 @@ counter from the engine, and the decision log's session identifier.
 - **Change.** Tests only. One test sent its last request the instant the first
   reply arrived, while the server frees its intake slot just after writing
   that reply. The other read captured log output before the last line was
-  written. Both now wait up to two seconds for the condition. Assertions are
-  unchanged.
+  written. Both now join the server's handler threads with a five-second
+  timeout before continuing. Assertions are unchanged.
 - **Left for the owner.** The first race is visible to a real client: a caller
   that sends its next turn the moment it gets a reply can receive `503 busy`.
   That is a product question and was not changed.
@@ -791,4 +791,19 @@ slot was released while the upload was still held in memory, and the new kill
 test could pass without the fix); both were corrected before merge. None of
 this is in the gateway image; it is recorded here because the failures kept
 blocking merges during this train.
+
+### 2026-11-28 — Watch complete
+
+The final gate check on the combined deploy train passed and reported `DONE` at
+`2026-11-28 13:19:07 UTC` (well past the 200-request gate):
+
+- **Volume and reliability:** 517 `llm.primary` requests (2,913 total finalized
+  rows), 100.0% success, 0.0% pre-dispatch refusals, 0 accounting failures, 0
+  container restarts, 0 tracebacks, and `/healthz` returning `200`.
+- **Gateway-controlled latency and throughput:** `overhead_p50_ms=81`,
+  `overhead_p95_ms=99`, `wait_p95_ms=0`, `short_p50_s=0.93` (`n=317`),
+  `long_tok_s_p50=223` (`n=92`), `p50_s=1.70`, `p95_s=32.48`.
+
+All active watch thresholds remained well within bounds across the full window;
+no rollback was needed, and the watch is marked complete.
 

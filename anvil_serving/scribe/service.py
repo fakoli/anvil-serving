@@ -757,17 +757,30 @@ def make_server(config: ScribeConfig, *,
         def _read_body(self, length):
             """Read exactly ``length`` bytes within one wall-clock deadline."""
             deadline = time.monotonic() + _BODY_DEADLINE_SECONDS
+            previous_timeout = self.connection.gettimeout()
             chunks, received = [], 0
-            while received < length:
-                if time.monotonic() > deadline:
-                    self.close_connection = True
-                    raise _Refusal(408, "upload too slow")
-                chunk = self.rfile.read1(min(65536, length - received))
-                if not chunk:
-                    self.close_connection = True
-                    raise _Refusal(400, "incomplete upload")
-                chunks.append(chunk)
-                received += len(chunk)
+            try:
+                while received < length:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        self.close_connection = True
+                        raise _Refusal(408, "upload too slow")
+                    self.connection.settimeout(min(_SOCKET_TIMEOUT_SECONDS, max(0.001, remaining)))
+                    try:
+                        chunk = self.rfile.read1(min(65536, length - received))
+                    except TimeoutError:
+                        self.close_connection = True
+                        raise _Refusal(408, "upload too slow") from None
+                    if not chunk:
+                        self.close_connection = True
+                        raise _Refusal(400, "incomplete upload")
+                    chunks.append(chunk)
+                    received += len(chunk)
+            finally:
+                try:
+                    self.connection.settimeout(previous_timeout)
+                except OSError:
+                    pass
             return b"".join(chunks)
 
         def log_message(self, fmt, *args):  # default request lines can carry query strings

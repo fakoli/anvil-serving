@@ -30,9 +30,15 @@ services:
       # Uncomment with the pi backend in agent.toml.
       # ANVIL_AGENT_PI_TOKEN: ${ANVIL_AGENT_PI_TOKEN:?set ANVIL_AGENT_PI_TOKEN in the operator .env}
     volumes:
-      - "./agent.toml:/etc/anvil/agent.toml:ro"
-      # Written by `router keys create --out`; a missing file stops startup instead
-      # of Docker creating a root-owned directory in its place.
+      # Long syntax for both files: a missing file stops startup instead of Docker
+      # creating a root-owned directory in its place.
+      - type: bind
+        source: ./agent.toml
+        target: /etc/anvil/agent.toml
+        read_only: true
+        bind:
+          create_host_path: false
+      # Written by `router keys create --out`.
       - type: bind
         source: ./agent.key
         target: /etc/anvil/agent.key

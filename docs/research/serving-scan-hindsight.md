@@ -45,7 +45,7 @@ thinner on those than the question assumes:
 | Speculative decoding | No paper. Operator trial-method notes only. |
 | Engine parallelism and kernels | Two papers (S1, S3) and two source studies (S6, S7). |
 | Serving observability | One paper (S2). |
-| Agentic workloads and harness design | Sixteen papers (table B). This is most of the bank. |
+| Agentic workloads and harness design | Fifteen papers (table B). This is most of the bank. |
 
 So the honest headline is that most of the ingested research is about agent
 harnesses, not about serving. The serving-specific set is seven sources.

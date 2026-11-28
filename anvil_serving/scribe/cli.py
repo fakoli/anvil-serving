@@ -20,7 +20,7 @@ def build_parser() -> argparse.ArgumentParser:
         ("validate", "check the Scribe config and its references offline, without binding"),
     ):
         sp = sub.add_parser(action, help=help_text)
-        sp.add_argument("--config", help="Scribe config TOML; defaults to $ANVIL_SERVING_HOME/scribe.toml")
+        sp.add_argument("--config", metavar="PATH", help="Scribe config TOML; defaults to $ANVIL_SERVING_HOME/scribe.toml")
     return parser
 
 

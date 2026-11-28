@@ -310,7 +310,9 @@ def test_cli_help_lists_the_config_option(capsys):
         except SystemExit as exc:
             code = exc.code
         assert code in (0, None)
-        assert "--config PATH" in capsys.readouterr().out
+        out = capsys.readouterr().out
+        assert "--config PATH" in out
+        assert "anvil-serving scribe " + action in out
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
@@ -875,5 +877,61 @@ def test_a_slowly_dripped_body_is_refused(tmp_path, monkeypatch, path, ctype):
         assert conn.recv(64).startswith(b"HTTP/1.0 408")
     finally:
         conn.close()
+        server.shutdown()
+        server.server_close()
+
+
+@pytest.mark.parametrize("path,ctype", [("/v1/memos/preview", "multipart/form-data; boundary=b"),
+                                        ("/v1/memos/profiles", "application/json")])
+def test_a_stalled_body_returns_408_and_logs_json(tmp_path, monkeypatch, capfd, path, ctype):
+    import socket
+    import time as _time
+    monkeypatch.setattr(memo, "_SOCKET_TIMEOUT_SECONDS", 0.15)
+    monkeypatch.setattr(memo, "_BODY_DEADLINE_SECONDS", 5.0)
+    server, base = start(config(tmp_path))
+    port = int(base.rsplit(":", 1)[1])
+    conn = socket.create_connection(("127.0.0.1", port), timeout=5)
+    try:
+        head = ("POST %s HTTP/1.1\r\nHost: x\r\nTailscale-User-Login: %s\r\n"
+                "Content-Type: %s\r\nContent-Length: 100\r\n\r\n" % (path, LOGIN, ctype))
+        started = _time.monotonic()
+        conn.sendall(head.encode() + b"x" * 10)
+        chunks = []
+        while chunk := conn.recv(1024):
+            chunks.append(chunk)
+        reply = b"".join(chunks)
+        elapsed = _time.monotonic() - started
+        assert reply.startswith(b"HTTP/1.0 408")
+        assert b"upload too slow" in reply
+        assert elapsed < 2.0
+    finally:
+        conn.close()
+        settle()
+        server.shutdown()
+        server.server_close()
+    lines = [json.loads(line) for line in capfd.readouterr().err.splitlines() if line.startswith("{")]
+    assert any(entry["path"] == path and entry["status"] == 408 for entry in lines)
+
+
+def test_body_deadline_clamps_socket_timeout(tmp_path, monkeypatch):
+    import socket
+    import time as _time
+    monkeypatch.setattr(memo, "_SOCKET_TIMEOUT_SECONDS", 5.0)
+    monkeypatch.setattr(memo, "_BODY_DEADLINE_SECONDS", 0.2)
+    server, base = start(config(tmp_path))
+    port = int(base.rsplit(":", 1)[1])
+    conn = socket.create_connection(("127.0.0.1", port), timeout=5)
+    try:
+        head = ("POST /v1/memos/preview HTTP/1.1\r\nHost: x\r\nTailscale-User-Login: %s\r\n"
+                "Content-Type: multipart/form-data; boundary=b\r\nContent-Length: 100\r\n\r\n" % LOGIN)
+        started = _time.monotonic()
+        conn.sendall(head.encode() + b"x" * 10)
+        reply = conn.recv(1024)
+        elapsed = _time.monotonic() - started
+        assert reply.startswith(b"HTTP/1.0 408")
+        assert elapsed < 1.5
+    finally:
+        conn.close()
+        settle()
         server.shutdown()
         server.server_close()

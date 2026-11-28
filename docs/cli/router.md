@@ -277,9 +277,11 @@ installing it, checking usage, then revoking the old ID.
 
 Repeat `--model` and `--path` for additional grants. Both must authorize a
 request. Chat grants use the router's trimmed, case-insensitive aliases;
-embeddings and reranking use exact served-model names. Supported inference
+embeddings and reranking use exact served-model names; audio grants use
+`[[router.audio_routes]]` ids. Supported inference
 paths are `/v1/chat/completions`, `/v1/messages`, `/v1/responses`,
-`/v1/embeddings`, and `/v1/rerank`. `--path /v1/realtime` grants the Realtime
+`/v1/embeddings`, `/v1/rerank`, `/v1/audio/transcriptions`, and
+`/v1/audio/speech`. `--path /v1/realtime` grants the Realtime
 WebSocket upgrade; pair it with `--model <realtime route id>`.
 `/v1/models` is granted automatically and
 returns only granted chat aliases. The same discovery grant permits
@@ -290,7 +292,7 @@ and replica identities are omitted. Device status contains the package version,
 granted aliases and the opaque global configuration hash, whose meaning is
 unchanged. Ungranted `model=` queries are refused before lookup. All three reads
 retain account, expiry, revocation, rate and audit checks. Other metadata,
-operator, admin, audio, media, MCP, and A2A endpoints are denied to device keys. Purpose models remain
+operator, admin, media, MCP, and A2A endpoints are denied to device keys. Purpose models remain
 available through their dedicated endpoints, as before; the chat catalog does
 not advertise them.
 

@@ -252,6 +252,8 @@ def load_config(path: Optional[str] = None, *, env: Optional[Mapping[str, str]] 
         data = tomllib.loads(payload.decode("utf-8"))
     except FileNotFoundError:
         raise ConfigError("Anvil Agent config not found: %s" % path) from None
+    except OSError as exc:  # a directory left by a missing bind mount, or no permission
+        raise ConfigError("cannot read Anvil Agent config %s: %s" % (path, type(exc).__name__)) from None
     except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
         raise ConfigError("cannot parse Anvil Agent config %s: %s" % (path, exc)) from None
     table = data.get("agent")
@@ -400,7 +402,9 @@ def parse_glasses_op(args) -> dict:
     op = str(args.get("op") or "").upper()
     if op not in GLASSES_OPS:
         raise ValueError("op must be one of %s" % ", ".join(GLASSES_OPS))
-    title, content, v = args.get("title") or "", args.get("content") or "", args.get("v", 1)
+    title = "" if args.get("title") is None else args["title"]
+    content = "" if args.get("content") is None else args["content"]
+    v = args.get("v", 1)
     if not isinstance(title, str) or len(title) > 120:
         raise ValueError("title must be at most 120 characters")
     if not isinstance(content, str) or len(content) > MAX_TEXT_CHARS:
@@ -536,7 +540,7 @@ class Glasses:
         if event["op"] == "STATUS":
             return json.dumps({"glassesAppOpen": open_now}), False
         if event["op"] == "ASK":
-            timeout_ms = args.get("timeoutMs") or 60_000
+            timeout_ms = 60_000 if args.get("timeoutMs") is None else args["timeoutMs"]
             if type(timeout_ms) is not int or not 5_000 <= timeout_ms <= 120_000:
                 return "timeoutMs must be an integer from 5000 to 120000", True
             if not open_now:
@@ -658,19 +662,33 @@ def make_server(config: AgentConfig, *,
             """Exactly ``length`` bytes within one wall-clock deadline (as in Scribe), or None after
             replying, so a client that drips its body cannot hold a slot for long."""
             deadline = time.monotonic() + _BODY_DEADLINE_SECONDS
+            previous_timeout = self.connection.gettimeout()
             chunks, received = [], 0
-            while received < length:
-                if time.monotonic() > deadline:
-                    self.close_connection = True
-                    self._send(408, {"error": "upload too slow"}, started)
-                    return None
-                chunk = self.rfile.read1(min(65536, length - received))
-                if not chunk:
-                    self.close_connection = True
-                    self._send(400, {"error": "incomplete upload"}, started)
-                    return None
-                chunks.append(chunk)
-                received += len(chunk)
+            try:
+                while received < length:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        self.close_connection = True
+                        self._send(408, {"error": "upload too slow"}, started)
+                        return None
+                    self.connection.settimeout(min(_SOCKET_TIMEOUT_SECONDS, max(0.001, remaining)))
+                    try:
+                        chunk = self.rfile.read1(min(65536, length - received))
+                    except TimeoutError:
+                        self.close_connection = True
+                        self._send(408, {"error": "upload too slow"}, started)
+                        return None
+                    if not chunk:
+                        self.close_connection = True
+                        self._send(400, {"error": "incomplete upload"}, started)
+                        return None
+                    chunks.append(chunk)
+                    received += len(chunk)
+            finally:
+                try:
+                    self.connection.settimeout(previous_timeout)
+                except OSError:
+                    pass
             return b"".join(chunks)
 
         def log_message(self, fmt, *args):  # default request lines can carry query strings

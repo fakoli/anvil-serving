@@ -161,6 +161,15 @@ def test_load_config_requires_a_backend_and_a_file(tmp_path):
         agent.load_config(str(tmp_path / "missing.toml"), env=ENV)
 
 
+def test_a_config_path_that_is_a_directory_fails_closed(tmp_path, capsys):
+    cfg_dir = tmp_path / "agent.toml"
+    cfg_dir.mkdir()  # what Docker leaves for a missing short-syntax bind
+    with pytest.raises(agent.ConfigError, match="cannot read"):
+        agent.load_config(str(cfg_dir), env=ENV)
+    assert agent_cli.main(["validate", "--config", str(cfg_dir)]) == 2
+    assert "cannot read" in capsys.readouterr().err
+
+
 def test_scaffold_template_validates_with_the_key_beside_it(tmp_path, monkeypatch, capsys):
     template = os.path.join(os.path.dirname(agent.__file__), "..", "_scaffold_templates", "agent.toml")
     read = []  # the private-file check itself is POSIX-only; this pins where the key is looked up
@@ -312,7 +321,12 @@ def test_parse_glasses_op():
     assert parse({"op": "ASK", "content": "Ship it?"})["content"] == "Ship it?"
     for bad in ({"op": "VU"}, {"op": "NOTIFY"}, {"op": "TP", "v": 1}, {"op": "LS", "v": 2},
                 {"op": "RC", "mode": "Rm -rf"}, {"op": "ASK", "content": "x" * 301}, "NOTIFY",
-                {"op": "NOTIFY", "content": "x", "style": "loud"}):
+                {"op": "NOTIFY", "content": "x", "style": "loud"},
+                {"op": "NOTIFY", "content": "x", "title": 0},
+                {"op": "NOTIFY", "content": "x", "title": False},
+                {"op": "NOTIFY", "content": "x", "title": []},
+                {"op": "STATUS", "content": 0},
+                {"op": "STATUS", "content": False}):
         with pytest.raises(ValueError):
             parse(bad)
 
@@ -349,7 +363,9 @@ def test_tool_reports_presence_honestly():
     assert sent["status"] == "sent" and "press" in sent["detail"]
     text, is_error = glasses.run_tool({"op": "BU"})
     assert is_error and "op must be one of" in text
-    assert glasses.run_tool({"op": "ASK", "content": "x", "timeoutMs": True})[1]
+    for bad_timeout in (True, False, 0, "", [], {}):
+        msg, is_error = glasses.run_tool({"op": "ASK", "content": "x", "timeoutMs": bad_timeout})
+        assert is_error and msg == "timeoutMs must be an integer from 5000 to 120000", bad_timeout
 
 
 def test_ask_round_trip():
@@ -849,26 +865,57 @@ def test_an_answer_gets_through_while_asks_hold_every_general_slot(monkeypatch):
         server.server_close()
 
 
-def test_a_stalled_body_is_dropped_and_frees_its_slot(monkeypatch):
+def test_a_stalled_body_returns_408_logs_json_and_frees_its_slot(monkeypatch, capfd):
     import socket
 
     monkeypatch.setattr(agent, "MAX_INFLIGHT_POSTS", 1)
-    monkeypatch.setattr(agent, "_SOCKET_TIMEOUT_SECONDS", 0.3)
+    monkeypatch.setattr(agent, "_SOCKET_TIMEOUT_SECONDS", 0.15)
+    monkeypatch.setattr(agent, "_BODY_DEADLINE_SECONDS", 5.0)
     server = agent.make_server(make_config(), ask=lambda agent_id, text: ("ok", "s", "stop"))
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
         with socket.create_connection(("127.0.0.1", server.server_port)) as sock:
+            started = time.monotonic()
             sock.sendall(b"POST /v1/agent/turn HTTP/1.1\r\nHost: x\r\nTailscale-User-Login: " + LOGIN.encode()
                          + b"\r\nContent-Type: text/plain\r\nContent-Length: 100\r\n\r\n0123456789")
             sock.settimeout(5)
-            try:
-                dropped = sock.recv(1024)
-            except ConnectionResetError:
-                dropped = b""
-            assert dropped == b""  # no reply: the connection is closed once the socket goes quiet
+            chunks = []
+            while chunk := sock.recv(1024):
+                chunks.append(chunk)
+            reply = b"".join(chunks)
+            elapsed = time.monotonic() - started
+            assert reply.startswith(b"HTTP/1.0 408")
+            assert b"upload too slow" in reply
+            assert elapsed < 2.0
+        settle()
+        lines = [json.loads(line) for line in capfd.readouterr().err.splitlines() if line.startswith("{")]
+        assert any(entry["path"] == "/v1/agent/turn" and entry["status"] == 408 for entry in lines)
         ctype, body = multipart({"text": (None, b"hi")})
         assert Client(server).request("POST", "/v1/agent/turn", body, {"Content-Type": ctype, **OWNER})[0] == 200
     finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_body_deadline_clamps_socket_timeout(monkeypatch):
+    import socket
+
+    monkeypatch.setattr(agent, "_SOCKET_TIMEOUT_SECONDS", 5.0)
+    monkeypatch.setattr(agent, "_BODY_DEADLINE_SECONDS", 0.2)
+    server = agent.make_server(make_config(), ask=lambda agent_id, text: ("ok", "s", "stop"))
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        with socket.create_connection(("127.0.0.1", server.server_port)) as sock:
+            started = time.monotonic()
+            sock.sendall(b"POST /v1/agent/turn HTTP/1.1\r\nHost: x\r\nTailscale-User-Login: " + LOGIN.encode()
+                         + b"\r\nContent-Type: text/plain\r\nContent-Length: 100\r\n\r\n0123456789")
+            sock.settimeout(5)
+            reply = sock.recv(1024)
+            elapsed = time.monotonic() - started
+            assert reply.startswith(b"HTTP/1.0 408")
+            assert elapsed < 1.5
+    finally:
+        settle()
         server.shutdown()
         server.server_close()
 

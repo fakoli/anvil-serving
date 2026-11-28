@@ -275,3 +275,19 @@ attributes, not routing inputs. The OpenClaw adapter contract is documented in
 - Don't make ad hoc lifecycle or operations scripts the way to run the product.
   Scripts may be demos, fixtures, or validation harnesses, but durable operations
   belong behind the `anvil-serving` utility surface.
+
+## Upstream contributions
+
+Read and pin the target project's contributor/agent/PR and coordination rules.
+Check active upstream work, authorship, notices and semantic dependencies before
+porting local patches. Keep one focused behavior per contribution; preserve
+others' authorship and distinguish prerequisites from mere file overlap.
+
+Before publishing, stage the exact message/title/body, diff or commit range,
+base/head, stack, attribution, attachments and validation/coverage gaps for user
+review. Keep private deployment material and unrelated patches out. Obtain review
+of that concrete payload before external comments, issues, PRs, remote pushes,
+uploads or coordination commands that publish claims/presence, unless the exact
+scope is already approved. A request to investigate or stage is not approval to
+publish. Project instructions carry this policy across Codex accounts; shared
+memory is supplemental and must use an existing authorized connection.

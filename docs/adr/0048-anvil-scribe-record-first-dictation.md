@@ -45,8 +45,10 @@ release line and safety contract like every other family.
 `/v1/audio/speech` like any other inference path. For audio, a key's model grant names the audio
 route id the key may select, because callers select a route or purpose and never a model. The
 front door resolves the route the request would use and requires that id in the key's model
-grants before it acquires the audio pool; tracked admission rechecks it atomically. A request that
-cannot resolve a route is rejected by the gateway's existing validation before any upstream call.
+grants before it acquires the audio pool; tracked admission rechecks it atomically. For device
+keys, a request that cannot resolve a route is also refused with `403 key_access_denied` before
+any upstream call so 403-versus-404 responses do not allow route-id enumeration (the operator
+token still receives the gateway's existing validation error).
 Audio audit rows record the real path instead of `[other]`. The operator token, configured scopes
 and ADR-0024 route selection are unchanged.
 
