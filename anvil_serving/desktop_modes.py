@@ -22,9 +22,16 @@ from . import desktop, envfile, paths, serve_recipes, serves
 from .router.config import normalize_model_alias
 
 
+_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1"})
+
+
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, request, fp, code, msg, headers, newurl):
         return None
+
+
+class _TransientRouterError(RuntimeError):
+    """Raised when a co-hosted router is still starting and a short retry is safe."""
 
 
 def _profile():
@@ -41,6 +48,8 @@ def _profile():
     dynamic_present = dynamic & set(value)
     if dynamic_present and dynamic_present != dynamic:
         raise ValueError("Dynamic secondary assignment requires router URL, alias, token file, token name, and manifest directory.")
+    if dynamic_present and "secondary_manifest" in value:
+        raise ValueError("Desktop mode configuration cannot declare both secondary_manifest and dynamic secondary assignment.")
     if not dynamic_present and "secondary_manifest" not in value:
         raise ValueError("Desktop mode configuration requires a secondary manifest or dynamic secondary assignment.")
     for key in ("model_manifests", "worker_containers"):
@@ -82,10 +91,10 @@ def _profile():
         except ValueError as exc:
             raise ValueError("Invalid dynamic secondary router URL.") from exc
         if (parsed_url.scheme not in {"http", "https"}
-                or not parsed_url.netloc or parsed_url.username or parsed_url.password
+                or not parsed_url.netloc or not parsed_url.hostname or parsed_url.username or parsed_url.password
                 or parsed_url.path not in {"", "/"} or parsed_url.query or parsed_url.fragment
                 or parsed_url.hostname == "localhost"
-                or (parsed_url.scheme == "http" and parsed_url.hostname != "127.0.0.1")):
+                or (parsed_url.scheme == "http" and parsed_url.hostname not in _LOOPBACK_HOSTS)):
             raise ValueError("Invalid dynamic secondary router URL.")
         if not isinstance(value["secondary_router_alias"], str):
             raise ValueError("Invalid dynamic secondary router alias.")
@@ -148,7 +157,7 @@ def _validate_router_container(profile, assigned_containers):
 def _router_is_cohost(profile):
     """A loopback router vanishes with Docker Desktop and must be looked up later."""
     return (profile.get("router_container") is not None
-            or urllib.parse.urlsplit(profile["secondary_router_url"]).hostname in {"127.0.0.1", "::1"})
+            or urllib.parse.urlsplit(profile["secondary_router_url"]).hostname in _LOOPBACK_HOSTS)
 
 
 def _park_started_desktop_if_empty(profile, run, timeout):
@@ -178,14 +187,23 @@ def _dynamic_secondary(profile):
     url = profile["secondary_router_url"].rstrip("/") + "/v1/models/capabilities?model=" + urllib.parse.quote(alias, safe="")
     request = urllib.request.Request(url, headers={"Accept": "application/json", "Authorization": "Bearer " + token})
     try:
-        handlers = [_NoRedirect()]
+        handlers = [urllib.request.ProxyHandler({}), _NoRedirect()]
         if profile.get("secondary_router_ca_file"):
             handlers.append(urllib.request.HTTPSHandler(context=ssl.create_default_context(
                 cafile=profile["secondary_router_ca_file"])))
         with urllib.request.build_opener(*handlers).open(request, timeout=5) as response:
             raw = response.read(65537)
-    except (OSError, http.client.HTTPException, urllib.error.HTTPError, urllib.error.URLError) as exc:
+    except urllib.error.HTTPError as exc:
+        if exc.code in {502, 503, 504}:
+            raise _TransientRouterError("Dynamic secondary router assignment is unavailable.") from exc
         raise RuntimeError("Dynamic secondary router assignment is unavailable.") from exc
+    except (OSError, http.client.HTTPException, urllib.error.URLError) as exc:
+        if isinstance(exc, ssl.SSLCertVerificationError) or (
+            isinstance(exc, urllib.error.URLError)
+            and isinstance(exc.reason, ssl.SSLCertVerificationError)
+        ):
+            raise RuntimeError("Dynamic secondary router assignment is unavailable.") from exc
+        raise _TransientRouterError("Dynamic secondary router assignment is unavailable.") from exc
     if len(raw) > 65536:
         raise RuntimeError("Dynamic secondary router assignment is invalid.")
     try:
@@ -209,6 +227,30 @@ def _dynamic_secondary(profile):
 
 def _secondary(profile):
     return _dynamic_secondary(profile) if profile["dynamic_secondary"] else profile["secondary"][0]
+
+
+def _is_transient_secondary_error(exc):
+    if isinstance(exc, _TransientRouterError):
+        return True
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code in {502, 503, 504}
+    if isinstance(exc, urllib.error.URLError):
+        return not isinstance(exc.reason, ssl.SSLCertVerificationError)
+    if isinstance(exc, (OSError, http.client.HTTPException)):
+        return not isinstance(exc, ssl.SSLCertVerificationError)
+    return False
+
+
+def _await_secondary(profile, timeout, *, interval=0.5):
+    deadline = time.monotonic() + min(timeout, 30)
+    while True:
+        try:
+            return _secondary(profile)
+        except Exception as exc:
+            now = time.monotonic()
+            if not _is_transient_secondary_error(exc) or now >= deadline:
+                raise
+            time.sleep(min(interval, deadline - now))
 
 
 def _recipe_start_binding(target):
@@ -452,7 +494,7 @@ def select_mode(mode, *, confirm=False, dry_run=False, timeout=600, run=desktop.
                 started_desktop = True
                 result["changed"] = True
                 if mode == "secondary" and target is None:
-                    target = _secondary(profile)
+                    target = _await_secondary(profile, timeout)
                     if target.get("up") and not serves._is_compose_up(target["up"]):
                         recipe_start = _recipe_start_binding(target)
             except BaseException as failure:

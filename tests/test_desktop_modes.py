@@ -592,3 +592,200 @@ def test_media_reselection_keeps_its_idle_worker(monkeypatch, tmp_path):
     monkeypatch.setattr(desktop_modes, "_release_idle_worker", lambda *a, **k: pytest.fail("same-mode worker must stay"))
     assert desktop_modes.select_mode("media", confirm=True, run=docker)["changed"] is False
     assert ops == []
+
+
+def test_dynamic_secondary_disables_ambient_proxies(monkeypatch, tmp_path):
+    import json
+    import urllib.request
+
+    setup(monkeypatch, tmp_path)
+    dynamic_secondary(monkeypatch, tmp_path)
+    captured_handlers = []
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def read(self, _):
+            return json.dumps({"data": [{"id": "secondary-tier", "aliases": ["llm.secondary"],
+                                          "model": "model-a", "readiness": {"loaded": False}}]}).encode()
+
+    def build_opener(*handlers):
+        captured_handlers.extend(handlers)
+        return SimpleNamespace(open=lambda request, timeout: Response())
+
+    monkeypatch.setattr(desktop_modes.urllib.request, "build_opener", build_opener)
+    target = desktop_modes._dynamic_secondary(desktop_modes._profile())
+    assert target["name"] == "alpha"
+    proxy_handlers = [h for h in captured_handlers if isinstance(h, urllib.request.ProxyHandler)]
+    assert len(proxy_handlers) == 1
+    assert proxy_handlers[0].proxies == {}
+
+
+def test_stopped_desktop_retries_transient_router_startup_without_reparking(monkeypatch, tmp_path):
+    import io
+    import json
+    import urllib.error
+
+    docker, _ = setup(monkeypatch, tmp_path)
+    dynamic_secondary(monkeypatch, tmp_path)
+    config = tmp_path / "desktop-modes.toml"
+    config.write_text(
+        config.read_text(encoding="utf-8").replace("https://router.example.test", "http://127.0.0.1:8000")
+        + 'router_container="test-router"\n',
+        encoding="utf-8",
+    )
+    docker.running = False
+    docker.rows[0]["name"] = "/alpha"
+    docker.rows[-1]["name"] = "/beta"
+
+    attempts = []
+    sleeps = []
+
+    def fake_sleep(seconds):
+        sleeps.append(seconds)
+        docker.clock += seconds
+
+    monkeypatch.setattr(desktop_modes.time, "sleep", fake_sleep)
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def read(self, _):
+            return json.dumps({"data": [{"id": "secondary-tier", "aliases": ["llm.secondary"],
+                                          "model": "model-a", "readiness": {"loaded": False}}]}).encode()
+
+    transient_errors = [
+        ConnectionRefusedError("router still booting"),
+        urllib.error.URLError("connection reset"),
+        urllib.error.HTTPError("http://127.0.0.1:8000/v1/models/capabilities", 503, "Service Unavailable", {}, io.BytesIO(b"")),
+    ]
+
+    def open_request(request, timeout):
+        attempts.append(request.full_url)
+        if transient_errors:
+            raise transient_errors.pop(0)
+        return Response()
+
+    monkeypatch.setattr(
+        desktop_modes.urllib.request,
+        "build_opener",
+        lambda *handlers: SimpleNamespace(open=open_request),
+    )
+
+    result = desktop_modes.select_mode("secondary", confirm=True, run=docker)
+    assert result["target"]["name"] == "alpha"
+    assert docker.running is True
+    assert len(attempts) >= 4
+    assert len(sleeps) == 3
+
+    # Verify bounded timeout gives up and re-parks an idle Docker Desktop.
+    docker.clock += 11
+    docker.running = False
+    docker.rows = [row for row in docker.rows if row["status"] == "exited"]
+    sleeps.clear()
+    attempts.clear()
+
+    def always_refused(request, timeout):
+        attempts.append(request.full_url)
+        raise ConnectionRefusedError("router never came up")
+
+    monkeypatch.setattr(
+        desktop_modes.urllib.request,
+        "build_opener",
+        lambda *handlers: SimpleNamespace(open=always_refused),
+    )
+    with pytest.raises(RuntimeError, match="unavailable"):
+        desktop_modes.select_mode("secondary", confirm=True, timeout=2, run=docker)
+    assert docker.running is False
+    assert sum(sleeps) == pytest.approx(2.0)
+    assert len(attempts) >= 2
+
+
+@pytest.mark.parametrize("failure_kind", ["invalid_json", "unconfigured_model", "http_401"])
+def test_stopped_desktop_fails_fast_on_permanent_router_errors(monkeypatch, tmp_path, failure_kind):
+    import io
+    import json
+    import urllib.error
+
+    docker, _ = setup(monkeypatch, tmp_path)
+    dynamic_secondary(monkeypatch, tmp_path)
+    config = tmp_path / "desktop-modes.toml"
+    config.write_text(
+        config.read_text(encoding="utf-8").replace("https://router.example.test", "http://127.0.0.1:8000")
+        + 'router_container="test-router"\n',
+        encoding="utf-8",
+    )
+    docker.running = False
+    docker.rows = [row for row in docker.rows if row["status"] == "exited"]
+    attempts = []
+    sleeps = []
+    monkeypatch.setattr(desktop_modes.time, "sleep", lambda s: sleeps.append(s))
+
+    class BadResponse:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def read(self, _):
+            return self._payload
+
+    def open_request(request, timeout):
+        attempts.append(request.full_url)
+        if failure_kind == "invalid_json":
+            return BadResponse(b"{not-json")
+        if failure_kind == "unconfigured_model":
+            return BadResponse(json.dumps({"data": [{"id": "secondary-tier", "aliases": ["llm.secondary"],
+                                                      "model": None}]}).encode())
+        raise urllib.error.HTTPError(request.full_url, 401, "Unauthorized", {}, io.BytesIO(b""))
+
+    monkeypatch.setattr(
+        desktop_modes.urllib.request,
+        "build_opener",
+        lambda *handlers: SimpleNamespace(open=open_request),
+    )
+    with pytest.raises(RuntimeError):
+        desktop_modes.select_mode("secondary", confirm=True, run=docker)
+    assert len(attempts) == 1
+    assert sleeps == []
+    assert docker.running is False
+
+
+def test_profile_rejects_mixed_static_and_dynamic_secondary_and_aligns_ipv6_loopback(monkeypatch, tmp_path):
+    setup(monkeypatch, tmp_path)
+    dynamic_secondary(monkeypatch, tmp_path)
+    config = tmp_path / "desktop-modes.toml"
+    base_dynamic = config.read_text(encoding="utf-8")
+
+    # Reject declaring both static secondary_manifest and dynamic secondary keys.
+    config.write_text(base_dynamic + 'secondary_manifest="secondary.toml"\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="both secondary_manifest and dynamic"):
+        desktop_modes._profile()
+
+    # Align IPv6 loopback [::1] between URL validation and _router_is_cohost().
+    config.write_text(
+        base_dynamic.replace("https://router.example.test", "http://[::1]:8000"),
+        encoding="utf-8",
+    )
+    profile = desktop_modes._profile()
+    assert desktop_modes._router_is_cohost(profile) is True
+
+    # Non-loopback HTTP remains rejected.
+    config.write_text(
+        base_dynamic.replace("https://router.example.test", "http://router.example.test:8000"),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="router URL"):
+        desktop_modes._profile()
