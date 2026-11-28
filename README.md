@@ -7,7 +7,7 @@
 > **Operate, qualify, and expose local AI capabilities through explicit contracts.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Source Version](https://img.shields.io/badge/source-3.2.0-blue.svg)](CHANGELOG.md)
+[![Source Version](https://img.shields.io/badge/source-3.2.1-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-anvilserving.com-blue.svg)](https://anvilserving.com/)
 
 [Quickstart](docs/QUICKSTART-GATEWAY.md) ·
