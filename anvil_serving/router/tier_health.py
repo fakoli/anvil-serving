@@ -9,11 +9,11 @@ recently simply does not appear.
 
 This module surfaces that already-tracked readiness as a first-class snapshot
 covering EVERY configured serve — chat ``llm`` tiers (``[[router.tiers]]``),
-purpose models (``[[router.purpose_models]]``), and audio routes
-(``[[router.audio_routes]]``) — not only recently-routed ones.  It reuses the
-SAME cached availability checker, so polling the endpoint never adds a heavy new
-probe path: repeated reads inside ``availability_probe_interval`` (default 5s)
-return the cached readiness rather than re-hitting a serve.
+purpose models (``[[router.purpose_models]]``), audio routes
+(``[[router.audio_routes]]``), and realtime routes
+(``[[router.realtime_routes]]``) — not only recently-routed ones. Realtime
+uses its bound gateway's own cached token-free probe, so it follows the exact
+readiness gate used before a WebSocket upgrade.
 
 **No secrets leave here.**  A row carries only a serve ``id`` (operator-chosen,
 never a host), a fixed ``role`` label, a coarse ``status``, optional freshness
@@ -115,13 +115,26 @@ def _serve_probe_target(serve_id: str, base_url: str, auth_env: Optional[str]) -
     )
 
 
-def build_tier_health(config: RouterConfig, availability) -> dict:
+def _realtime_row(route, realtime) -> dict:
+    """Return the gateway's real readiness for one configured realtime route."""
+    available = bool(realtime is not None and realtime.route_healthy(route.id))
+    return {
+        "id": route.id,
+        "role": "realtime",
+        "status": "up" if available else "down",
+        "last_check": None,
+        "latency_ms": None,
+        "reason": None if available else _GENERIC_REASON,
+    }
+
+
+def build_tier_health(config: RouterConfig, availability, *, realtime=None) -> dict:
     """Return ``{"tiers": [row, ...]}`` for EVERY configured serve.
 
     Enumerates all configured surfaces (never only recently-routed ones) and
     reuses ``availability`` — the same cached probe routing relies on — so the
-    snapshot is live but cheap.  Order is stable: chat tiers, then purpose
-    models, then audio routes, in configuration order.
+    snapshot is live but cheap. Order is stable: chat tiers, then purpose
+    models, audio routes, and realtime routes, in configuration order.
     """
     rows = []
     for tier in config.tiers:
@@ -133,6 +146,8 @@ def build_tier_health(config: RouterConfig, availability) -> dict:
     for route in config.audio_routes:
         target = _serve_probe_target(f"audio:{route.id}", route.base_url, route.auth_env)
         rows.append(_row(route.id, route.purpose, safe_check(availability, target)))
+    for route in config.realtime_routes:
+        rows.append(_realtime_row(route, realtime))
     return {"tiers": rows}
 
 

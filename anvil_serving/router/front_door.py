@@ -3646,6 +3646,9 @@ def make_server(host: str, port: int,
     if realtime is not None and len(realtime) and not auth_token:
         # The relay carries the route's upstream credential; never offer it unauthenticated.
         raise ValueError("realtime routes require front-door authentication")
+    set_realtime_gateway = getattr(backend, "set_realtime_gateway", None)
+    if realtime is not None and callable(set_realtime_gateway):
+        set_realtime_gateway(realtime)
     if gateway is not None and auth_token is None:
         raise ValueError("a ProtocolGateway requires a resolved front-door auth token")
     if memory is not None and (auth_token is None or server_config is None or server_config.api_keys_path is None):

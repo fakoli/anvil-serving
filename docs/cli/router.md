@@ -440,7 +440,7 @@ anvil-serving router fleet-status
 ```
 
 By default it asks the deployed router container to read its installed config
-and probe every declared alias, purpose model, and audio route from inside that
+and probe every declared alias, purpose model, audio route, and realtime route from inside that
 same runtime. The operation is read-only: Docker is used only as the bounded
 execution boundary, and no lifecycle or configuration state changes.
 `--json` emits the same report structurally; `--timeout` bounds each probe.
@@ -463,14 +463,15 @@ controller exposes the same live-only behavior through the bounded
 `router_fleet_status` tool.
 
 It exits non-zero when a **declared alias** has no reachable backing serve,
-so it works as a pre-promotion or monitoring check. Purpose models and audio
-routes are reported but do not fail the command on their own.
+so it works as a pre-promotion or monitoring check. Purpose models, audio
+routes, and realtime routes are reported but do not fail the command on their
+own. Realtime routes use their configured, same-origin token-free `health_path`.
 
 Two behaviours worth knowing:
 
-- **An authenticated endpoint answering `401` counts as reachable.** Something
-  is serving and asking for a token; treating that as down would report every
-  authenticated tier as broken.
+- **An authenticated endpoint answering `401` counts as reachable** for aliases,
+  purpose models, and audio routes. Realtime routes instead use their token-free
+  readiness path and require an exact `200`, matching the WebSocket relay gate.
 - **Runtime-relative endpoints stay runtime-relative in live mode.** A
   `host.docker.internal` endpoint is probed unchanged from the router runtime.
   During explicit command-host file inspection it is translated to

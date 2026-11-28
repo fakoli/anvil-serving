@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- Chat tier replacement and managed promotion check for realtime routes that
+  still use the listener being replaced. A chat-only drain cannot authorize
+  releasing that shared listener.
+- `router fleet-status` and `GET /v1/health/tiers` include configured realtime
+  routes and use each route's declared health path.
+
+### Upgrade notes
+
+- A voice proxy that binds off loopback now requires an inbound bearer token,
+  including a container that binds a wildcard address behind a loopback port
+  publication. Configure the proxy and its callers before upgrading.
+  See “Managed proxy migration” in `docs/VOICE.md`.
+
 ## [3.2.0] - 2026-11-27
 
 ### Added
